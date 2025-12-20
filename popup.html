@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>POST Request Monitor</title>
+  <style>
+    body {
+      width: 320px;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 15px 0;
+      color: #333;
+    }
+
+    .status {
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    .status.active {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .info {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-left: 3px solid #2196F3;
+      border-radius: 3px;
+    }
+
+    .how-it-works {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .how-it-works strong {
+      color: #333;
+    }
+
+    .how-it-works ol {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .how-it-works li {
+      margin: 5px 0;
+    }
+
+    .version {
+      margin-top: 15px;
+      font-size: 11px;
+      color: #999;
+      text-align: center;
+    }
+
+    .warning {
+      font-size: 11px;
+      color: #ff9800;
+      background: #fff3e0;
+      padding: 8px;
+      border-radius: 3px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛡️ POST Request Monitor</h1>
+
+  <div class="status active">
+    <strong>✓ Active and Monitoring</strong>
+  </div>
+
+  <div class="info">
+    <strong>Click-Based Detection:</strong> When you click anywhere on a page with input fields, the extension monitors POST requests for 3 seconds and alerts you if your input data is being sent.
+  </div>
+
+  <div class="how-it-works">
+    <strong>How it works:</strong>
+    <ol>
+      <li>Fill in any form fields on a webpage</li>
+      <li>Click anywhere (button, link, etc.)</li>
+      <li>Extension captures all input values</li>
+      <li>Monitors POST requests for 3 seconds</li>
+      <li>Alerts if your data is detected in requests</li>
+    </ol>
+  </div>
+
+  <div class="warning">
+    ⚠️ Note: Manifest V3 restrictions prevent actual blocking. The extension will detect and alert you about suspicious requests.
+  </div>
+
+  <div style="margin-top: 15px;">
+    <a href="../dashboard.html" target="_blank" style="
+      display: block;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: transform 0.2s;
+    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+      📊 Open Dashboard
+    </a>
+  </div>
+
+  <div class="version">
+    Version 1.0.0 - Click-Based Monitoring
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

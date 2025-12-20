@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POST Monitor Test Page</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+      padding: 10px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      border-radius: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #2196F3;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+      font-family: inherit;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #1976D2;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .response {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .response.success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+
+    .response.error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+
+    .test-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .test-buttons button {
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    .test-buttons button.secondary {
+      background: #ff9800;
+    }
+
+    .test-buttons button.secondary:hover {
+      background: #f57c00;
+    }
+
+    .info-box {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 POST Monitor Test Page</h1>
+    <div class="subtitle">
+      Fill in the form below and click "Submit" to test the POST request monitoring extension.
+    </div>
+
+    <div class="info-box">
+      <strong>How to test:</strong>
+      1. Make sure the extension is loaded<br>
+      2. Fill in the form fields below<br>
+      3. Click the "Submit Form" button<br>
+      4. Check browser notifications and console (F12) for alerts<br>
+      5. The extension should detect your input in the POST request
+    </div>
+
+    <form id="testForm">
+      <div class="form-group">
+        <label for="name">Full Name:</label>
+        <input type="text" id="name" name="name" placeholder="John Doe">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" name="email" placeholder="john@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="••••••••">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number:</label>
+        <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" placeholder="Type your message here..."></textarea>
+      </div>
+
+      <button type="submit">Submit Form (POST Request)</button>
+    </form>
+
+    <div class="test-buttons">
+      <button type="button" class="secondary" onclick="sendJSONPost()">
+        Test JSON POST
+      </button>
+      <button type="button" class="secondary" onclick="sendFormDataPost()">
+        Test FormData POST
+      </button>
+    </div>
+
+    <div id="response" class="response"></div>
+  </div>
+
+  <script>
+    // Handle form submission
+    document.getElementById('testForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+
+      showResponse('Sending POST request...', 'success');
+
+      try {
+        // Send POST request with form data
+        const response = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        console.log('POST Response:', result);
+
+        showResponse('✓ POST request sent successfully! Check your browser for extension alerts.', 'success');
+      } catch (error) {
+        console.error('Error:', error);
+        showResponse('Error: ' + error.message, 'error');
+      }
+    });
+
+    // Test with JSON POST
+    async function sendJSONPost() {
+      showResponse('Sending JSON POST request...', 'success');
+
+      const data = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        phone: document.getElementById('phone').value,
+        message: document.getElementById('message').value
+      };
+
+      try {
+        const response = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        console.log('JSON POST Response:', result);
+
+        showResponse('✓ JSON POST sent! Check for extension alerts.', 'success');
+      } catch (error) {
+        console.error('Error:', error);
+        showResponse('Error: ' + error.message, 'error');
+      }
+    }
+
+    // Test with FormData POST
+    async function sendFormDataPost() {
+      showResponse('Sending FormData POST request...', 'success');
+
+      const formData = new FormData();
+      formData.append('name', document.getElementById('name').value);
+      formData.append('email', document.getElementById('email').value);
+      formData.append('password', document.getElementById('password').value);
+      formData.append('phone', document.getElementById('phone').value);
+      formData.append('message', document.getElementById('message').value);
+
+      try {
+        const response = await fetch('https://httpbin.org/post', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        console.log('FormData POST Response:', result);
+
+        showResponse('✓ FormData POST sent! Check for extension alerts.', 'success');
+      } catch (error) {
+        console.error('Error:', error);
+        showResponse('Error: ' + error.message, 'error');
+      }
+    }
+
+    // Show response message
+    function showResponse(message, type) {
+      const responseDiv = document.getElementById('response');
+      responseDiv.textContent = message;
+      responseDiv.className = `response ${type}`;
+      responseDiv.style.display = 'block';
+
+      // Hide after 5 seconds if success
+      if (type === 'success') {
+        setTimeout(() => {
+          responseDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Pre-fill with test data for easier testing
+    window.addEventListener('load', () => {
+      document.getElementById('name').value = 'John Doe';
+      document.getElementById('email').value = 'john.doe@example.com';
+      document.getElementById('password').value = 'SecurePass123';
+      document.getElementById('phone').value = '+1 (555) 123-4567';
+      document.getElementById('message').value = 'This is a test message to check if the POST monitor extension works correctly.';
+
+      console.log('[Test Page] Page loaded. Extension should be monitoring this page.');
+      console.log('[Test Page] Form is pre-filled with test data. Click Submit to trigger POST request.');
+    });
+  </script>
+</body>
+</html>
