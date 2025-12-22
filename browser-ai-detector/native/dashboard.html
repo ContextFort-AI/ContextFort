@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Detection SDK - Live Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            color: #1a202c;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+            padding: 20px 30px;
+            border-bottom: 2px solid #667eea;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .title h1 {
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            background: #48bb78;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #48bb78;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .stats-mini {
+            display: flex;
+            gap: 30px;
+            font-size: 0.9rem;
+        }
+
+        .stat-mini {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-mini .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-mini .value.updated {
+            animation: statPulse 0.6s ease-out;
+        }
+
+        @keyframes statPulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.3);
+                text-shadow: 0 0 20px currentColor;
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .stat-mini .label {
+            font-size: 0.75rem;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-mini.total .value { color: #667eea; }
+        .stat-mini.legitimate .value { color: #48bb78; }
+        .stat-mini.suspicious .value { color: #f56565; }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .feed-title {
+            font-size: 1.2rem;
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(72, 187, 120, 0.15);
+            border: 1px solid #48bb78;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #2f855a;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .activity-feed {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            max-height: calc(100vh - 250px);
+            overflow-y: auto;
+        }
+
+        .activity-feed::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .activity-feed::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+
+        .activity-feed::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        .activity-feed::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        .activity-item {
+            background: #f7fafc;
+            border-left: 4px solid #48bb78;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.4s ease-out;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .activity-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .activity-item.new {
+            animation: newItemEntrance 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes newItemEntrance {
+            0% {
+                opacity: 0;
+                transform: translateX(-120%) scale(0.7);
+                background: rgba(72, 187, 120, 0.3);
+                box-shadow: 0 0 50px rgba(72, 187, 120, 0.5);
+            }
+            40% {
+                background: rgba(72, 187, 120, 0.2);
+                box-shadow: 0 0 40px rgba(72, 187, 120, 0.4);
+            }
+            70% {
+                background: rgba(72, 187, 120, 0.1);
+                box-shadow: 0 0 20px rgba(72, 187, 120, 0.2);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+                background: #f7fafc;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            }
+        }
+
+        .activity-item.new .typewriter {
+            overflow: hidden;
+            white-space: nowrap;
+            display: inline-block;
+            vertical-align: bottom;
+            animation: typing 0.8s steps(30, end) 0.5s forwards, blink-caret 0.5s step-end 0.5s 4;
+            border-right: 2px solid #667eea;
+            max-width: 0;
+        }
+
+        @keyframes typing {
+            from {
+                max-width: 0;
+            }
+            to {
+                max-width: 100%;
+                border-right: 2px solid transparent;
+            }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #667eea; }
+        }
+
+        .activity-item.new .typewriter-line {
+            opacity: 0;
+            animation: fadeInLine 0.4s ease-in forwards;
+        }
+
+        .activity-item.new .activity-time {
+            animation-delay: 0.6s;
+        }
+
+        .activity-item.new .action-target {
+            animation-delay: 1.2s;
+        }
+
+        .activity-item.new .page-info .page-title {
+            animation-delay: 1.5s;
+        }
+
+        .activity-item.new .page-info .page-url {
+            animation-delay: 1.8s;
+        }
+
+        @keyframes fadeInLine {
+            to { opacity: 1; }
+        }
+
+        .new-entry-banner {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+            z-index: 1000;
+            animation: bannerSlideIn 0.5s ease-out;
+        }
+
+        @keyframes bannerSlideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .new-entry-banner.hide {
+            animation: bannerSlideOut 0.5s ease-out forwards;
+        }
+
+        @keyframes bannerSlideOut {
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .activity-item.suspicious {
+            border-left-color: #f56565;
+            background: rgba(245, 101, 101, 0.08);
+        }
+
+        .activity-item.legitimate {
+            border-left-color: #48bb78;
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .activity-left {
+            flex: 1;
+        }
+
+        .activity-time {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-bottom: 6px;
+        }
+
+        .activity-action {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .action-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .action-icon.navigation {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .action-icon.button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .action-icon.input {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .action-icon.click {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .action-details {
+            flex: 1;
+        }
+
+        .action-type {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-target {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 2px;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.legitimate {
+            background: rgba(72, 187, 120, 0.15);
+            color: #2f855a;
+            border: 1px solid #48bb78;
+        }
+
+        .status-badge.suspicious {
+            background: rgba(245, 101, 101, 0.15);
+            color: #c53030;
+            border: 1px solid #f56565;
+            animation: warningPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes warningPulse {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(245, 101, 101, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 15px rgba(245, 101, 101, 0.6);
+            }
+        }
+
+        .page-info {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+
+        .page-title {
+            font-size: 0.9rem;
+            color: #3182ce;
+            font-weight: 500;
+        }
+
+        .page-url {
+            font-size: 0.8rem;
+            color: #718096;
+            word-break: break-all;
+            font-family: monospace;
+        }
+
+        .coordinates {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 0.75rem;
+            color: #444;
+            font-family: monospace;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state .message {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .empty-state .submessage {
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        @media (max-width: 768px) {
+            .stats-mini {
+                gap: 15px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .coordinates {
+                position: static;
+                margin-top: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="title">
+                <div class="status-indicator"></div>
+                <h1>ContextFort AI</h1>
+            </div>
+            <div class="stats-mini">
+                <div class="stat-mini total">
+                    <div class="value" id="total-clicks">0</div>
+                    <div class="label">Total</div>
+                </div>
+                <div class="stat-mini legitimate">
+                    <div class="value" id="legitimate-clicks">0</div>
+                    <div class="label">Legitimate</div>
+                </div>
+                <div class="stat-mini suspicious">
+                    <div class="value" id="suspicious-clicks">0</div>
+                    <div class="label">Suspicious</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="feed-header">
+            <div class="feed-title">Live Activity Feed</div>
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                <span>LIVE</span>
+            </div>
+        </div>
+
+        <div class="activity-feed" id="activity-feed">
+            <div class="empty-state">
+                <div class="icon">👆</div>
+                <div class="message">Waiting for clicks...</div>
+                <div class="submessage">Start clicking on any website to see activity here</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:9999/api';
+        let lastClickId = 0;
+        let isFirstLoad = true;
+        let lastStats = { total_clicks: 0, legitimate_clicks: 0, suspicious_clicks: 0 };
+        let bannerTimeout = null;
+
+        const ACTION_ICONS = {
+            'navigation': '🔗',
+            'button': '🔘',
+            'input': '⌨️',
+            'click': '👆'
+        };
+
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Error fetching ${endpoint}:`, error);
+                return null;
+            }
+        }
+
+        function playNotificationSound(isSuspicious) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // Different tones for suspicious vs legitimate
+                if (isSuspicious) {
+                    oscillator.frequency.value = 800; // Higher pitch for suspicious
+                    oscillator.type = 'square';
+                } else {
+                    oscillator.frequency.value = 400; // Lower pitch for legitimate
+                    oscillator.type = 'sine';
+                }
+
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                // Audio might not be supported, silently fail
+            }
+        }
+
+        function showNewEntryBanner(actionType, isSuspicious) {
+            // Remove existing banner if any
+            const existingBanner = document.querySelector('.new-entry-banner');
+            if (existingBanner) {
+                existingBanner.remove();
+            }
+
+            // Clear existing timeout
+            if (bannerTimeout) {
+                clearTimeout(bannerTimeout);
+            }
+
+            // Play notification sound
+            playNotificationSound(isSuspicious);
+
+            // Create banner
+            const banner = document.createElement('div');
+            banner.className = 'new-entry-banner';
+            const icon = ACTION_ICONS[actionType] || '👆';
+            const status = isSuspicious ? '⚠️ SUSPICIOUS' : '✓ LEGITIMATE';
+            banner.innerHTML = `${icon} NEW ${actionType.toUpperCase()} - ${status}`;
+            document.body.appendChild(banner);
+
+            // Auto-hide after 2 seconds
+            bannerTimeout = setTimeout(() => {
+                banner.classList.add('hide');
+                setTimeout(() => banner.remove(), 500);
+            }, 2000);
+        }
+
+        function animateStat(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.add('updated');
+            setTimeout(() => element.classList.remove('updated'), 600);
+        }
+
+        async function loadStats() {
+            const stats = await fetchData('/stats');
+            if (stats) {
+                // Animate stats if they changed
+                if (stats.total_clicks !== lastStats.total_clicks) {
+                    animateStat('total-clicks');
+                }
+                if (stats.legitimate_clicks !== lastStats.legitimate_clicks) {
+                    animateStat('legitimate-clicks');
+                }
+                if (stats.suspicious_clicks !== lastStats.suspicious_clicks) {
+                    animateStat('suspicious-clicks');
+                }
+
+                document.getElementById('total-clicks').textContent = stats.total_clicks;
+                document.getElementById('legitimate-clicks').textContent = stats.legitimate_clicks;
+                document.getElementById('suspicious-clicks').textContent = stats.suspicious_clicks;
+
+                lastStats = stats;
+            }
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        function parseActionDetails(detailsStr) {
+            try {
+                return JSON.parse(detailsStr);
+            } catch {
+                return {};
+            }
+        }
+
+        function getActionLabel(actionType, details) {
+            if (actionType === 'navigation' && details.linkText) {
+                return `"${details.linkText}"`;
+            } else if (actionType === 'button' && details.buttonText) {
+                return `"${details.buttonText}"`;
+            } else if (actionType === 'input' && details.inputType) {
+                return `Input: ${details.inputType}`;
+            }
+            return '';
+        }
+
+        function createActivityItem(click, isNew = false) {
+            const details = parseActionDetails(click.action_details);
+            const statusClass = click.is_suspicious ? 'suspicious' : 'legitimate';
+            const statusText = click.is_suspicious ? 'Suspicious' : 'Legitimate';
+            const actionType = click.action_type || 'click';
+            const icon = ACTION_ICONS[actionType] || '👆';
+            const actionLabel = getActionLabel(actionType, details);
+
+            // Add typewriter effect to new items
+            const typewriterClass = isNew ? 'typewriter' : '';
+            const lineClass = isNew ? 'typewriter-line' : '';
+
+            return `
+                <div class="activity-item ${statusClass} ${isNew ? 'new' : ''}" data-id="${click.id}">
+                    <div class="activity-header">
+                        <div class="activity-left">
+                            <div class="activity-time ${lineClass}">${formatTime(click.created_at)}</div>
+                            <div class="activity-action">
+                                <div class="action-icon ${actionType}">${icon}</div>
+                                <div class="action-details">
+                                    <div class="action-type ${typewriterClass}">${actionType}</div>
+                                    ${actionLabel ? `<div class="action-target ${lineClass}">${actionLabel}</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="status-badge ${statusClass}">${statusText}</div>
+                    </div>
+
+                    ${click.page_title || click.page_url ? `
+                        <div class="page-info">
+                            ${click.page_title ? `<div class="page-title ${lineClass}">📄 <span class="${typewriterClass}">${click.page_title}</span></div>` : ''}
+                            ${click.page_url ? `<div class="page-url ${lineClass}">🌐 <span class="${typewriterClass}">${click.page_url}</span></div>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        async function loadRecentClicks() {
+            const clicks = await fetchData('/recent');
+            const feed = document.getElementById('activity-feed');
+
+            if (!clicks || clicks.length === 0) {
+                if (isFirstLoad) {
+                    feed.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">👆</div>
+                            <div class="message">Waiting for clicks...</div>
+                            <div class="submessage">Start clicking on any website to see activity here</div>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            // Check for new clicks
+            if (clicks.length > 0) {
+                const latestId = clicks[0].id;
+
+                if (isFirstLoad) {
+                    // First load: show all recent clicks
+                    feed.innerHTML = clicks.slice(0, 50).map(click => createActivityItem(click, false)).join('');
+                    lastClickId = latestId;
+                    isFirstLoad = false;
+                } else if (latestId > lastClickId) {
+                    // New clicks detected: prepend only new ones
+                    const newClicks = clicks.filter(click => click.id > lastClickId);
+                    newClicks.reverse().forEach(click => {
+                        const newItem = createActivityItem(click, true);
+                        feed.insertAdjacentHTML('afterbegin', newItem);
+
+                        // Show banner notification for new click
+                        showNewEntryBanner(click.action_type || 'click', click.is_suspicious);
+                    });
+
+                    // Keep only the last 100 items
+                    const items = feed.querySelectorAll('.activity-item');
+                    if (items.length > 100) {
+                        for (let i = 100; i < items.length; i++) {
+                            items[i].remove();
+                        }
+                    }
+
+                    lastClickId = latestId;
+                }
+            }
+        }
+
+        async function loadAllData() {
+            await Promise.all([
+                loadStats(),
+                loadRecentClicks()
+            ]);
+        }
+
+        // Initial load
+        loadAllData();
+
+        // Auto-refresh every 1 second for real-time feel
+        setInterval(loadAllData, 1000);
+    </script>
+</body>
+</html>

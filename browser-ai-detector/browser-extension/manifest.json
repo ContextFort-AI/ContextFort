@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Click Detection SDK",
+  "version": "0.1.0",
+  "description": "Detects synthetic/automated browser clicks",
+  "permissions": [],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["injector.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
