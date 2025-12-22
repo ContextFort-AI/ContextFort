@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -23,6 +23,13 @@ class BlockedRequest(Base):
     matched_values = Column(JSON)  # Dict of field names to values
     request_method = Column(String, default="POST")
     status = Column(String, default="detected")  # detected, blocked, allowed
+
+    # Human/Bot Classification Fields
+    is_bot = Column(Boolean, nullable=True, index=True)  # True=bot, False=human, None=unknown
+    click_correlation_id = Column(Integer, nullable=True)  # ID from click_detection.db
+    click_time_diff_ms = Column(Integer, nullable=True)  # Time between click and request (ms)
+    click_coordinates = Column(JSON, nullable=True)  # {x: float, y: float}
+    has_click_correlation = Column(Boolean, default=False, index=True)  # Quick filter for correlated requests
 
 
 class Whitelist(Base):

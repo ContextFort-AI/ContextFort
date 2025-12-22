@@ -6,8 +6,61 @@ let activeMonitoring = [];
 // Time window to monitor POST requests after a user action (in milliseconds)
 const MONITORING_WINDOW = 2000; // 2 seconds after user action
 
-// Backend API URL
+// Backend API URLs
 const API_URL = 'http://127.0.0.1:8000';
+const CLICK_DETECTION_API_URL = 'http://localhost:9999';
+
+// Click correlation configuration
+const CORRELATION_WINDOW = 3000; // 3 seconds for click correlation
+const IGNORED_EXTENSIONS = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.ico', '.webp'];
+
+// Query recent clicks from click detection API to correlate with requests
+async function queryRecentClick(requestTimestamp, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(`${CLICK_DETECTION_API_URL}/api/recent?limit=10`);
+      if (!response.ok) {
+        console.log('[Click Correlation] API request failed:', response.status);
+        continue;
+      }
+
+      const recentClicks = await response.json();
+      console.log('[Click Correlation] Checking', recentClicks.length, 'recent clicks');
+
+      // Find click within CORRELATION_WINDOW
+      for (const click of recentClicks) {
+        const clickTime = click.timestamp * 1000; // Convert to ms
+        const timeDiff = Math.abs(requestTimestamp - clickTime);
+
+        if (timeDiff <= CORRELATION_WINDOW) {
+          console.log('[Click Correlation] ✓ Found matching click:', {
+            id: click.id,
+            timeDiff: timeDiff + 'ms',
+            is_suspicious: click.is_suspicious
+          });
+          return {
+            click_id: click.id,
+            is_suspicious: click.is_suspicious,
+            time_diff_ms: timeDiff,
+            click_timestamp: clickTime,
+            click_coordinates: { x: click.x, y: click.y }
+          };
+        }
+      }
+
+      // Retry after 200ms if no match and retries remain
+      if (i < retries) {
+        console.log('[Click Correlation] No match found, retrying in 200ms...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    } catch (error) {
+      console.error('[Click Correlation] Error:', error);
+    }
+  }
+
+  console.log('[Click Correlation] No matching click found after retries');
+  return null; // No click found
+}
 
 // Send detected request to backend
 async function saveToBackend(data) {
@@ -65,31 +118,71 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('[POST Monitor] Active monitoring entries:', activeMonitoring.length);
     sendResponse({ success: true });
   }
+  // Handle click detection API forwarding (to avoid per-site local network permission)
+  else if (message.type === 'SEND_CLICK_TO_API') {
+    (async () => {
+      try {
+        const response = await fetch(`${CLICK_DETECTION_API_URL}/api/events/dom`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(message.clickData)
+        });
+
+        const result = await response.json();
+        sendResponse(result);
+      } catch (error) {
+        console.error('[Click Detection] API error:', error);
+        sendResponse({ is_suspicious: false, error: error.message });
+      }
+    })();
+    return true; // Keep message channel open for async response
+  }
 
   return true;
 });
 
-// Monitor POST requests and check against recent input data
+// Monitor ALL requests (not just POST) and check against recent input data
 chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    // Only process POST requests
-    if (details.method !== 'POST') {
+  async (details) => {
+    // IMPORTANT: Ignore requests to our own backend APIs to prevent infinite loops
+    if (details.url.startsWith(API_URL) ||
+        details.url.startsWith('http://localhost:8000') ||
+        details.url.startsWith(CLICK_DETECTION_API_URL) ||
+        details.url.startsWith('http://localhost:9999')) {
       return;
     }
 
-    // IMPORTANT: Ignore requests to our own backend API to prevent infinite loops
-    if (details.url.startsWith(API_URL)) {
+    // Ignore static assets for performance
+    try {
+      const url = new URL(details.url);
+      const pathname = url.pathname.toLowerCase();
+      const isStaticAsset = IGNORED_EXTENSIONS.some(ext => pathname.endsWith(ext));
+      if (isStaticAsset) {
+        return;
+      }
+    } catch (e) {
+      // Invalid URL, skip
       return;
     }
 
-    // Check if we have any active monitoring (from button clicks)
-    if (activeMonitoring.length === 0) {
+    const now = Date.now();
+
+    // Query click correlation FIRST to determine if request is human or bot
+    const clickCorrelation = await queryRecentClick(now);
+
+    if (!clickCorrelation) {
+      // No click correlation found - skip this request (background AJAX)
       return;
     }
 
-    // Get the request body if available
+    console.log('[POST Monitor] 📡 Request detected:', details.method, 'to', new URL(details.url).hostname);
+    console.log('[POST Monitor] Click correlation found:', clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN');
+    console.log('[POST Monitor] Creating notification...');
+
+    // Get the request body if available for input field matching
     let requestBody = '';
-
     if (details.requestBody) {
       // Handle form data
       if (details.requestBody.formData) {
@@ -104,104 +197,102 @@ chrome.webRequest.onBeforeRequest.addListener(
           }).join('');
         } catch (e) {
           console.log('[POST Monitor] Could not decode request body:', e);
-          return;
         }
       }
     }
 
-    // If no request body, nothing to check
-    if (!requestBody) {
-      return;
-    }
+    // Try to match input fields if we have active monitoring
+    const matchedFields = [];
+    let sourceUrl = '';
 
-    console.log('[POST Monitor] 📡 POST request detected to:', new URL(details.url).hostname);
-    console.log('[POST Monitor] Checking against', activeMonitoring.length, 'monitoring entries');
+    if (activeMonitoring.length > 0 && requestBody) {
+      for (let entry of activeMonitoring) {
+        // Only check recent entries (within monitoring window)
+        if ((now - entry.timestamp) < MONITORING_WINDOW) {
+          sourceUrl = entry.url;
 
-    // Check against all active monitoring entries
-    const now = Date.now();
-    for (let entry of activeMonitoring) {
-      // Only check recent entries (within monitoring window)
-      if ((now - entry.timestamp) < MONITORING_WINDOW) {
-        console.log('[POST Monitor] Checking entry from', (now - entry.timestamp), 'ms ago');
-
-        // Check if request body contains any of the input values
-        const matchedFields = [];
-
-        for (let [fieldName, fieldValue] of Object.entries(entry.inputs)) {
-          // Only check meaningful input (more than 2 characters)
-          if (fieldValue.length > 2 && requestBody.includes(fieldValue)) {
-            console.log('[POST Monitor] ✓ MATCH FOUND for field:', fieldName);
-            matchedFields.push({
-              field: fieldName,
-              value: fieldValue
-            });
-          }
-        }
-
-        console.log('[POST Monitor] Total matches found:', matchedFields.length);
-
-        // If we found matches, alert and save
-        if (matchedFields.length > 0) {
-          console.warn('[POST Monitor] ⚠️⚠️⚠️ POST request DETECTED with user input!');
-          console.warn('[POST Monitor] Target:', details.url);
-          console.warn('[POST Monitor] Matched fields:', matchedFields.map(f => f.field).join(', '));
-
-          // Log matched values (truncated for privacy)
-          matchedFields.forEach(match => {
-            console.warn(`  - ${match.field}: "${match.value.substring(0, 20)}..."`);
-          });
-
-          // Prepare data for backend
-          const targetHostname = new URL(details.url).hostname;
-          const backendData = {
-            target_url: details.url,
-            target_hostname: targetHostname,
-            source_url: entry.url,
-            matched_fields: matchedFields.map(f => f.field),
-            matched_values: matchedFields.reduce((acc, f) => {
-              acc[f.field] = f.value;
-              return acc;
-            }, {}),
-            request_method: 'POST',
-            status: 'detected'
-          };
-
-          // Save to backend
-          saveToBackend(backendData);
-
-          // Show notification
-          chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-            title: '⚠️ POST Request Detected',
-            message: `Request to ${targetHostname} contains ${matchedFields.length} field(s) from your input: ${matchedFields.map(f => f.field).join(', ')}`,
-            priority: 2
-          }, (notificationId) => {
-            if (chrome.runtime.lastError) {
-              console.error('[POST Monitor] Notification error:', chrome.runtime.lastError.message);
-            } else {
-              console.log('[POST Monitor] ✓ Notification created:', notificationId);
-            }
-          });
-
-          // Send alert to content script
-          chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-            if (tabs[0]) {
-              chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'ALERT_DETECTED',
-                matchedFields: matchedFields.map(f => f.field),
-                url: targetHostname,
-                count: matchedFields.length
-              }).catch(err => {
-                console.log('[POST Monitor] Could not send alert to tab:', err);
+          // Check if request body contains any of the input values
+          for (let [fieldName, fieldValue] of Object.entries(entry.inputs)) {
+            // Only check meaningful input (more than 2 characters)
+            if (fieldValue.length > 2 && requestBody.includes(fieldValue)) {
+              console.log('[POST Monitor] ✓ MATCH FOUND for field:', fieldName);
+              matchedFields.push({
+                field: fieldName,
+                value: fieldValue
               });
             }
-          });
-
-          // Don't block, just detect
-          break;
+          }
         }
       }
+    }
+
+    // Prepare data for backend (save ALL requests with click correlation)
+    const targetHostname = new URL(details.url).hostname;
+    const backendData = {
+      target_url: details.url,
+      target_hostname: targetHostname,
+      source_url: sourceUrl || details.initiator || details.url,
+      matched_fields: matchedFields.map(f => f.field),
+      matched_values: matchedFields.reduce((acc, f) => {
+        acc[f.field] = f.value;
+        return acc;
+      }, {}),
+      request_method: details.method,
+      status: 'detected',
+
+      // Human/Bot Classification from click correlation
+      has_click_correlation: true,
+      is_bot: clickCorrelation.is_suspicious,
+      click_correlation_id: clickCorrelation.click_id,
+      click_time_diff_ms: clickCorrelation.time_diff_ms,
+      click_coordinates: clickCorrelation.click_coordinates
+    };
+
+    // Save to backend
+    await saveToBackend(backendData);
+
+    // Show notification with human/bot classification
+    const classification = clickCorrelation.is_suspicious ? '🤖 BOT' : '👤 HUMAN';
+    const matchInfo = matchedFields.length > 0
+      ? ` (${matchedFields.length} input field matches)`
+      : '';
+
+    // Create notification with inline icon (required by Chrome)
+    // Minimal 48x48 PNG as data URI - a simple colored square
+    const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    const notificationOptions = {
+      type: 'basic',
+      iconUrl: iconDataUri,
+      title: `${classification} Request Detected`,
+      message: `${details.method} to ${targetHostname}${matchInfo}`,
+      priority: 2,
+      requireInteraction: false,
+      silent: false
+    };
+
+    console.log('[POST Monitor] 🔔 Attempting to create notification with options:', notificationOptions);
+
+    chrome.notifications.create('contextfort-' + Date.now(), notificationOptions, (notificationId) => {
+      if (chrome.runtime.lastError) {
+        console.error('[POST Monitor] ❌ Notification error:', chrome.runtime.lastError.message);
+      } else {
+        console.log('[POST Monitor] ✓ Notification created successfully! ID:', notificationId);
+      }
+    });
+
+    // Send in-page alert to the tab (for the red modal popup)
+    if (details.tabId && details.tabId >= 0) {
+      chrome.tabs.sendMessage(details.tabId, {
+        type: 'ALERT_DETECTED',
+        classification: clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN',
+        matchedFields: matchedFields.map(f => f.field),
+        url: targetHostname,
+        method: details.method,
+        count: matchedFields.length
+      }).catch(err => {
+        console.log('[POST Monitor] Could not send alert to tab:', err);
+      });
     }
   },
   { urls: ['<all_urls>'] },
@@ -211,3 +302,36 @@ chrome.webRequest.onBeforeRequest.addListener(
 console.log('[POST Monitor] Extension loaded and ready');
 console.log('[POST Monitor] Monitoring strategy: Button-click-triggered POST request detection');
 console.log('[POST Monitor] Will ONLY detect POST requests that occur within 2 seconds of clicking a button/link WITH input data present');
+
+// ===== CLICK DETECTION INTEGRATION =====
+
+// CLICK_DETECTION_API_URL already declared at top of file
+
+// Store click detection stats
+let clickDetectionStats = {
+  total_clicks: 0,
+  legitimate_clicks: 0,
+  suspicious_clicks: 0
+};
+
+// Fetch click detection stats periodically
+async function fetchClickDetectionStats() {
+  try {
+    const response = await fetch(`${CLICK_DETECTION_API_URL}/api/stats`);
+    if (response.ok) {
+      const stats = await response.json();
+      clickDetectionStats = stats;
+      console.log('[Click Detection] Stats updated:', stats);
+    }
+  } catch (error) {
+    // API may not be running, fail silently
+    console.log('[Click Detection] API not available at', CLICK_DETECTION_API_URL);
+  }
+}
+
+// Fetch stats every 10 seconds
+setInterval(fetchClickDetectionStats, 10000);
+fetchClickDetectionStats(); // Initial fetch
+
+console.log('[Click Detection] Backend integration ready');
+console.log('[Click Detection] API URL:', CLICK_DETECTION_API_URL);

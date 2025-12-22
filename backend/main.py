@@ -29,6 +29,13 @@ class BlockedRequestCreate(BaseModel):
     request_method: str = "POST"
     status: str = "detected"
 
+    # Human/Bot Classification Fields
+    is_bot: Optional[bool] = None
+    click_correlation_id: Optional[int] = None
+    click_time_diff_ms: Optional[int] = None
+    click_coordinates: Optional[Dict[str, float]] = None
+    has_click_correlation: bool = False
+
 
 class BlockedRequestResponse(BaseModel):
     id: int
@@ -40,6 +47,13 @@ class BlockedRequestResponse(BaseModel):
     matched_values: Dict[str, str]
     request_method: str
     status: str
+
+    # Human/Bot Classification Fields
+    is_bot: Optional[bool] = None
+    click_correlation_id: Optional[int] = None
+    click_time_diff_ms: Optional[int] = None
+    click_coordinates: Optional[Dict[str, float]] = None
+    has_click_correlation: bool = False
 
     class Config:
         from_attributes = True
@@ -60,6 +74,14 @@ class StatsResponse(BaseModel):
     today_requests: int
     blocked_domains: List[BlockedDomain]
     recent_activity: List[RecentActivity]
+
+
+class ClassificationStatsResponse(BaseModel):
+    total_requests: int
+    human_requests: int
+    bot_requests: int
+    uncorrelated_requests: int
+    correlation_rate: float
 
 
 class WhitelistCreate(BaseModel):
@@ -117,7 +139,13 @@ def create_blocked_request(
         matched_fields=request.matched_fields,
         matched_values=request.matched_values,
         request_method=request.request_method,
-        status=request.status
+        status=request.status,
+        # Human/Bot Classification
+        is_bot=request.is_bot,
+        click_correlation_id=request.click_correlation_id,
+        click_time_diff_ms=request.click_time_diff_ms,
+        click_coordinates=request.click_coordinates,
+        has_click_correlation=request.has_click_correlation
     )
     db.add(db_request)
     db.commit()
@@ -206,6 +234,59 @@ def clear_all_requests(db: Session = Depends(database.get_db)):
     count = db.query(database.BlockedRequest).delete()
     db.commit()
     return {"message": f"Deleted {count} requests"}
+
+
+# Human/Bot Classification Endpoints
+@app.get("/api/blocked-requests/human", response_model=List[BlockedRequestResponse])
+def get_human_requests(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(database.get_db)
+):
+    """Get only human-initiated requests (is_bot=False)"""
+    requests = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.is_bot == False,
+        database.BlockedRequest.has_click_correlation == True
+    ).order_by(database.BlockedRequest.timestamp.desc()).offset(skip).limit(limit).all()
+    return requests
+
+
+@app.get("/api/blocked-requests/bot", response_model=List[BlockedRequestResponse])
+def get_bot_requests(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(database.get_db)
+):
+    """Get only bot-initiated requests (is_bot=True)"""
+    requests = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.is_bot == True
+    ).order_by(database.BlockedRequest.timestamp.desc()).offset(skip).limit(limit).all()
+    return requests
+
+
+@app.get("/api/stats/classification", response_model=ClassificationStatsResponse)
+def get_classification_stats(db: Session = Depends(database.get_db)):
+    """Get human/bot classification statistics"""
+    total_count = db.query(database.BlockedRequest).count()
+    human_count = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.is_bot == False
+    ).count()
+    bot_count = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.is_bot == True
+    ).count()
+    uncorrelated_count = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.has_click_correlation == False
+    ).count()
+
+    correlation_rate = ((human_count + bot_count) / total_count * 100) if total_count > 0 else 0.0
+
+    return {
+        "total_requests": total_count,
+        "human_requests": human_count,
+        "bot_requests": bot_count,
+        "uncorrelated_requests": uncorrelated_count,
+        "correlation_rate": correlation_rate
+    }
 
 
 # Whitelist endpoints

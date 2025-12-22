@@ -2,125 +2,384 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>POST Request Monitor</title>
+  <title>ContextFort Security</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       width: 320px;
-      padding: 15px;
-      font-family: Arial, sans-serif;
-      margin: 0;
+      padding: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     h1 {
-      font-size: 18px;
-      margin: 0 0 15px 0;
-      color: #333;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
     }
 
-    .status {
-      padding: 10px;
-      border-radius: 5px;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-
-    .status.active {
-      background-color: #4CAF50;
-      color: white;
-    }
-
-    .info {
-      font-size: 13px;
-      color: #666;
-      line-height: 1.6;
-      margin-bottom: 15px;
-      padding: 10px;
-      background: #f9f9f9;
-      border-left: 3px solid #2196F3;
-      border-radius: 3px;
-    }
-
-    .how-it-works {
+    .subtitle {
       font-size: 12px;
-      color: #555;
+      color: #888888;
+      margin-bottom: 16px;
+    }
+
+    /* Status Card */
+    .status-card {
+      padding: 12px;
+      background: #111111;
+      border: 1px solid #1a1a1a;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0ddb00;
+      box-shadow: 0 0 8px rgba(13, 219, 0, 0.5);
+    }
+
+    /* Feature Section */
+    .feature-section {
+      padding: 16px 0;
+      border-top: 1px solid #1a1a1a;
+    }
+
+    .feature-header {
+      margin-bottom: 12px;
+    }
+
+    .feature-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-description {
+      font-size: 12px;
+      color: #888888;
       line-height: 1.5;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
-    .how-it-works strong {
-      color: #333;
+    /* Input Field */
+    .input-group {
+      margin-bottom: 12px;
     }
 
-    .how-it-works ol {
-      margin: 8px 0;
-      padding-left: 20px;
+    .input-label {
+      font-size: 12px;
+      color: #888888;
+      margin-bottom: 6px;
+      display: block;
     }
 
-    .how-it-works li {
-      margin: 5px 0;
+    textarea {
+      width: 100%;
+      padding: 8px 12px;
+      background: #111111;
+      border: 1px solid #333333;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      resize: vertical;
+      min-height: 60px;
+      transition: border-color 150ms ease;
     }
 
+    textarea:focus {
+      outline: none;
+      border-color: #0070f3;
+    }
+
+    textarea::placeholder {
+      color: #666666;
+    }
+
+    /* Toggle Switch */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #ffffff;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #333333;
+      border-radius: 24px;
+      transition: 150ms ease;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 150ms ease;
+    }
+
+    input:checked + .toggle-slider {
+      background: #0070f3;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Buttons */
+    .button {
+      width: 100%;
+      padding: 10px 16px;
+      background: transparent;
+      border: 1px solid #333333;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 150ms ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .button:hover {
+      background: #1a1a1a;
+      border-color: #666666;
+    }
+
+    .button:active {
+      transform: scale(0.98);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-primary {
+      background: #0070f3;
+      border-color: #0070f3;
+    }
+
+    .button-primary:hover {
+      background: #0060df;
+      border-color: #0060df;
+    }
+
+    /* Old button styles for backward compatibility */
+    #toggle-blur-btn,
+    #toggle-click-detection-btn {
+      margin-top: 12px;
+    }
+
+    #toggle-blur-btn.active {
+      background: #f51f41;
+      border-color: #f51f41;
+    }
+
+    #toggle-blur-btn.active:hover {
+      background: #d91a3a;
+      border-color: #d91a3a;
+    }
+
+    #toggle-click-detection-btn.active {
+      background: #0ddb00;
+      border-color: #0ddb00;
+    }
+
+    #toggle-click-detection-btn.active:hover {
+      background: #0bc300;
+      border-color: #0bc300;
+    }
+
+    #test-screenshot-btn {
+      margin-top: 8px;
+    }
+
+    /* Status Text */
+    .status-text {
+      font-size: 12px;
+      color: #888888;
+      text-align: center;
+      margin-top: 8px;
+      min-height: 16px;
+    }
+
+    /* Dashboard Link */
+    .dashboard-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: #111111;
+      border: 1px solid #333333;
+      border-radius: 6px;
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 16px;
+      transition: all 150ms ease;
+    }
+
+    .dashboard-link:hover {
+      background: #1a1a1a;
+      border-color: #666666;
+    }
+
+    .dashboard-link svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 150ms ease;
+    }
+
+    .dashboard-link:hover svg {
+      transform: translateX(2px);
+    }
+
+    /* Version */
     .version {
-      margin-top: 15px;
+      margin-top: 16px;
       font-size: 11px;
-      color: #999;
+      color: #666666;
       text-align: center;
     }
 
-    .warning {
+    /* Hint Text */
+    .hint-text {
       font-size: 11px;
-      color: #ff9800;
-      background: #fff3e0;
-      padding: 8px;
-      border-radius: 3px;
-      margin-top: 10px;
+      color: #666666;
+      margin-top: 6px;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
-  <h1>🛡️ POST Request Monitor</h1>
+  <h1>ContextFort Security</h1>
+  <div class="subtitle">Real-time threat monitoring</div>
 
-  <div class="status active">
-    <strong>✓ Active and Monitoring</strong>
+  <div class="status-card">
+    <div class="status-indicator">
+      <span class="status-dot"></span>
+      <span>Active and Monitoring</span>
+    </div>
   </div>
 
-  <div class="info">
-    <strong>Click-Based Detection:</strong> When you click anywhere on a page with input fields, the extension monitors POST requests for 3 seconds and alerts you if your input data is being sent.
+  <!-- Auto-Blur Feature -->
+  <div class="feature-section">
+    <div class="feature-header">
+      <div class="feature-title">Auto-Blur on Screenshot</div>
+      <div class="feature-description">
+        Automatically blurs sensitive text when screenshots are detected
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Words to blur (comma-separated):</label>
+      <textarea id="blur-words-input" placeholder="Rishabh, Arya"></textarea>
+      <div class="hint-text">
+        These words will be automatically blurred in screenshots
+      </div>
+    </div>
+
+    <button id="toggle-blur-btn" class="button">
+      Enable Auto-Blur
+    </button>
+
+    <div id="blur-status" class="status-text">
+      Status: Disabled
+    </div>
+
+    <button id="test-screenshot-btn" class="button">
+      Test Screenshot
+    </button>
+
+    <div id="screenshot-status" class="status-text"></div>
   </div>
 
-  <div class="how-it-works">
-    <strong>How it works:</strong>
-    <ol>
-      <li>Fill in any form fields on a webpage</li>
-      <li>Click anywhere (button, link, etc.)</li>
-      <li>Extension captures all input values</li>
-      <li>Monitors POST requests for 3 seconds</li>
-      <li>Alerts if your data is detected in requests</li>
-    </ol>
+  <!-- Click Detection Feature -->
+  <div class="feature-section">
+    <div class="feature-header">
+      <div class="feature-title">Click Detection</div>
+      <div class="feature-description">
+        Detects and blocks automated clicks and data exfiltration
+      </div>
+    </div>
+
+    <button id="toggle-click-detection-btn" class="button">
+      Enable Click Detection
+    </button>
+
+    <div id="click-detection-status" class="status-text">
+      Status: Disabled
+    </div>
+
+    <div class="hint-text">
+      Connects to Click Detection API at localhost:9999
+    </div>
   </div>
 
-  <div class="warning">
-    ⚠️ Note: Manifest V3 restrictions prevent actual blocking. The extension will detect and alert you about suspicious requests.
-  </div>
-
-  <div style="margin-top: 15px;">
-    <a href="../dashboard.html" target="_blank" style="
-      display: block;
-      padding: 12px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: bold;
-      transition: transform 0.2s;
-    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-      📊 Open Dashboard
-    </a>
-  </div>
+  <!-- Dashboard Link -->
+  <a href="unified-dashboard.html" target="_blank" class="dashboard-link">
+    <span>Open Dashboard</span>
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+    </svg>
+  </a>
 
   <div class="version">
-    Version 1.0.0 - Click-Based Monitoring
+    Version 1.0.0
   </div>
 
   <script src="popup.js"></script>

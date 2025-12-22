@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Extension Notifications</title>
+</head>
+<body>
+    <h1>Test Extension Notifications</h1>
+    <button id="testBtn">Test Notification</button>
+    <div id="log"></div>
+
+    <script>
+        const log = document.getElementById('log');
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            try {
+                // Request notification permission from browser
+                const permission = await Notification.requestPermission();
+                log.innerHTML += `<p>Browser permission: ${permission}</p>`;
+
+                if (permission === 'granted') {
+                    // Test browser notification
+                    new Notification('Test Notification', {
+                        body: 'If you see this, notifications work!',
+                        icon: 'https://www.google.com/favicon.ico'
+                    });
+                    log.innerHTML += `<p style="color: green;">✓ Notification created</p>`;
+                } else {
+                    log.innerHTML += `<p style="color: red;">✗ Permission denied</p>`;
+                }
+            } catch (error) {
+                log.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>

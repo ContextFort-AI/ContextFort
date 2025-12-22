@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-box {
+            background: #f0f7ff;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 2px solid #667eea;
+        }
+        h1 {
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .console-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 20px 0;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 POST Alert Test Page</h1>
+
+    <div class="instructions">
+        <h2>📋 Instructions:</h2>
+        <ol>
+            <li><strong>Make sure extension is loaded and reloaded</strong></li>
+            <li><strong>Fill in the form below with some test data</strong></li>
+            <li><strong>Click the "Send POST Request" button</strong></li>
+            <li><strong>Watch for the RED ALERT BANNER to slide in from the right</strong></li>
+        </ol>
+        <p><strong>⚠️ Important:</strong> The alert should appear within 1-2 seconds after clicking!</p>
+    </div>
+
+    <div class="test-box">
+        <h2>Form Data</h2>
+        <input type="text" id="test-name" placeholder="Your Name (e.g., John Doe)">
+        <input type="email" id="test-email" placeholder="Email (e.g., test@example.com)">
+        <textarea id="test-message" rows="3" placeholder="Secret message..."></textarea>
+
+        <button onclick="sendTestPost()">Send POST Request (Trigger Alert)</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="console-output" id="console">
+        <div>Console output will appear here...</div>
+    </div>
+
+    <script>
+        function log(message, color = '#00ff00') {
+            const consoleDiv = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.style.color = color;
+            entry.textContent = `[${timestamp}] ${message}`;
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '<div>Console cleared...</div>';
+        }
+
+        async function sendTestPost() {
+            const name = document.getElementById('test-name').value;
+            const email = document.getElementById('test-email').value;
+            const message = document.getElementById('test-message').value;
+
+            if (!name && !email && !message) {
+                log('❌ Please fill in at least one field!', '#ff5555');
+                return;
+            }
+
+            log('📤 Sending POST request...', '#ffff00');
+            log(`   Name: ${name}`, '#ffffff');
+            log(`   Email: ${email}`, '#ffffff');
+
+            try {
+                const response = await fetch('https://httpbin.org/post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        message: message,
+                        timestamp: new Date().toISOString(),
+                        test: 'alert-test'
+                    })
+                });
+
+                log('✅ POST request sent successfully!', '#00ff00');
+                log(`   Status: ${response.status}`, '#ffffff');
+                log('', '#ffffff');
+                log('🔍 WATCH FOR RED ALERT BANNER ON RIGHT SIDE →', '#ffff00');
+                log('', '#ffffff');
+                log('Expected behavior:', '#00ffff');
+                log('  1. Red banner slides in from right', '#ffffff');
+                log('  2. Shows "Suspicious POST Request Detected!"', '#ffffff');
+                log('  3. Lists matched fields', '#ffffff');
+                log('  4. Browser notification appears', '#ffffff');
+                log('  5. Auto-closes after 10 seconds', '#ffffff');
+
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, '#ff5555');
+            }
+        }
+
+        // Log when page loads
+        window.addEventListener('load', () => {
+            log('✅ Test page loaded', '#00ff00');
+            log('📍 Make sure ContextFort extension is enabled', '#ffff00');
+            log('', '#ffffff');
+        });
+    </script>
+</body>
+</html>
