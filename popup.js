@@ -133,37 +133,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleClickDetectionBtn = document.getElementById('toggle-click-detection-btn');
   const clickDetectionStatus = document.getElementById('click-detection-status');
 
-  // Load click detection state for current tab
-  chrome.storage.local.get([`clickDetectionState_${tabId}`], (result) => {
-    const isClickDetectionActive = result[`clickDetectionState_${tabId}`] || false;
+  // Load GLOBAL click detection state
+  chrome.storage.local.get(['clickDetectionEnabled'], (result) => {
+    const isClickDetectionActive = result.clickDetectionEnabled || false;
     updateClickDetectionUI(isClickDetectionActive);
   });
 
   // Toggle click detection button click handler
   toggleClickDetectionBtn.addEventListener('click', async () => {
-    // Get current state
+    // Get current GLOBAL state
     const currentState = await new Promise((resolve) => {
-      chrome.storage.local.get([`clickDetectionState_${tabId}`], (result) => {
-        resolve(result[`clickDetectionState_${tabId}`] || false);
+      chrome.storage.local.get(['clickDetectionEnabled'], (result) => {
+        resolve(result.clickDetectionEnabled || false);
       });
     });
 
     const newState = !currentState;
 
-    // Update state in storage
-    await chrome.storage.local.set({ [`clickDetectionState_${tabId}`]: newState });
+    // Update GLOBAL state in storage
+    await chrome.storage.local.set({ clickDetectionEnabled: newState });
 
-    // Send message to content script
+    // Send message to BACKGROUND SCRIPT to enable/disable globally
     try {
-      await chrome.tabs.sendMessage(tabId, {
-        type: 'TOGGLE_CLICK_DETECTION',
+      await chrome.runtime.sendMessage({
+        type: 'TOGGLE_CLICK_DETECTION_GLOBAL',
         enabled: newState
       });
 
       updateClickDetectionUI(newState);
+
+      // Show success message
+      clickDetectionStatus.textContent = newState
+        ? 'Status: Active - Monitoring all tabs'
+        : 'Status: Disabled';
     } catch (error) {
-      console.error('[Popup] Error sending message to content script:', error);
-      clickDetectionStatus.textContent = 'Error: Refresh page';
+      console.error('[Popup] Error sending message to background:', error);
+      clickDetectionStatus.textContent = 'Error: Try again';
       clickDetectionStatus.style.color = '#ff5252';
     }
   });
@@ -173,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isActive) {
       toggleClickDetectionBtn.textContent = 'Disable Click Detection';
       toggleClickDetectionBtn.classList.add('active');
-      clickDetectionStatus.textContent = 'Status: Active - Monitoring clicks';
+      clickDetectionStatus.textContent = 'Status: Active - Monitoring all tabs';
       clickDetectionStatus.style.color = '#4CAF50';
     } else {
       toggleClickDetectionBtn.textContent = 'Enable Click Detection';

@@ -335,3 +335,70 @@ fetchClickDetectionStats(); // Initial fetch
 
 console.log('[Click Detection] Backend integration ready');
 console.log('[Click Detection] API URL:', CLICK_DETECTION_API_URL);
+
+// ===== GLOBAL CLICK DETECTION TOGGLE =====
+
+// Function to enable/disable click detection on a specific tab
+async function setClickDetectionOnTab(tabId, enabled) {
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'TOGGLE_CLICK_DETECTION',
+      enabled: enabled
+    });
+    console.log(`[Click Detection] ${enabled ? 'Enabled' : 'Disabled'} on tab ${tabId}`);
+  } catch (error) {
+    // Tab may not be ready or content script not loaded yet, fail silently
+    console.log(`[Click Detection] Could not toggle on tab ${tabId}:`, error.message);
+  }
+}
+
+// Function to apply click detection state to all tabs
+async function applyClickDetectionToAllTabs(enabled) {
+  try {
+    const tabs = await chrome.tabs.query({});
+    console.log(`[Click Detection] Applying state (${enabled ? 'enabled' : 'disabled'}) to ${tabs.length} tabs`);
+
+    for (const tab of tabs) {
+      // Skip chrome:// and other special URLs
+      if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+        await setClickDetectionOnTab(tab.id, enabled);
+      }
+    }
+  } catch (error) {
+    console.error('[Click Detection] Error applying to all tabs:', error);
+  }
+}
+
+// Listen for messages from popup to toggle click detection globally
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'TOGGLE_CLICK_DETECTION_GLOBAL') {
+    console.log('[Click Detection] Global toggle requested:', message.enabled);
+
+    // Apply to all existing tabs
+    applyClickDetectionToAllTabs(message.enabled).then(() => {
+      sendResponse({ success: true });
+    });
+
+    return true; // Keep message channel open for async response
+  }
+});
+
+// Listen for tab updates (page load, navigation) and auto-apply click detection state
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Only act when the page has finished loading
+  if (changeInfo.status === 'complete' && tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+    // Check if click detection is enabled globally
+    chrome.storage.local.get(['clickDetectionEnabled'], async (result) => {
+      const enabled = result.clickDetectionEnabled || false;
+      if (enabled) {
+        console.log(`[Click Detection] Auto-enabling on newly loaded tab ${tabId}`);
+        // Wait a bit for content script to be ready
+        setTimeout(() => {
+          setClickDetectionOnTab(tabId, true);
+        }, 500);
+      }
+    });
+  }
+});
+
+console.log('[Click Detection] Global toggle system initialized');

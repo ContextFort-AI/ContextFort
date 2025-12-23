@@ -6,12 +6,29 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/dashboard/stat-card';
-import { UserIcon, CheckCircle2Icon, ActivityIcon, RefreshCwIcon, AlertCircleIcon } from 'lucide-react';
+import { UserIcon, CheckCircle2Icon, ActivityIcon, RefreshCwIcon, AlertCircleIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { useState } from 'react';
 
 export default function HumanRequestsPage() {
   const { requests: userInputRequests, isLoading: loadingUserInput, refetch: refetchUserInput } = useHumanRequests();
   const { requests: backgroundRequests, isLoading: loadingBackground, refetch: refetchBackground } = useHumanBackgroundRequests();
   const { stats } = useClassificationStats();
+
+  const [userInputPage, setUserInputPage] = useState(1);
+  const [backgroundPage, setBackgroundPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Pagination for user input requests
+  const userInputTotalPages = Math.ceil(userInputRequests.length / itemsPerPage);
+  const userInputStartIndex = (userInputPage - 1) * itemsPerPage;
+  const userInputEndIndex = userInputStartIndex + itemsPerPage;
+  const paginatedUserInputRequests = userInputRequests.slice(userInputStartIndex, userInputEndIndex);
+
+  // Pagination for background requests
+  const backgroundTotalPages = Math.ceil(backgroundRequests.length / itemsPerPage);
+  const backgroundStartIndex = (backgroundPage - 1) * itemsPerPage;
+  const backgroundEndIndex = backgroundStartIndex + itemsPerPage;
+  const paginatedBackgroundRequests = backgroundRequests.slice(backgroundStartIndex, backgroundEndIndex);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -42,6 +59,8 @@ export default function HumanRequestsPage() {
   };
 
   const handleRefreshAll = () => {
+    setUserInputPage(1);
+    setBackgroundPage(1);
     refetchUserInput();
     refetchBackground();
   };
@@ -123,7 +142,7 @@ export default function HumanRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {userInputRequests.map((req) => (
+                  {paginatedUserInputRequests.map((req) => (
                     <TableRow key={req.id} className="bg-green-500/5">
                       <TableCell className="font-medium text-muted-foreground">
                         {formatTime(req.timestamp)}
@@ -184,6 +203,36 @@ export default function HumanRequestsPage() {
               </Table>
             </div>
           )}
+          {!loadingUserInput && userInputRequests.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {userInputStartIndex + 1} to {Math.min(userInputEndIndex, userInputRequests.length)} of {userInputRequests.length} requests
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUserInputPage(prev => Math.max(1, prev - 1))}
+                  disabled={userInputPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {userInputPage} of {userInputTotalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUserInputPage(prev => Math.min(userInputTotalPages, prev + 1))}
+                  disabled={userInputPage === userInputTotalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -223,7 +272,7 @@ export default function HumanRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {backgroundRequests.map((req) => (
+                  {paginatedBackgroundRequests.map((req) => (
                     <TableRow key={req.id} className="bg-yellow-500/5">
                       <TableCell className="font-medium text-muted-foreground">
                         {formatTime(req.timestamp)}
@@ -291,6 +340,36 @@ export default function HumanRequestsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!loadingBackground && backgroundRequests.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {backgroundStartIndex + 1} to {Math.min(backgroundEndIndex, backgroundRequests.length)} of {backgroundRequests.length} requests
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBackgroundPage(prev => Math.max(1, prev - 1))}
+                  disabled={backgroundPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {backgroundPage} of {backgroundTotalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBackgroundPage(prev => Math.min(backgroundTotalPages, prev + 1))}
+                  disabled={backgroundPage === backgroundTotalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

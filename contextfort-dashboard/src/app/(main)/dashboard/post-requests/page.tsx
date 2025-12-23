@@ -13,13 +13,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { usePostRequests, usePostStats } from '@/hooks/use-post-stats';
-import { AlertCircleIcon, RefreshCwIcon, ShieldIcon, Trash2Icon } from 'lucide-react';
+import { AlertCircleIcon, RefreshCwIcon, ShieldIcon, Trash2Icon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useState } from 'react';
 
 export default function POSTRequestsPage() {
   const { stats, isOnline } = usePostStats();
   const { requests, isLoading, refetch, deleteRequest, clearAll } = usePostRequests();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = requests.slice(startIndex, endIndex);
+
+  // Reset to page 1 when requests change
+  const handleRefetch = () => {
+    setCurrentPage(1);
+    refetch();
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this request?')) return;
@@ -77,7 +91,7 @@ export default function POSTRequestsPage() {
             <div className={`h-2 w-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
             {isOnline ? 'Connected' : 'Offline'}
           </Badge>
-          <Button variant="outline" size="sm" onClick={refetch}>
+          <Button variant="outline" size="sm" onClick={handleRefetch}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -149,7 +163,7 @@ export default function POSTRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requests.map((request) => (
+                  {paginatedRequests.map((request) => (
                     <TableRow key={request.id} className="group">
                       <TableCell className="font-medium text-muted-foreground">
                         {formatTime(request.timestamp)}
@@ -219,6 +233,36 @@ export default function POSTRequestsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!isLoading && requests.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, requests.length)} of {requests.length} requests
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

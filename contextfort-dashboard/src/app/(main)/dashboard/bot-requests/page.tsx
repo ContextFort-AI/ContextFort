@@ -6,28 +6,50 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/dashboard/stat-card';
-import { BotIcon, AlertTriangleIcon, ShieldAlertIcon, RefreshCwIcon } from 'lucide-react';
+import { BotIcon, AlertTriangleIcon, ShieldAlertIcon, RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { useState } from 'react';
 
 export default function BotRequestsPage() {
   const { requests, isLoading, refetch } = useBotRequests();
   const { stats } = useClassificationStats();
 
-  const formatRelativeTime = (timestamp: string) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = requests.slice(startIndex, endIndex);
+
+  // Reset to page 1 when requests change
+  const handleRefetch = () => {
+    setCurrentPage(1);
+    refetch();
+  };
+
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const isToday = date.toDateString() === now.toDateString();
 
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (seconds < 60) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-
-    return date.toLocaleDateString();
+    if (isToday) {
+      // Show time only for today: "10:30 AM"
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } else {
+      // Show date and time for older requests: "Dec 21, 10:30 AM"
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
   };
 
   const calculateDetectionRate = (s: typeof stats) => {
@@ -51,7 +73,7 @@ export default function BotRequestsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={refetch}>
+          <Button variant="outline" size="sm" onClick={handleRefetch}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -117,10 +139,10 @@ export default function BotRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requests.map((req) => (
+                  {paginatedRequests.map((req) => (
                     <TableRow key={req.id} className="bg-red-500/5">
                       <TableCell className="font-medium text-muted-foreground">
-                        {formatRelativeTime(req.timestamp)}
+                        {formatTime(req.timestamp)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{req.request_method}</Badge>
@@ -149,6 +171,36 @@ export default function BotRequestsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!isLoading && requests.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, requests.length)} of {requests.length} requests
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

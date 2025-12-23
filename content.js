@@ -712,6 +712,15 @@ let clickDetectionEnabled = false;
 
 console.log('[Click Detection] Feature initialized');
 
+// Auto-enable click detection if it's enabled globally
+chrome.storage.local.get(['clickDetectionEnabled'], (result) => {
+  const isGloballyEnabled = result.clickDetectionEnabled || false;
+  if (isGloballyEnabled) {
+    console.log('[Click Detection] Auto-enabling from global state');
+    enableClickDetection();
+  }
+});
+
 /**
  * Detect if we're in an email compose window
  */

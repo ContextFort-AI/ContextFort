@@ -13,11 +13,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useClickEvents, useClickStats } from '@/hooks/use-click-stats';
-import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, MousePointerClickIcon, RefreshCwIcon } from 'lucide-react';
+import { ActivityIcon, AlertTriangleIcon, CheckCircle2Icon, MousePointerClickIcon, RefreshCwIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ClickDetectionPage() {
   const { stats, isOnline } = useClickStats();
   const { events, isLoading, refetch } = useClickEvents();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(events.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEvents = events.slice(startIndex, endIndex);
+
+  // Reset to page 1 when events change
+  const handleRefetch = () => {
+    setCurrentPage(1);
+    refetch();
+  };
 
   const formatTime = (timestamp: string | number) => {
     const date = new Date(timestamp);
@@ -65,7 +81,7 @@ export default function ClickDetectionPage() {
             <div className={`h-2 w-2 rounded-full ${isOnline ? 'animate-pulse bg-green-500' : 'bg-red-500'}`} />
             {isOnline ? 'LIVE' : 'Offline'}
           </Badge>
-          <Button variant="outline" size="sm" onClick={refetch}>
+          <Button variant="outline" size="sm" onClick={handleRefetch}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -143,7 +159,7 @@ export default function ClickDetectionPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {events.slice(0, 100).map((event, index) => (
+                  {paginatedEvents.map((event, index) => (
                     <TableRow
                       key={`${event.id}-${index}`}
                       className={event.is_suspicious ? 'bg-red-500/5' : 'bg-green-500/5'}
@@ -171,11 +187,11 @@ export default function ClickDetectionPage() {
                       </TableCell>
                       <TableCell className="max-w-[300px]">
                         {event.page_url ? (
-                          <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono">
-                            {event.page_url.length > 50
-                              ? `${event.page_url.substring(0, 50)}...`
-                              : event.page_url}
-                          </code>
+                          <div className="max-w-[300px] overflow-hidden">
+                            <code className="block truncate rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono" title={event.page_url}>
+                              {event.page_url}
+                            </code>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -202,6 +218,36 @@ export default function ClickDetectionPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!isLoading && events.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, events.length)} of {events.length} events
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
