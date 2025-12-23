@@ -45,7 +45,7 @@ export const sidebarItems: NavGroup[] = [
         icon: LayoutDashboard,
       },
       {
-        title: "POST Requests",
+        title: "Blocked Requests",
         url: "/dashboard/post-requests",
         icon: Shield,
       },

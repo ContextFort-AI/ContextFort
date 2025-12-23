@@ -114,8 +114,12 @@ def read_root():
         "version": "1.0.0",
         "endpoints": {
             "POST /api/blocked-requests": "Store a blocked request",
-            "GET /api/blocked-requests": "Get all blocked requests",
+            "GET /api/blocked-requests": "Get all suspicious requests",
+            "GET /api/blocked-requests/human": "Get human POST requests with user input (on button click)",
+            "GET /api/blocked-requests/human/background": "Get human background requests",
+            "GET /api/blocked-requests/bot": "Get bot-initiated requests",
             "GET /api/stats": "Get statistics",
+            "GET /api/stats/classification": "Get human/bot classification stats",
             "DELETE /api/blocked-requests/{id}": "Delete a request",
             "DELETE /api/blocked-requests": "Clear all requests",
             "POST /api/whitelist": "Add a URL to whitelist",
@@ -160,14 +164,29 @@ def get_blocked_requests(
     hostname: Optional[str] = None,
     db: Session = Depends(database.get_db)
 ):
-    """Get all blocked requests with optional filtering"""
+    """Get all blocked requests with optional filtering - only suspicious requests"""
     query = db.query(database.BlockedRequest)
 
     if hostname:
         query = query.filter(database.BlockedRequest.target_hostname == hostname)
 
-    requests = query.order_by(database.BlockedRequest.timestamp.desc()).offset(skip).limit(limit).all()
-    return requests
+    # Filter to get all requests first
+    all_requests = query.order_by(database.BlockedRequest.timestamp.desc()).all()
+
+    # Filter for suspicious requests only:
+    # 1. Must have matched_fields and matched_values (not empty)
+    # 2. Must be suspicious: NOT (is_bot=False AND has_click_correlation=True)
+    #    i.e., either is_bot=True OR is_bot=None OR has_click_correlation=False
+    filtered_requests = [
+        req for req in all_requests
+        if req.matched_fields and len(req.matched_fields) > 0
+        and req.matched_values and len(req.matched_values) > 0
+        and not (req.is_bot == False and req.has_click_correlation == True)
+    ]
+
+    # Apply pagination to filtered results
+    paginated_requests = filtered_requests[skip:skip + limit]
+    return paginated_requests
 
 
 @app.get("/api/stats", response_model=StatsResponse)
@@ -243,12 +262,44 @@ def get_human_requests(
     limit: int = 100,
     db: Session = Depends(database.get_db)
 ):
-    """Get only human-initiated requests (is_bot=False)"""
-    requests = db.query(database.BlockedRequest).filter(
+    """Get human-initiated POST requests with user input data (on button click)"""
+    all_requests = db.query(database.BlockedRequest).filter(
         database.BlockedRequest.is_bot == False,
         database.BlockedRequest.has_click_correlation == True
-    ).order_by(database.BlockedRequest.timestamp.desc()).offset(skip).limit(limit).all()
-    return requests
+    ).order_by(database.BlockedRequest.timestamp.desc()).all()
+
+    # Filter for requests with matched_fields and matched_values
+    filtered_requests = [
+        req for req in all_requests
+        if req.matched_fields and len(req.matched_fields) > 0
+        and req.matched_values and len(req.matched_values) > 0
+    ]
+
+    paginated_requests = filtered_requests[skip:skip + limit]
+    return paginated_requests
+
+
+@app.get("/api/blocked-requests/human/background", response_model=List[BlockedRequestResponse])
+def get_human_background_requests(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(database.get_db)
+):
+    """Get human background requests (is_bot=False with no user input data)"""
+    all_requests = db.query(database.BlockedRequest).filter(
+        database.BlockedRequest.is_bot == False
+    ).order_by(database.BlockedRequest.timestamp.desc()).all()
+
+    # Filter for requests with NO matched_fields or matched_values (background activity)
+    background_requests = [
+        req for req in all_requests
+        if (not req.matched_fields or len(req.matched_fields) == 0)
+        or (not req.matched_values or len(req.matched_values) == 0)
+    ]
+
+    # Apply pagination
+    paginated_requests = background_requests[skip:skip + limit]
+    return paginated_requests
 
 
 @app.get("/api/blocked-requests/bot", response_model=List[BlockedRequestResponse])

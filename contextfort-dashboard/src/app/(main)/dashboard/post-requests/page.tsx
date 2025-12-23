@@ -38,22 +38,28 @@ export default function POSTRequestsPage() {
     await clearAll();
   };
 
-  const formatRelativeTime = (timestamp: string) => {
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const isToday = date.toDateString() === now.toDateString();
 
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (seconds < 60) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-
-    return date.toLocaleDateString();
+    if (isToday) {
+      // Show time only for today: "10:30 AM"
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } else {
+      // Show date and time for older requests: "Dec 21, 10:30 AM"
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
   };
 
   return (
@@ -61,9 +67,9 @@ export default function POSTRequestsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">POST Request Monitor</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Blocked Requests Monitor</h1>
           <p className="text-muted-foreground">
-            Detected POST requests with sensitive data
+            Blocked requests with user input data from button clicks
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -109,9 +115,9 @@ export default function POSTRequestsPage() {
       {/* Requests Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Detections</CardTitle>
+          <CardTitle>Recent Blocked Requests</CardTitle>
           <CardDescription>
-            POST requests containing sensitive form data
+            Blocked requests with user input data triggered by button clicks
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -138,6 +144,7 @@ export default function POSTRequestsPage() {
                     <TableHead className="w-[180px]">Hostname</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Matched Fields</TableHead>
+                    <TableHead>Matched Input Values</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -145,7 +152,7 @@ export default function POSTRequestsPage() {
                   {requests.map((request) => (
                     <TableRow key={request.id} className="group">
                       <TableCell className="font-medium text-muted-foreground">
-                        {formatRelativeTime(request.timestamp)}
+                        {formatTime(request.timestamp)}
                       </TableCell>
                       <TableCell>
                         <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono">
@@ -173,6 +180,23 @@ export default function POSTRequestsPage() {
                             <Badge variant="secondary" className="text-xs">
                               +{request.matched_fields.length - 3}
                             </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1 max-w-xs">
+                          {Object.entries(request.matched_values).slice(0, 2).map(([key, value], index) => (
+                            <div key={index} className="text-xs">
+                              <span className="font-medium text-muted-foreground">{key}:</span>{' '}
+                              <span className="text-foreground">
+                                {value.length > 30 ? `${value.substring(0, 30)}...` : value}
+                              </span>
+                            </div>
+                          ))}
+                          {Object.keys(request.matched_values).length > 2 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{Object.keys(request.matched_values).length - 2} more
+                            </span>
                           )}
                         </div>
                       </TableCell>

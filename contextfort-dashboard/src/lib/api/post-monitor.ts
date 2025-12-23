@@ -114,6 +114,27 @@ export class POSTMonitorAPI {
     }
   }
 
+  async getHumanBackgroundRequests(limit: number = 100, offset: number = 0): Promise<POSTRequest[]> {
+    try {
+      const url = `${this.baseURL}/api/blocked-requests/human/background?limit=${limit}&skip=${offset}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching human background requests:', error);
+      throw error;
+    }
+  }
+
   async getBotRequests(limit: number = 100, offset: number = 0): Promise<POSTRequest[]> {
     try {
       const url = `${this.baseURL}/api/blocked-requests/bot?limit=${limit}&skip=${offset}`;
