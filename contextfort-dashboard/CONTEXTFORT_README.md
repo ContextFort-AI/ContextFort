@@ -13,19 +13,20 @@ A professional Next.js dashboard for real-time security incident monitoring. Bui
 
 ## 📋 Prerequisites
 
-Make sure the backend servers are running:
+Make sure the unified backend server is running:
 
-1. **POST Monitor Backend** (Port 8000)
+**Unified Backend** (Port 8000) - Handles both POST monitoring and click detection
    ```bash
    cd /Users/rishabharya/Desktop/context/blocker/backend
+   python main.py
+   # or
    ./start.sh
    ```
 
-2. **Click Detection Backend** (Port 9999)
-   ```bash
-   cd /Users/rishabharya/Desktop/context/blocker/browser-ai-detector
-   python3 server-with-db.py
-   ```
+   The unified backend provides:
+   - POST request monitoring APIs (`/api/blocked-requests/*`)
+   - Click detection APIs (`/api/click-detection/*`)
+   - Classification and statistics (`/api/stats/*`)
 
 ## 🏃 Running the Dashboard
 

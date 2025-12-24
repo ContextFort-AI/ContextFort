@@ -205,7 +205,7 @@
             <h3>📋 Testing Instructions</h3>
             <ol>
                 <li>Open the extension popup and <strong>enable ALL features</strong></li>
-                <li>Make sure both backends are running (port 8000 and 9999)</li>
+                <li>Make sure the unified backend is running (port 8000)</li>
                 <li>Fill in your name below - it will be displayed on the page</li>
                 <li>Complete each test section below</li>
                 <li>Check the extension dashboards to see detected activities</li>
@@ -392,16 +392,16 @@
                 statusDiv.innerHTML += `   Error: ${error.message}<br><br>`;
             }
 
-            // Check Click Detection Backend
+            // Check Click Detection (Unified Backend)
             try {
-                const response = await fetch('http://localhost:9999/api/stats');
+                const response = await fetch('http://localhost:8000/api/click-detection/stats');
                 const data = await response.json();
-                statusDiv.innerHTML += '✅ Click Detection Backend (port 9999): ONLINE<br>';
+                statusDiv.innerHTML += '✅ Click Detection (Unified Backend - port 8000): ONLINE<br>';
                 statusDiv.innerHTML += `   - Total clicks: ${data.total_clicks}<br>`;
                 statusDiv.innerHTML += `   - Suspicious: ${data.suspicious_clicks}<br>`;
                 statusDiv.innerHTML += `   - Legitimate: ${data.legitimate_clicks}<br>`;
             } catch (error) {
-                statusDiv.innerHTML += '❌ Click Detection Backend (port 9999): OFFLINE<br>';
+                statusDiv.innerHTML += '❌ Click Detection (Unified Backend - port 8000): OFFLINE<br>';
                 statusDiv.innerHTML += `   Error: ${error.message}<br>`;
             }
         }

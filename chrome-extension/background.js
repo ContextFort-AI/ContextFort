@@ -6,9 +6,9 @@ let activeMonitoring = [];
 // Time window to monitor POST requests after a user action (in milliseconds)
 const MONITORING_WINDOW = 2000; // 2 seconds after user action
 
-// Backend API URLs
+// Backend API URLs (Unified Backend)
 const API_URL = 'http://127.0.0.1:8000';
-const CLICK_DETECTION_API_URL = 'http://localhost:9999';
+const CLICK_DETECTION_API_URL = 'http://127.0.0.1:8000';
 
 // Click correlation configuration
 const CORRELATION_WINDOW = 3000; // 3 seconds for click correlation
@@ -18,7 +18,7 @@ const IGNORED_EXTENSIONS = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.sv
 async function queryRecentClick(requestTimestamp, retries = 2) {
   for (let i = 0; i <= retries; i++) {
     try {
-      const response = await fetch(`${CLICK_DETECTION_API_URL}/api/recent?limit=10`);
+      const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/recent?limit=10`);
       if (!response.ok) {
         console.log('[Click Correlation] API request failed:', response.status);
         continue;
@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.type === 'SEND_CLICK_TO_API') {
     (async () => {
       try {
-        const response = await fetch(`${CLICK_DETECTION_API_URL}/api/events/dom`, {
+        const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/events/dom`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -149,8 +149,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     // IMPORTANT: Ignore requests to our own backend APIs to prevent infinite loops
     if (details.url.startsWith(API_URL) ||
         details.url.startsWith('http://localhost:8000') ||
-        details.url.startsWith(CLICK_DETECTION_API_URL) ||
-        details.url.startsWith('http://localhost:9999')) {
+        details.url.startsWith(CLICK_DETECTION_API_URL)) {
       return;
     }
 
@@ -220,6 +219,7 @@ chrome.webRequest.onBeforeRequest.addListener(
                 field: fieldName,
                 value: fieldValue
               });
+              console.log('[POST Monitor] Matched value:', fieldValue);
             }
           }
         }
@@ -247,7 +247,7 @@ chrome.webRequest.onBeforeRequest.addListener(
       click_time_diff_ms: clickCorrelation.time_diff_ms,
       click_coordinates: clickCorrelation.click_coordinates
     };
-
+    console.log('[POST Monitor] Preparing data for backend:', backendData); //chnegd thi now by rizz
     // Save to backend
     await saveToBackend(backendData);
 
@@ -317,7 +317,7 @@ let clickDetectionStats = {
 // Fetch click detection stats periodically
 async function fetchClickDetectionStats() {
   try {
-    const response = await fetch(`${CLICK_DETECTION_API_URL}/api/stats`);
+    const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/stats`);
     if (response.ok) {
       const stats = await response.json();
       clickDetectionStats = stats;

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ContextFort - Security Suite",
-  "version": "1.0.0",
-  "description": "POST request monitoring, AI click detection, and screenshot auto-blur protection",
+  "name": "ContextFort Security",
+  "version": "2.0.0",
+  "description": "POST request monitoring and AI-powered click detection for enhanced security",
 
   "permissions": [
     "webRequest",
@@ -24,12 +24,6 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["page-script.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
     }
   ],
 
@@ -39,7 +33,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["html2canvas.min.js", "icon128.png"],
+      "resources": ["icon128.png"],
       "matches": ["<all_urls>"]
     }
   ],

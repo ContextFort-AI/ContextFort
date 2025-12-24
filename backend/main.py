@@ -5,9 +5,10 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
+from collections import deque
 import database
 
-app = FastAPI(title="POST Monitor API", version="1.0.0")
+app = FastAPI(title="Contextfort Security", version="1.0.0")
 
 # Enable CORS for extension
 app.add_middleware(
@@ -17,6 +18,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Click Detection: Storage for recent OS clicks (for correlation)
+os_clicks = deque(maxlen=1000)
+
+# Click Detection Config
+TIME_WINDOW_MS = 250
+POSITION_TOLERANCE_PX = 20
 
 
 # Pydantic models
@@ -100,6 +108,69 @@ class WhitelistResponse(BaseModel):
         from_attributes = True
 
 
+# Click Detection Models
+class OSClickEvent(BaseModel):
+    x: float
+    y: float
+    timestamp: float
+
+
+class DOMClickEvent(BaseModel):
+    x: float
+    y: float
+    timestamp: float
+    action_type: Optional[str] = "click"
+    action_details: Optional[str] = "{}"
+    page_url: Optional[str] = ""
+    page_title: Optional[str] = ""
+    target_tag: Optional[str] = ""
+    target_id: Optional[str] = ""
+    target_class: Optional[str] = ""
+    is_trusted: Optional[bool] = True
+
+
+class ClickEventResponse(BaseModel):
+    id: int
+    timestamp: float
+    x: float
+    y: float
+    is_suspicious: bool
+    confidence: Optional[float]
+    reason: Optional[str]
+    action_type: Optional[str]
+    action_details: Optional[str]
+    page_url: Optional[str]
+    page_title: Optional[str]
+    target_tag: Optional[str]
+    target_id: Optional[str]
+    target_class: Optional[str]
+    is_trusted: Optional[bool]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ClickStatsResponse(BaseModel):
+    total_clicks: int
+    suspicious_clicks: int
+    legitimate_clicks: int
+    unique_pages: int
+    total_os_clicks: int
+
+
+class ClickCorrelationResult(BaseModel):
+    is_suspicious: bool
+    confidence: float
+    reason: Optional[str]
+
+
+class ActionSummary(BaseModel):
+    action_type: str
+    count: int
+    suspicious_count: int
+
+
 # Initialize database on startup
 @app.on_event("startup")
 def startup_event():
@@ -110,8 +181,8 @@ def startup_event():
 @app.get("/")
 def read_root():
     return {
-        "message": "POST Monitor API",
-        "version": "1.0.0",
+        "message": "Contextfort Security - Unified Backend",
+        "version": "2.0.0",
         "endpoints": {
             "POST /api/blocked-requests": "Store a blocked request",
             "GET /api/blocked-requests": "Get all suspicious requests",
@@ -125,7 +196,14 @@ def read_root():
             "POST /api/whitelist": "Add a URL to whitelist",
             "GET /api/whitelist": "Get all whitelisted URLs",
             "GET /api/whitelist/check": "Check if a URL is whitelisted",
-            "DELETE /api/whitelist/{id}": "Remove a URL from whitelist"
+            "DELETE /api/whitelist/{id}": "Remove a URL from whitelist",
+            "GET /api/click-detection/health": "Click detection health check",
+            "GET /api/click-detection/stats": "Get click detection statistics",
+            "GET /api/click-detection/suspicious": "Get suspicious clicks",
+            "GET /api/click-detection/recent": "Get recent clicks",
+            "GET /api/click-detection/actions": "Get action summary",
+            "POST /api/click-detection/events/os": "Record OS click",
+            "POST /api/click-detection/events/dom": "Record DOM click"
         }
     }
 
@@ -416,6 +494,172 @@ def delete_from_whitelist(whitelist_id: int, db: Session = Depends(database.get_
     db.delete(whitelist_item)
     db.commit()
     return {"message": "Removed from whitelist successfully"}
+
+
+# ==================== CLICK DETECTION ENDPOINTS ====================
+
+def correlate_click(dom_click: dict) -> ClickCorrelationResult:
+    """Check if DOM click matches any recent OS click"""
+    time_window_sec = TIME_WINDOW_MS / 1000.0
+
+    if not os_clicks:
+        return ClickCorrelationResult(
+            is_suspicious=True,
+            confidence=0.9,
+            reason="No OS clicks recorded"
+        )
+
+    for os_click in reversed(os_clicks):
+        time_diff = abs(dom_click['timestamp'] - os_click['timestamp'])
+
+        if time_diff > time_window_sec:
+            break
+
+        return ClickCorrelationResult(
+            is_suspicious=False,
+            confidence=1.0,
+            reason=None
+        )
+
+    return ClickCorrelationResult(
+        is_suspicious=True,
+        confidence=0.9,
+        reason=f"No OS click within {TIME_WINDOW_MS}ms"
+    )
+
+
+@app.get("/api/click-detection/health")
+def click_detection_health():
+    """Health check for click detection"""
+    return {"status": "ok", "version": "2.0.0 (integrated)"}
+
+
+@app.get("/api/click-detection/stats", response_model=ClickStatsResponse)
+def get_click_stats(db: Session = Depends(database.get_db)):
+    """Get click detection statistics"""
+    from sqlalchemy import func
+
+    total = db.query(database.ClickEvent).count()
+    suspicious = db.query(database.ClickEvent).filter(
+        database.ClickEvent.is_suspicious == True
+    ).count()
+    legitimate = db.query(database.ClickEvent).filter(
+        database.ClickEvent.is_suspicious == False
+    ).count()
+    unique_pages = db.query(func.count(func.distinct(database.ClickEvent.page_url))).scalar()
+
+    return {
+        "total_clicks": total,
+        "suspicious_clicks": suspicious,
+        "legitimate_clicks": legitimate,
+        "unique_pages": unique_pages,
+        "total_os_clicks": len(os_clicks)
+    }
+
+
+@app.get("/api/click-detection/suspicious", response_model=List[ClickEventResponse])
+def get_suspicious_clicks(
+    limit: int = 100,
+    db: Session = Depends(database.get_db)
+):
+    """Get suspicious clicks"""
+    clicks = db.query(database.ClickEvent).filter(
+        database.ClickEvent.is_suspicious == True
+    ).order_by(database.ClickEvent.created_at.desc()).limit(limit).all()
+    return clicks
+
+
+@app.get("/api/click-detection/recent", response_model=List[ClickEventResponse])
+def get_recent_clicks(
+    limit: int = 50,
+    db: Session = Depends(database.get_db)
+):
+    """Get recent clicks"""
+    clicks = db.query(database.ClickEvent).order_by(
+        database.ClickEvent.created_at.desc()
+    ).limit(limit).all()
+    return clicks
+
+
+@app.get("/api/click-detection/actions", response_model=List[ActionSummary])
+def get_action_summary(db: Session = Depends(database.get_db)):
+    """Get action summary"""
+    from sqlalchemy import func, case
+
+    results = db.query(
+        database.ClickEvent.action_type,
+        func.count(database.ClickEvent.id).label('count'),
+        func.sum(
+            case((database.ClickEvent.is_suspicious == True, 1), else_=0)
+        ).label('suspicious_count')
+    ).group_by(database.ClickEvent.action_type).all()
+
+    return [
+        {
+            "action_type": row[0],
+            "count": row[1],
+            "suspicious_count": row[2]
+        }
+        for row in results
+    ]
+
+
+@app.post("/api/click-detection/events/os")
+def record_os_click(event: OSClickEvent):
+    """Record an OS click event"""
+    click = {
+        'source': 'os',
+        'x': event.x,
+        'y': event.y,
+        'timestamp': event.timestamp
+    }
+    os_clicks.append(click)
+    print(f"[Click Detection] OS click recorded: x={click['x']:.1f}, y={click['y']:.1f}, time={click['timestamp']:.3f}")
+    return {"success": True}
+
+
+@app.post("/api/click-detection/events/dom", response_model=ClickCorrelationResult)
+def record_dom_click(
+    event: DOMClickEvent,
+    db: Session = Depends(database.get_db)
+):
+    """Record a DOM click event and correlate with OS clicks"""
+    click = {
+        'x': event.x,
+        'y': event.y,
+        'timestamp': event.timestamp
+    }
+
+    # Correlate with OS clicks
+    result = correlate_click(click)
+
+    # Store in database
+    db_click = database.ClickEvent(
+        timestamp=event.timestamp,
+        x=event.x,
+        y=event.y,
+        is_suspicious=result.is_suspicious,
+        confidence=result.confidence,
+        reason=result.reason,
+        action_type=event.action_type,
+        action_details=event.action_details,
+        page_url=event.page_url,
+        page_title=event.page_title,
+        target_tag=event.target_tag,
+        target_id=event.target_id,
+        target_class=event.target_class,
+        is_trusted=event.is_trusted
+    )
+    db.add(db_click)
+    db.commit()
+    db.refresh(db_click)
+
+    if result.is_suspicious:
+        print(f"[Click Detection] ⚠️  SUSPICIOUS {event.action_type}: {event.page_title} - {result.reason}")
+    else:
+        print(f"[Click Detection] ✓ Legitimate {event.action_type}: {event.page_title}")
+
+    return result
 
 
 if __name__ == "__main__":

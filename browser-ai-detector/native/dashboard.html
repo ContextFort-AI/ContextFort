@@ -549,7 +549,8 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:9999/api';
+        // Unified Backend API (port 8000)
+        const API_BASE = 'http://localhost:8000/api/click-detection';
         let lastClickId = 0;
         let isFirstLoad = true;
         let lastStats = { total_clicks: 0, legitimate_clicks: 0, suspicious_clicks: 0 };

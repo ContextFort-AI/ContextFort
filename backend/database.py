@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -40,6 +40,28 @@ class Whitelist(Base):
     hostname = Column(String, index=True)
     added_at = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
+
+
+class ClickEvent(Base):
+    """Click detection events table"""
+    __tablename__ = "click_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(Float, nullable=False, index=True)  # Unix timestamp with milliseconds
+    x = Column(Float, nullable=False)
+    y = Column(Float, nullable=False)
+    is_suspicious = Column(Boolean, nullable=False, index=True)
+    confidence = Column(Float, nullable=True)
+    reason = Column(Text, nullable=True)
+    action_type = Column(String, nullable=True)
+    action_details = Column(Text, nullable=True)
+    page_url = Column(String, nullable=True)
+    page_title = Column(String, nullable=True)
+    target_tag = Column(String, nullable=True)
+    target_id = Column(String, nullable=True)
+    target_class = Column(String, nullable=True)
+    is_trusted = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 def get_db():

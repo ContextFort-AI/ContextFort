@@ -84,96 +84,6 @@
       margin-bottom: 12px;
     }
 
-    /* Input Field */
-    .input-group {
-      margin-bottom: 12px;
-    }
-
-    .input-label {
-      font-size: 12px;
-      color: #888888;
-      margin-bottom: 6px;
-      display: block;
-    }
-
-    textarea {
-      width: 100%;
-      padding: 8px 12px;
-      background: #111111;
-      border: 1px solid #333333;
-      border-radius: 6px;
-      color: #ffffff;
-      font-size: 13px;
-      font-family: 'Inter', sans-serif;
-      resize: vertical;
-      min-height: 60px;
-      transition: border-color 150ms ease;
-    }
-
-    textarea:focus {
-      outline: none;
-      border-color: #0070f3;
-    }
-
-    textarea::placeholder {
-      color: #666666;
-    }
-
-    /* Toggle Switch */
-    .toggle-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .toggle-label {
-      font-size: 13px;
-      color: #ffffff;
-    }
-
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #333333;
-      border-radius: 24px;
-      transition: 150ms ease;
-    }
-
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 150ms ease;
-    }
-
-    input:checked + .toggle-slider {
-      background: #0070f3;
-    }
-
-    input:checked + .toggle-slider:before {
-      transform: translateX(20px);
-    }
-
     /* Buttons */
     .button {
       width: 100%;
@@ -207,30 +117,8 @@
       cursor: not-allowed;
     }
 
-    .button-primary {
-      background: #0070f3;
-      border-color: #0070f3;
-    }
-
-    .button-primary:hover {
-      background: #0060df;
-      border-color: #0060df;
-    }
-
-    /* Old button styles for backward compatibility */
-    #toggle-blur-btn,
     #toggle-click-detection-btn {
       margin-top: 12px;
-    }
-
-    #toggle-blur-btn.active {
-      background: #f51f41;
-      border-color: #f51f41;
-    }
-
-    #toggle-blur-btn.active:hover {
-      background: #d91a3a;
-      border-color: #d91a3a;
     }
 
     #toggle-click-detection-btn.active {
@@ -241,10 +129,6 @@
     #toggle-click-detection-btn.active:hover {
       background: #0bc300;
       border-color: #0bc300;
-    }
-
-    #test-screenshot-btn {
-      margin-top: 8px;
     }
 
     /* Status Text */
@@ -316,38 +200,6 @@
     </div>
   </div>
 
-  <!-- Auto-Blur Feature -->
-  <div class="feature-section">
-    <div class="feature-header">
-      <div class="feature-title">Auto-Blur on Screenshot</div>
-      <div class="feature-description">
-        Automatically blurs sensitive text when screenshots are detected
-      </div>
-    </div>
-
-    <div class="input-group">
-      <label class="input-label">Words to blur (comma-separated):</label>
-      <textarea id="blur-words-input" placeholder="Rishabh, Arya"></textarea>
-      <div class="hint-text">
-        These words will be automatically blurred in screenshots
-      </div>
-    </div>
-
-    <button id="toggle-blur-btn" class="button">
-      Enable Auto-Blur
-    </button>
-
-    <div id="blur-status" class="status-text">
-      Status: Disabled
-    </div>
-
-    <button id="test-screenshot-btn" class="button">
-      Test Screenshot
-    </button>
-
-    <div id="screenshot-status" class="status-text"></div>
-  </div>
-
   <!-- Click Detection Feature -->
   <div class="feature-section">
     <div class="feature-header">
@@ -366,12 +218,12 @@
     </div>
 
     <div class="hint-text">
-      Connects to Click Detection API at localhost:9999
+      Connects to Unified Backend API at localhost:8000
     </div>
   </div>
 
   <!-- Dashboard Link -->
-  <a href="unified-dashboard.html" target="_blank" class="dashboard-link">
+  <a href="http://localhost:3000" target="_blank" class="dashboard-link">
     <span>Open Dashboard</span>
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
@@ -379,7 +231,7 @@
   </a>
 
   <div class="version">
-    Version 1.0.0
+    Version 2.0.0
   </div>
 
   <script src="popup.js"></script>

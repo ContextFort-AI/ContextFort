@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bridge between macOS native monitor and SDK API
+Bridge between macOS native monitor and Unified Backend API
 Captures OS clicks and forwards to API server
 """
 
@@ -11,7 +11,8 @@ import requests
 import time
 from datetime import datetime
 
-SDK_API_URL = 'http://localhost:9999/api/events/os'
+# Unified Backend API (port 8000)
+SDK_API_URL = 'http://localhost:8000/api/click-detection/events/os'
 
 def parse_log_line(line):
     """Parse OS monitor log line to extract click data"""
