@@ -3,3 +3,4 @@ uvicorn
 sqlalchemy
 pydantic
 python-dateutil
+psycopg2-binary

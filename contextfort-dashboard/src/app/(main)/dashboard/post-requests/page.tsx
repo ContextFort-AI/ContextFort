@@ -12,8 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePostRequests, usePostStats } from '@/hooks/use-post-stats';
-import { AlertCircleIcon, RefreshCwIcon, ShieldIcon, Trash2Icon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { AlertCircleIcon, RefreshCwIcon, ShieldIcon, Trash2Icon, ChevronLeftIcon, ChevronRightIcon, CopyIcon, CheckIcon } from 'lucide-react';
 import { useState } from 'react';
 
 export default function POSTRequestsPage() {
@@ -21,6 +27,7 @@ export default function POSTRequestsPage() {
   const { requests, isLoading, refetch, deleteRequest, clearAll } = usePostRequests();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   const itemsPerPage = 20;
 
   // Calculate pagination
@@ -50,6 +57,16 @@ export default function POSTRequestsPage() {
     if (!confirm('Are you sure you want to clear all requests? This action cannot be undone.')) return;
 
     await clearAll();
+  };
+
+  const handleCopyUrl = async (id: number, url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy URL:', error);
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -156,7 +173,7 @@ export default function POSTRequestsPage() {
                     <TableHead className="w-[120px]">Time</TableHead>
                     <TableHead>Target URL</TableHead>
                     <TableHead className="w-[180px]">Hostname</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead className="w-[300px]">Source</TableHead>
                     <TableHead>Matched Fields</TableHead>
                     <TableHead>Matched Input Values</TableHead>
                     <TableHead className="w-[80px]">Actions</TableHead>
@@ -169,19 +186,67 @@ export default function POSTRequestsPage() {
                         {formatTime(request.timestamp)}
                       </TableCell>
                       <TableCell>
-                        <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono">
-                          {request.target_url.length > 60
-                            ? `${request.target_url.substring(0, 60)}...`
-                            : request.target_url}
-                        </code>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 group/target">
+                                <code className="flex-1 relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono hover:bg-muted/80 transition-colors cursor-default break-all">
+                                  {request.target_url.length > 60
+                                    ? `${request.target_url.substring(0, 60)}...`
+                                    : request.target_url}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover/target:opacity-100 transition-opacity"
+                                  onClick={() => handleCopyUrl(request.id + 1000, request.target_url)}
+                                >
+                                  {copiedId === request.id + 1000 ? (
+                                    <CheckIcon className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <CopyIcon className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-md break-all">
+                              <p className="text-xs font-mono">{request.target_url}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{request.target_hostname}</Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {request.source_url.length > 40
-                          ? `${request.source_url.substring(0, 40)}...`
-                          : request.source_url}
+                      <TableCell className="text-xs">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 group/url">
+                                <code className="flex-1 text-muted-foreground hover:text-foreground transition-colors cursor-default break-all">
+                                  {request.source_url.length > 60
+                                    ? `${request.source_url.substring(0, 60)}...`
+                                    : request.source_url}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover/url:opacity-100 transition-opacity"
+                                  onClick={() => handleCopyUrl(request.id, request.source_url)}
+                                >
+                                  {copiedId === request.id ? (
+                                    <CheckIcon className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <CopyIcon className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-md break-all">
+                              <p className="text-xs font-mono">{request.source_url}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
