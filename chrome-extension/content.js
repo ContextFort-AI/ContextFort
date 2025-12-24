@@ -185,7 +185,7 @@ function isActionableElement(element) {
 
   const tagName = element.tagName ? element.tagName.toLowerCase() : '';
   const type = element.type ? element.type.toLowerCase() : '';
-
+  console.log('[POST Monitor] Checking if element is actionable:', tagName, type);
   // Direct actionable elements
   if (tagName === 'button') return true;
   if (tagName === 'a') return true;
@@ -197,8 +197,8 @@ function isActionableElement(element) {
   if (element.closest('form')) return true;
 
   // Check if element has click handlers or is interactive
-  const computedCursor = window.getComputedStyle(element).cursor;
-  if (computedCursor === 'pointer') return true;
+  // const computedCursor = window.getComputedStyle(element).cursor;
+  // if (computedCursor === 'pointer') return true;
 
   return false;
 }
