@@ -2,6 +2,10 @@
 
 A Chrome extension for detecting and blocking suspicious POST requests with user input data, integrated with click detection to differentiate between human and bot activity.
 
+## ✨ New: Integrated Dashboard
+
+The extension now includes a **built-in dashboard** - no need to manually start a React server! The Next.js dashboard is bundled as static files directly within the extension. Just install the extension and click "Open Dashboard" from the popup.
+
 ## 📁 Project Structure
 
 ```
@@ -12,6 +16,13 @@ chrome-extension/
 ├── popup.js              # Popup UI logic
 ├── popup.html            # Extension popup interface
 ├── icon128.png           # Extension icon
+├── config.js             # Generated API configuration (from .env)
+├── build-config.js       # Build script to generate config.js
+├── dashboard/            # 🆕 Integrated Next.js dashboard (static files)
+│   ├── _next/           # Next.js assets
+│   ├── dashboard/       # Dashboard pages (default, bot-requests, etc.)
+│   ├── auth/            # Authentication pages
+│   └── index.html       # Root page
 └── tests/                # Test and demo files
     ├── dashboard.html
     ├── click-detection-dashboard.html
@@ -20,7 +31,29 @@ chrome-extension/
 
 ## 🚀 Installation
 
-### Load Extension in Chrome
+### Quick Install (With Dashboard)
+
+**Option 1: Use Pre-built Extension (Recommended)**
+
+If the `dashboard/` folder already exists in this directory:
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable **Developer mode** (toggle in top-right corner)
+3. Click **Load unpacked**
+4. Select this folder: `/Users/rishabharya/Desktop/context/blocker/chrome-extension`
+5. Done! Click the extension icon and then "Open Dashboard"
+
+**Option 2: Build from Source**
+
+If you need to rebuild the dashboard:
+
+1. From the project root, run:
+   ```bash
+   ./build-extension.sh
+   ```
+2. Follow steps 1-5 from Option 1
+
+### Load Extension in Chrome (Legacy)
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable **Developer mode** (toggle in top-right corner)
@@ -29,11 +62,31 @@ chrome-extension/
 
 ## ⚙️ Configuration
 
-The extension connects to the unified backend server on **port 8000**:
+The extension uses API URLs from the environment configuration file.
+
+### Generate Configuration
+
+**Before loading the extension**, generate the `config.js` file from environment variables:
+
+```bash
+cd chrome-extension
+node build-config.js
+```
+
+This reads URLs from `../contextfort-dashboard/.env.local` and generates `config.js`:
+- **`NEXT_PUBLIC_POST_MONITOR_API`** → `CONFIG.API_URL`
+- **`NEXT_PUBLIC_CLICK_DETECTION_API`** → `CONFIG.CLICK_DETECTION_API_URL`
 
 ### Backend API Endpoints
-- **POST Monitor**: `http://127.0.0.1:8000/api/blocked-requests`
-- **Click Detection**: `http://127.0.0.1:8000/api/click-detection/*`
+- **POST Monitor**: `{API_URL}/api/blocked-requests`
+- **Click Detection**: `{API_URL}/api/click-detection/*`
+
+### Update URLs
+
+To change backend URLs:
+1. Edit `../contextfort-dashboard/.env.local`
+2. Run `node build-config.js` to regenerate config
+3. Reload the extension in Chrome
 
 ### Required Backend
 
@@ -80,7 +133,20 @@ python main.py
 **Features:**
 - Global click detection toggle (persists across tabs)
 - Real-time status indicators
-- Dashboard link
+- Dashboard link (opens integrated dashboard - no server required!)
+
+### 4. **dashboard/** (Integrated Dashboard)
+- Static Next.js dashboard built into extension
+- No manual server startup needed
+- Accessible directly from extension popup
+- Full-featured analytics and monitoring UI
+
+**Available Pages:**
+- `/dashboard/default` - Main dashboard
+- `/dashboard/bot-requests` - Bot activity
+- `/dashboard/human-requests` - Human activity
+- `/dashboard/click-detection` - Click analytics
+- `/dashboard/post-requests` - Request monitoring
 
 ## 🔍 Features
 
@@ -183,6 +249,16 @@ POST http://127.0.0.1:8000/api/click-detection/events/dom
 
 ## 🛠️ Development
 
+### Updating the Dashboard
+
+If you make changes to the dashboard source code in `contextfort-dashboard/`:
+
+1. From project root, run:
+   ```bash
+   ./build-extension.sh
+   ```
+2. Reload the extension in Chrome (see below)
+
 ### Reload Extension After Changes
 
 1. Go to `chrome://extensions/`
@@ -191,6 +267,14 @@ POST http://127.0.0.1:8000/api/click-detection/events/dom
 
 ### Hot Reload (Optional)
 The extension doesn't have automatic hot-reload. You need to manually reload after code changes.
+
+### Build Process
+
+The integrated dashboard is built using:
+- Next.js static export (`output: 'export'`)
+- Client-side rendering only (no server required)
+- Static HTML/CSS/JS files bundled with extension
+- Automated via `build-extension.sh` script
 
 ## 📝 Notes
 

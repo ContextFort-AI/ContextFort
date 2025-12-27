@@ -1,3 +1,6 @@
+// Load configuration from config.js
+importScripts('config.js');
+
 console.log('[POST Monitor] Background script starting...');
 
 // Store input data from recent clicks
@@ -6,30 +9,31 @@ let activeMonitoring = [];
 // Time window to monitor POST requests after a user action (in milliseconds)
 const MONITORING_WINDOW = 2000; // 2 seconds after user action
 
-// Backend API URLs (Unified Backend)
-const API_URL = 'http://127.0.0.1:8000';
-const CLICK_DETECTION_API_URL = 'http://127.0.0.1:8000';
+// Backend API URLs (Loaded from config.js)
+const API_URL = CONFIG.API_URL;
+const CLICK_DETECTION_API_URL = CONFIG.CLICK_DETECTION_API_URL;
+
+console.log('[POST Monitor] Using API URLs from config:');
+console.log('[POST Monitor] API_URL:', API_URL);
+console.log('[POST Monitor] CLICK_DETECTION_API_URL:', CLICK_DETECTION_API_URL);
 
 // Click correlation configuration
 const CORRELATION_WINDOW = 3000; // 3 seconds for click correlation
 const IGNORED_EXTENSIONS = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.ico', '.webp'];
 
-// Query recent clicks from click detection API to correlate with requests
+// Query recent clicks from Chrome local storage to correlate with requests
 async function queryRecentClick(requestTimestamp, retries = 2) {
   for (let i = 0; i <= retries; i++) {
     try {
-      const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/recent?limit=10`);
-      if (!response.ok) {
-        console.log('[Click Correlation] API request failed:', response.status);
-        continue;
-      }
+      // Read from Chrome local storage
+      const result = await chrome.storage.local.get(['clickEvents']);
+      const recentClicks = result.clickEvents || [];
 
-      const recentClicks = await response.json();
-      console.log('[Click Correlation] Checking', recentClicks.length, 'recent clicks');
+      console.log('[Click Correlation] Checking', recentClicks.length, 'recent clicks from local storage');
 
       // Find click within CORRELATION_WINDOW
       for (const click of recentClicks) {
-        const clickTime = click.timestamp * 1000; // Convert to ms
+        const clickTime = click.timestamp; // Already in ms
         const timeDiff = Math.abs(requestTimestamp - clickTime);
 
         if (timeDiff <= CORRELATION_WINDOW) {
@@ -62,8 +66,35 @@ async function queryRecentClick(requestTimestamp, retries = 2) {
   return null; // No click found
 }
 
-// Send detected request to backend
+// Send detected request to backend AND store in local storage
 async function saveToBackend(data) {
+  // Add timestamp and ID for local storage
+  const requestWithMetadata = {
+    ...data,
+    id: Date.now(), // Use timestamp as ID
+    timestamp: new Date().toISOString()
+  };
+
+  // Save to Chrome local storage
+  try {
+    const result = await chrome.storage.local.get(['blockedRequests']);
+    let requests = result.blockedRequests || [];
+
+    // Add new request to the beginning
+    requests.unshift(requestWithMetadata);
+
+    // Keep only last 1000 requests to avoid storage limits
+    if (requests.length > 1000) {
+      requests = requests.slice(0, 1000);
+    }
+
+    await chrome.storage.local.set({ blockedRequests: requests });
+    console.log('[POST Monitor] ✓ Saved to local storage. Total requests:', requests.length);
+  } catch (storageError) {
+    console.error('[POST Monitor] Local storage error:', storageError);
+  }
+
+  // Also try to send to backend API (if available)
   try {
     const response = await fetch(`${API_URL}/api/blocked-requests`, {
       method: 'POST',
@@ -75,15 +106,16 @@ async function saveToBackend(data) {
 
     if (response.ok) {
       const result = await response.json();
-      console.log('[POST Monitor] ✓ Saved to backend with ID:', result.id);
+      console.log('[POST Monitor] ✓ Also saved to backend with ID:', result.id);
       return result;
     } else {
-      console.error('[POST Monitor] Backend save failed:', response.status);
+      console.log('[POST Monitor] Backend save failed (API may be offline):', response.status);
     }
   } catch (error) {
-    console.error('[POST Monitor] Backend connection error:', error.message);
-    console.log('[POST Monitor] Make sure backend is running at', API_URL);
+    console.log('[POST Monitor] Backend not available (using local storage only):', error.message);
   }
+
+  return requestWithMetadata;
 }
 
 // Clean up old monitoring entries
@@ -118,22 +150,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('[POST Monitor] Active monitoring entries:', activeMonitoring.length);
     sendResponse({ success: true });
   }
-  // Handle click detection API forwarding (to avoid per-site local network permission)
+  // Handle click detection - store in local storage instead of API
   else if (message.type === 'SEND_CLICK_TO_API') {
     (async () => {
       try {
-        const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/events/dom`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(message.clickData)
-        });
+        // Add metadata to click event
+        const clickEvent = {
+          ...message.clickData,
+          id: Date.now(),
+          created_at: new Date().toISOString(),
+          timestamp: Date.now(),
+          // Simple bot detection: check if time between clicks is suspiciously fast
+          is_suspicious: false // We'll calculate this based on click patterns
+        };
 
-        const result = await response.json();
-        sendResponse(result);
+        // Save to Chrome local storage
+        const result = await chrome.storage.local.get(['clickEvents']);
+        let events = result.clickEvents || [];
+
+        // Add new event to the beginning
+        events.unshift(clickEvent);
+
+        // Keep only last 1000 events
+        if (events.length > 1000) {
+          events = events.slice(0, 1000);
+        }
+
+        await chrome.storage.local.set({ clickEvents: events });
+        console.log('[Click Detection] ✓ Saved to local storage. Total events:', events.length);
+
+        sendResponse({ is_suspicious: clickEvent.is_suspicious });
       } catch (error) {
-        console.error('[Click Detection] API error:', error);
+        console.error('[Click Detection] Local storage error:', error);
         sendResponse({ is_suspicious: false, error: error.message });
       }
     })();
@@ -146,9 +194,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Monitor ALL requests (not just POST) and check against recent input data
 chrome.webRequest.onBeforeRequest.addListener(
   async (details) => {
-    // IMPORTANT: Ignore requests to our own backend APIs to prevent infinite loops
+    // IMPORTANT: Ignore requests to our own backend APIs and whitelisted URLs to prevent infinite loops
     if (details.url.startsWith(API_URL) ||
         details.url.startsWith('http://localhost:8000') ||
+        details.url.startsWith('http://localhost:3000') ||
         details.url.startsWith(CLICK_DETECTION_API_URL)) {
       return;
     }
@@ -171,14 +220,14 @@ chrome.webRequest.onBeforeRequest.addListener(
     // Query click correlation FIRST to determine if request is human or bot
     const clickCorrelation = await queryRecentClick(now);
 
-    if (!clickCorrelation) {
-      // No click correlation found - skip this request (background AJAX)
-      return;
-    }
-
     console.log('[POST Monitor] 📡 Request detected:', details.method, 'to', new URL(details.url).hostname);
-    console.log('[POST Monitor] Click correlation found:', clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN');
-    console.log('[POST Monitor] Creating notification...');
+
+    if (clickCorrelation) {
+      console.log('[POST Monitor] Click correlation found:', clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN');
+      console.log('[POST Monitor] Creating notification...');
+    } else {
+      console.log('[POST Monitor] No click correlation found - marking as background request');
+    }
 
     // Get the request body if available for input field matching
     let requestBody = '';
@@ -201,7 +250,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     }
 
     // Try to match input fields if we have active monitoring
-    const matchedFields = [];
+    let matchedFields = [];
     let sourceUrl = '';
 
     if (activeMonitoring.length > 0 && requestBody) {
@@ -224,9 +273,23 @@ chrome.webRequest.onBeforeRequest.addListener(
           }
         }
       }
+
+      // Filter out 'q' fields ONLY if all matches are 'q' fields
+      if (matchedFields.length > 0) {
+        const nonQMatches = matchedFields.filter(f => f.field.toLowerCase() !== 'q');
+
+        if (nonQMatches.length === 0) {
+          // All matches are 'q' fields - ignore them
+          console.log('[POST Monitor] ⊘ Ignoring matches - only "q" field(s) matched');
+          matchedFields = [];
+        } else {
+          // We have non-q matches, keep everything (including q if present)
+          console.log('[POST Monitor] ✓ Keeping all matches - non-q fields present');
+        }
+      }
     }
 
-    // Prepare data for backend (save ALL requests with click correlation)
+    // Prepare data for backend (save ALL requests, with or without click correlation)
     const targetHostname = new URL(details.url).hostname;
     const backendData = {
       target_url: details.url,
@@ -241,59 +304,61 @@ chrome.webRequest.onBeforeRequest.addListener(
       status: 'detected',
 
       // Human/Bot Classification from click correlation
-      has_click_correlation: true,
-      is_bot: clickCorrelation.is_suspicious,
-      click_correlation_id: clickCorrelation.click_id,
-      click_time_diff_ms: clickCorrelation.time_diff_ms,
-      click_coordinates: clickCorrelation.click_coordinates
+      has_click_correlation: clickCorrelation ? true : false,
+      is_bot: clickCorrelation ? clickCorrelation.is_suspicious : false,
+      click_correlation_id: clickCorrelation ? clickCorrelation.click_id : null,
+      click_time_diff_ms: clickCorrelation ? clickCorrelation.time_diff_ms : null,
+      click_coordinates: clickCorrelation ? clickCorrelation.click_coordinates : null
     };
     console.log('[POST Monitor] Preparing data for backend:', backendData); //chnegd thi now by rizz
     // Save to backend
     await saveToBackend(backendData);
 
-    // Show notification with human/bot classification
-    const classification = clickCorrelation.is_suspicious ? '🤖 BOT' : '👤 HUMAN';
-    const matchInfo = matchedFields.length > 0
-      ? ` (${matchedFields.length} input field matches)`
-      : '';
+    // Show notification ONLY if there's click correlation (not for background requests)
+    if (clickCorrelation) {
+      const classification = clickCorrelation.is_suspicious ? '🤖 BOT' : '👤 HUMAN';
+      const matchInfo = matchedFields.length > 0
+        ? ` (${matchedFields.length} input field matches)`
+        : '';
 
-    // Create notification with inline icon (required by Chrome)
-    // Minimal 48x48 PNG as data URI - a simple colored square
-    const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      // Create notification with inline icon (required by Chrome)
+      // Minimal 48x48 PNG as data URI - a simple colored square
+      const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-    const notificationOptions = {
-      type: 'basic',
-      iconUrl: iconDataUri,
-      title: `${classification} Request Detected`,
-      message: `${details.method} to ${targetHostname}${matchInfo}`,
-      priority: 2,
-      requireInteraction: false,
-      silent: false
-    };
+      const notificationOptions = {
+        type: 'basic',
+        iconUrl: iconDataUri,
+        title: `${classification} Request Detected`,
+        message: `${details.method} to ${targetHostname}${matchInfo}`,
+        priority: 2,
+        requireInteraction: false,
+        silent: false
+      };
 
-    console.log('[POST Monitor] 🔔 Attempting to create notification with options:', notificationOptions);
+      console.log('[POST Monitor] 🔔 Attempting to create notification with options:', notificationOptions);
 
-    chrome.notifications.create('contextfort-' + Date.now(), notificationOptions, (notificationId) => {
-      if (chrome.runtime.lastError) {
-        console.error('[POST Monitor] ❌ Notification error:', chrome.runtime.lastError.message);
-      } else {
-        console.log('[POST Monitor] ✓ Notification created successfully! ID:', notificationId);
-      }
-    });
-
-    // Send in-page alert to the tab (for the red modal popup)
-    if (details.tabId && details.tabId >= 0) {
-      chrome.tabs.sendMessage(details.tabId, {
-        type: 'ALERT_DETECTED',
-        classification: clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN',
-        matchedFields: matchedFields.map(f => f.field),
-        url: targetHostname,
-        method: details.method,
-        count: matchedFields.length
-      }).catch(err => {
-        console.log('[POST Monitor] Could not send alert to tab:', err);
+      chrome.notifications.create('contextfort-' + Date.now(), notificationOptions, (notificationId) => {
+        if (chrome.runtime.lastError) {
+          console.error('[POST Monitor] ❌ Notification error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('[POST Monitor] ✓ Notification created successfully! ID:', notificationId);
+        }
       });
-    }
+
+      // Send in-page alert to the tab (for the red modal popup)
+      if (details.tabId && details.tabId >= 0) {
+        chrome.tabs.sendMessage(details.tabId, {
+          type: 'ALERT_DETECTED',
+          classification: clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN',
+          matchedFields: matchedFields.map(f => f.field),
+          url: targetHostname,
+          method: details.method,
+          count: matchedFields.length
+        }).catch(err => {
+          console.log('[POST Monitor] Could not send alert to tab:', err);
+        });
+      }
+    } // End of if (clickCorrelation)
   },
   { urls: ['<all_urls>'] },
   ['requestBody']
@@ -305,36 +370,8 @@ console.log('[POST Monitor] Will ONLY detect POST requests that occur within 2 s
 
 // ===== CLICK DETECTION INTEGRATION =====
 
-// CLICK_DETECTION_API_URL already declared at top of file
-
-// Store click detection stats
-let clickDetectionStats = {
-  total_clicks: 0,
-  legitimate_clicks: 0,
-  suspicious_clicks: 0
-};
-
-// Fetch click detection stats periodically
-async function fetchClickDetectionStats() {
-  try {
-    const response = await fetch(`${CLICK_DETECTION_API_URL}/api/click-detection/stats`);
-    if (response.ok) {
-      const stats = await response.json();
-      clickDetectionStats = stats;
-      console.log('[Click Detection] Stats updated:', stats);
-    }
-  } catch (error) {
-    // API may not be running, fail silently
-    console.log('[Click Detection] API not available at', CLICK_DETECTION_API_URL);
-  }
-}
-
-// Fetch stats every 10 seconds
-setInterval(fetchClickDetectionStats, 10000);
-fetchClickDetectionStats(); // Initial fetch
-
-console.log('[Click Detection] Backend integration ready');
-console.log('[Click Detection] API URL:', CLICK_DETECTION_API_URL);
+// Click detection now uses Chrome local storage (no API calls)
+console.log('[Click Detection] Using Chrome local storage for click events');
 
 // ===== GLOBAL CLICK DETECTION TOGGLE =====
 

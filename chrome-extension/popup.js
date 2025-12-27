@@ -3,6 +3,17 @@
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[ContextFort] Popup loaded');
 
+  // ===== DASHBOARD LINK =====
+  const dashboardLink = document.querySelector('a[href*="dashboard"]');
+  if (dashboardLink) {
+    dashboardLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Open dashboard in new tab (inline scripts are now combined into external files)
+      const dashboardUrl = chrome.runtime.getURL('dashboard/dashboard/default/index.html');
+      chrome.tabs.create({ url: dashboardUrl });
+    });
+  }
+
   // ===== CLICK DETECTION FEATURE =====
 
   const toggleClickDetectionBtn = document.getElementById('toggle-click-detection-btn');

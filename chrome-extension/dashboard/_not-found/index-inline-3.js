@@ -1,0 +1,1 @@
+self.__next_f.push([1,"1:\"$Sreact.fragment\"\n7:I[68027,[\"../_next/static/chunks/ff1a16fafef87110.js\",\"../_next/static/chunks/18b9c71c2562b215.js\"],\"default\"]\n:HL[\"../_next/static/chunks/4e20891f2fd03463.css\",\"style\"]\n:HL[\"../_next/static/chunks/a949d1978494325e.css\",\"style\"]\n2:Tc7e,"])

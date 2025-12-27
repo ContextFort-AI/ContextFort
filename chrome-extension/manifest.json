@@ -33,7 +33,7 @@
 
   "web_accessible_resources": [
     {
-      "resources": ["icon128.png"],
+      "resources": ["icon128.png", "dashboard/**"],
       "matches": ["<all_urls>"]
     }
   ],

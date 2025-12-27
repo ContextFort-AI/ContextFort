@@ -197,8 +197,8 @@ function isActionableElement(element) {
   if (element.closest('form')) return true;
 
   // Check if element has click handlers or is interactive
-  // const computedCursor = window.getComputedStyle(element).cursor;
-  // if (computedCursor === 'pointer') return true;
+  const computedCursor = window.getComputedStyle(element).cursor;
+  if (computedCursor === 'pointer') return true;
 
   return false;
 }
