@@ -9,6 +9,9 @@ let activeMonitoring = [];
 // In-memory cache of recent click events for SYNCHRONOUS blocking decisions
 let recentClicksCache = [];
 
+// Track debugger state per tab (for agent detection)
+const debuggerState = new Map();
+
 // Time window to monitor POST requests after a user action (in milliseconds)
 const MONITORING_WINDOW = 2000; // 2 seconds after user action
 const CLICK_CACHE_WINDOW = 2000; // 2 seconds for click cache
@@ -44,7 +47,8 @@ function queryRecentClickSync(requestTimestamp) {
         click_id: click.id,
         time_diff_ms: timeDiff,
         is_suspicious: click.is_suspicious,
-        click_coordinates: click.coordinates || null
+        click_coordinates: click.coordinates || null,
+        agent_mode_detected: click.agent_mode_detected || false
       };
     }
   }
@@ -196,18 +200,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const botModeResult = await chrome.storage.local.get(['botModeEnabled']);
         const isBotModeEnabled = botModeResult.botModeEnabled || false;
 
+        // Check if agent mode is active on this tab (debugger attached)
+        const tabId = sender.tab?.id;
+        const isAgentModeActive = tabId ? (debuggerState.get(tabId) === true) : false;
+
+        // Determine if click is suspicious
+        // Mark as suspicious if: bot mode enabled OR agent mode detected
+        const isSuspicious = isBotModeEnabled || isAgentModeActive;
+
         // Add metadata to click event
         const clickEvent = {
           ...message.clickData,
           id: Date.now(),
           created_at: new Date().toISOString(),
           timestamp: Date.now(),
-          // Force suspicious if bot mode is enabled, otherwise normal detection
-          is_suspicious: isBotModeEnabled ? true : false
+          // Force suspicious if bot mode or agent mode is active
+          is_suspicious: isSuspicious,
+          agent_mode_detected: isAgentModeActive // Track if agent mode was the reason
         };
 
         if (isBotModeEnabled) {
           console.log('[Click Detection] 🤖 BOT MODE ACTIVE - Marking click as suspicious');
+        }
+        if (isAgentModeActive) {
+          console.log('[Click Detection] 🔴 AGENT MODE DETECTED - Marking click as suspicious (debugger attached to tab', tabId, ')');
         }
 
         // Add to in-memory cache for SYNCHRONOUS access in blocking webRequest
@@ -286,7 +302,9 @@ chrome.webRequest.onBeforeRequest.addListener(
     });
 
     if (clickCorrelation) {
-      console.log('[POST Monitor] Click correlation found:', clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN');
+      const detectionType = clickCorrelation.agent_mode_detected ? 'AGENT (Debugger Attached)' :
+                           clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN';
+      console.log('[POST Monitor] Click correlation found:', detectionType);
       console.log('[POST Monitor] Creating notification...');
     } else {
       console.log('[POST Monitor] No click correlation found - marking as background request');
@@ -388,7 +406,8 @@ chrome.webRequest.onBeforeRequest.addListener(
       is_bot: clickCorrelation ? clickCorrelation.is_suspicious : false,
       click_correlation_id: clickCorrelation ? clickCorrelation.click_id : null,
       click_time_diff_ms: clickCorrelation ? clickCorrelation.time_diff_ms : null,
-      click_coordinates: clickCorrelation ? clickCorrelation.click_coordinates : null
+      click_coordinates: clickCorrelation ? clickCorrelation.click_coordinates : null,
+      agent_mode_detected: clickCorrelation ? (clickCorrelation.agent_mode_detected || false) : false
     };
     console.log('[POST Monitor] Preparing data for backend:', backendData); //chnegd thi now by rizz
 
@@ -411,7 +430,8 @@ chrome.webRequest.onBeforeRequest.addListener(
                        matchedFields.length > 0;
 
     if (shouldMarkBlocked) {
-      console.log('[POST Monitor] 🚫 Detected BLOCKED bot request (already blocked by content script)');
+      const blockReasonPrefix = backendData.agent_mode_detected ? '🔴 [AGENT MODE]' : '🤖 [BOT MODE]';
+      console.log(`[POST Monitor] ${blockReasonPrefix} 🚫 Detected BLOCKED bot request (already blocked by content script)`);
       backendData.status = 'blocked'; // Mark as blocked for logging
       backendData.blocked_by = 'network_detection'; // Different from content script blocks
 
@@ -420,6 +440,7 @@ chrome.webRequest.onBeforeRequest.addListener(
         hostname: backendData.target_hostname,
         status: backendData.status,
         is_bot: backendData.is_bot,
+        agent_mode_detected: backendData.agent_mode_detected,
         has_click_correlation: backendData.has_click_correlation,
         matched_fields_count: backendData.matched_fields.length,
         matched_fields: backendData.matched_fields
@@ -432,7 +453,8 @@ chrome.webRequest.onBeforeRequest.addListener(
 
       // Show notification asynchronously
       if (clickCorrelation) {
-        const classification = '🤖 BOT';
+        const agentModeInfo = clickCorrelation.agent_mode_detected ? ' [Agent Mode]' : '';
+        const classification = clickCorrelation.agent_mode_detected ? '🔴 AGENT' : '🤖 BOT';
         const matchInfo = matchedFields.length > 0
           ? ` (${matchedFields.length} input field matches)`
           : '';
@@ -441,7 +463,7 @@ chrome.webRequest.onBeforeRequest.addListener(
         chrome.notifications.create('contextfort-' + Date.now(), {
           type: 'basic',
           iconUrl: iconDataUri,
-          title: `🚫 ${classification} Request Detected (Blocked)`,
+          title: `🚫 ${classification} Request Detected (Blocked)${agentModeInfo}`,
           message: `${details.method} to ${targetHostname}${matchInfo}`,
           priority: 2,
           requireInteraction: false,
@@ -698,3 +720,250 @@ function getFileCategory(extension) {
 }
 
 console.log('[Download Monitor] Download tracking initialized');
+
+// ============================================================================
+// AGENT DETECTOR - Detects when browser debugger is attached (agent mode)
+// ============================================================================
+
+console.log('[Agent Detector] Initializing agent detection...');
+
+let checkCount = 0;
+
+async function checkDebuggers() {
+  try {
+    const targets = await chrome.debugger.getTargets();
+    const tabs = await chrome.tabs.query({});
+
+    checkCount++;
+
+    // Log every 20 checks (every 10 seconds)
+    if (checkCount % 20 === 0) {
+      console.log(`[Agent Detector] Still monitoring... (${checkCount} checks, ${tabs.length} tabs)`);
+    }
+
+    // Check each tab
+    for (const tab of tabs) {
+      if (!tab.id || tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) {
+        continue;
+      }
+
+      const target = targets.find(t => t.tabId === tab.id);
+      const isAttached = target?.attached === true;
+      const wasAttached = debuggerState.get(tab.id);
+
+      // State changed from not attached to attached
+      if (isAttached && !wasAttached) {
+        console.log('');
+        console.log('🔴 ═══════════════════════════════════════════════════════');
+        console.log('🔴 DEBUGGER ATTACHED - AGENT MODE DETECTED');
+        console.log('🔴 ═══════════════════════════════════════════════════════');
+        console.log(`Tab ID: ${tab.id}`);
+        console.log(`Tab Title: ${tab.title?.substring(0, 60)}`);
+        console.log(`Tab URL: ${tab.url?.substring(0, 80)}`);
+        console.log(`Target Type: ${target.type}`);
+        console.log(`Attached: ${target.attached}`);
+        console.log(`Time: ${new Date().toLocaleTimeString()}`);
+        console.log('🔴 ═══════════════════════════════════════════════════════');
+        console.log('');
+
+        debuggerState.set(tab.id, true);
+
+        // Show notification for agent detection
+        const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        chrome.notifications.create('agent-detected-' + Date.now(), {
+          type: 'basic',
+          iconUrl: iconDataUri,
+          title: '🔴 Agent Mode Detected',
+          message: `Debugger attached to: ${tab.title?.substring(0, 40) || 'Unknown'}`,
+          priority: 2
+        });
+      }
+      // State changed from attached to not attached
+      else if (!isAttached && wasAttached) {
+        console.log('');
+        console.log('🟢 ═══════════════════════════════════════════════════════');
+        console.log('🟢 DEBUGGER DETACHED - AGENT MODE ENDED');
+        console.log('🟢 ═══════════════════════════════════════════════════════');
+        console.log(`Tab ID: ${tab.id}`);
+        console.log(`Tab Title: ${tab.title?.substring(0, 60)}`);
+        console.log(`Tab URL: ${tab.url?.substring(0, 80)}`);
+        console.log(`Time: ${new Date().toLocaleTimeString()}`);
+        console.log('🟢 ═══════════════════════════════════════════════════════');
+        console.log('');
+
+        debuggerState.set(tab.id, false);
+
+        // Show notification for agent ending
+        const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        chrome.notifications.create('agent-ended-' + Date.now(), {
+          type: 'basic',
+          iconUrl: iconDataUri,
+          title: '🟢 Agent Mode Ended',
+          message: `Debugger detached from: ${tab.title?.substring(0, 40) || 'Unknown'}`,
+          priority: 1
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[Agent Detector] Error checking debuggers:', error.message);
+  }
+}
+
+// Start polling every 500ms
+setInterval(checkDebuggers, 500);
+
+// Clean up state when tabs close
+chrome.tabs.onRemoved.addListener((tabId) => {
+  debuggerState.delete(tabId);
+});
+
+console.log('[Agent Detector] Monitoring for debugger attachments every 500ms');
+
+// ============================================================================
+// LINK BLOCKER - Prevents agents from opening external links with query params
+// ============================================================================
+
+console.log('[Link Blocker] Initializing link blocking...');
+
+const perplexityTabs = new Set();
+
+function isPerplexityUrl(url) {
+  if (!url) return false;
+  try {
+    return new URL(url).hostname.includes('perplexity.ai');
+  } catch {
+    return false;
+  }
+}
+
+function hasQueryParams(url) {
+  if (!url) return false;
+  try {
+    return new URL(url).search.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function updateTabBlocking(tabId, shouldBlock) {
+  if (!chrome.declarativeNetRequest) return;
+
+  const ruleId = tabId;
+
+  if (shouldBlock) {
+    try {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds: [ruleId],
+        addRules: [{
+          id: ruleId,
+          priority: 1,
+          action: { type: 'block' },
+          condition: {
+            tabIds: [tabId],
+            resourceTypes: ['main_frame'],
+            regexFilter: '\\?.*',
+            excludedRequestDomains: ['perplexity.ai']
+          }
+        }]
+      });
+      console.log(`[Link Blocker] ✓ Enabled blocking for Perplexity tab ${tabId}`);
+    } catch (e) {
+      console.log('[Link Blocker] Error enabling blocking:', e.message);
+    }
+  } else {
+    try {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds: [ruleId]
+      });
+      console.log(`[Link Blocker] ✓ Disabled blocking for tab ${tabId}`);
+    } catch (e) {
+      console.log('[Link Blocker] Error disabling blocking:', e.message);
+    }
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === 'complete') {
+    const isPerplexity = isPerplexityUrl(tab.url);
+
+    if (isPerplexity && !perplexityTabs.has(tabId)) {
+      console.log('[Link Blocker] Detected Perplexity tab:', tabId, tab.url);
+      perplexityTabs.add(tabId);
+      updateTabBlocking(tabId, true);
+    } else if (!isPerplexity && perplexityTabs.has(tabId)) {
+      console.log('[Link Blocker] Tab no longer on Perplexity:', tabId);
+      perplexityTabs.delete(tabId);
+      updateTabBlocking(tabId, false);
+    }
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (perplexityTabs.has(tabId)) {
+    console.log('[Link Blocker] Cleaning up removed Perplexity tab:', tabId);
+    perplexityTabs.delete(tabId);
+    updateTabBlocking(tabId, false);
+  }
+});
+
+// Initialize blocking for existing Perplexity tabs
+chrome.tabs.query({}, (tabs) => {
+  tabs.forEach(tab => {
+    if (isPerplexityUrl(tab.url)) {
+      console.log('[Link Blocker] Found existing Perplexity tab:', tab.id);
+      perplexityTabs.add(tab.id);
+      updateTabBlocking(tab.id, true);
+    }
+  });
+});
+
+chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+  const sourceTabId = details.sourceTabId;
+  const newTabId = details.tabId;
+  const targetUrl = details.url;
+  const sourceFrameId = details.sourceFrameId;
+
+  const checkAndBlock = (isFromPerplexity) => {
+    if (!isFromPerplexity) return;
+
+    const hasQuery = hasQueryParams(targetUrl);
+    const isPerplexityDomain = isPerplexityUrl(targetUrl);
+
+    if (hasQuery && !isPerplexityDomain) {
+      console.log('[Link Blocker] 🚫 Blocking external link with query params from Perplexity');
+      console.log('[Link Blocker] Target URL:', targetUrl);
+
+      chrome.tabs.remove(newTabId, () => {
+        if (!chrome.runtime.lastError) {
+          const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          chrome.notifications.create('link-blocked-' + Date.now(), {
+            type: 'basic',
+            iconUrl: iconDataUri,
+            title: '🚫 Link Blocked',
+            message: `Blocked: ${new URL(targetUrl).hostname}`,
+            priority: 2
+          });
+          console.log('[Link Blocker] ✓ Tab closed and notification shown');
+        }
+      });
+    }
+  };
+
+  if (perplexityTabs.has(sourceTabId)) {
+    checkAndBlock(true);
+  } else {
+    chrome.webNavigation.getAllFrames({ tabId: sourceTabId }, (frames) => {
+      if (chrome.runtime.lastError || !frames) return;
+
+      const sourceFrame = frames.find(f => f.frameId === sourceFrameId);
+      if (sourceFrame && isPerplexityUrl(sourceFrame.url)) {
+        console.log('[Link Blocker] Detected Perplexity frame in tab:', sourceTabId);
+        perplexityTabs.add(sourceTabId);
+        updateTabBlocking(sourceTabId, true);
+        checkAndBlock(true);
+      }
+    });
+  }
+});
+
+console.log('[Link Blocker] Ready - Blocking external links with query params from Perplexity');

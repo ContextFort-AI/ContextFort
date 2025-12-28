@@ -8,6 +8,12 @@
     "webRequest",
     "storage",
     "activeTab",
+    "tabs",
+    "debugger",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "declarativeNetRequestFeedback",
+    "webNavigation",
     "notifications",
     "downloads"
   ],
@@ -15,6 +21,16 @@
   "host_permissions": [
     "<all_urls>"
   ],
+
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "block_perplexity_links",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
 
   "background": {
     "service_worker": "background.js"

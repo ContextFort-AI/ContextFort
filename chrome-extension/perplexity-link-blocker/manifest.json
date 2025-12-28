@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Perplexity Link Blocker",
+  "version": "1.0.0",
+  "description": "Blocks navigation from Perplexity chatbot to external sites",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "declarativeNetRequestFeedback",
+    "webNavigation",
+    "notifications",
+    "webRequest",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "*://*.perplexity.ai/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "block_perplexity_links",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
