@@ -34,6 +34,7 @@ function getPageType() {
   if (path.includes('post-requests')) return 'post';
   if (path.includes('click-detection')) return 'click-detection';
   if (path.includes('downloads')) return 'downloads';
+  if (path.includes('whitelist')) return 'whitelist';
   return null;
 }
 
@@ -43,6 +44,15 @@ async function loadDataAndInject(resetPage = true) {
     const pageType = getPageType();
     if (!pageType) {
       console.log('[Dashboard Override] Not on a requests page, skipping...');
+      return;
+    }
+
+    // Handle Whitelist page separately
+    if (pageType === 'whitelist') {
+      const result = await chrome.storage.local.get(['whitelist']);
+      const whitelist = result.whitelist || { urls: [], hostnames: [] };
+      console.log('[Dashboard Override] Loaded whitelist from storage');
+      injectWhitelistPage(whitelist);
       return;
     }
 
@@ -94,14 +104,28 @@ async function loadDataAndInject(resetPage = true) {
       filteredRequests = allRequests.filter(req => req.is_bot === true);
       console.log('[Dashboard Override] Found', filteredRequests.length, 'bot requests');
     } else if (pageType === 'post') {
-      // Blocked Requests: ONLY BOT requests with user input data triggered by button clicks
-      // (Human requests with input data go to Human Requests page)
+      // Blocked Requests: ONLY requests that were ACTUALLY BLOCKED (status='blocked')
+      // These are BOT requests with user input data that were prevented from executing
       filteredRequests = allRequests.filter(req =>
+        req.status === 'blocked' &&
         req.is_bot === true &&
         req.has_click_correlation === true &&
         req.matched_fields && req.matched_fields.length > 0
       );
-      console.log('[Dashboard Override] Found', filteredRequests.length, 'blocked BOT requests with user input');
+      console.log('[Dashboard Override] Found', filteredRequests.length, 'BLOCKED bot requests');
+      console.log('[Dashboard Override] Total requests in storage:', allRequests.length);
+
+      // Debug: Show how many requests meet each condition
+      const botRequests = allRequests.filter(req => req.is_bot === true);
+      const withCorrelation = allRequests.filter(req => req.has_click_correlation === true);
+      const withMatchedFields = allRequests.filter(req => req.matched_fields && req.matched_fields.length > 0);
+      const withBlockedStatus = allRequests.filter(req => req.status === 'blocked');
+      console.log('[Dashboard Override] Debug counts:', {
+        bot: botRequests.length,
+        withCorrelation: withCorrelation.length,
+        withMatchedFields: withMatchedFields.length,
+        blockedStatus: withBlockedStatus.length
+      });
     }
 
     // Reset to page 1 if requested
@@ -664,7 +688,7 @@ function injectPostRequests(requests) {
   let tableRows = '';
 
   if (requests.length === 0) {
-    tableRows = '<tr><td colspan="7" class="p-8 text-center text-muted-foreground">No requests detected yet.</td></tr>';
+    tableRows = '<tr><td colspan="7" class="p-8 text-center text-muted-foreground">No blocked bot requests yet. Bot requests with user input data will appear here when blocked.</td></tr>';
   } else {
     tableRows = paginatedRequests.map((req) => {
       const timestamp = formatTime(req.timestamp);
@@ -695,8 +719,12 @@ function injectPostRequests(requests) {
           }
         }
 
+        // Determine blocking layer
+        const blockedBy = req.blocked_by === 'content_script' ? 'Form Prevention' : 'Network Layer';
+        const blockedByIcon = req.blocked_by === 'content_script' ? '🛡️' : '🌐';
+
         return `
-              <tr class="border-b transition-colors hover:bg-muted/50">
+              <tr class="border-b transition-colors hover:bg-muted/50 bg-red-500/5">
                 <td class="p-4 align-middle font-medium text-muted-foreground">${timestamp}</td>
                 <td class="p-4 align-middle">
                   <code class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono">${targetUrl}</code>
@@ -714,9 +742,13 @@ function injectPostRequests(requests) {
                   <div class="flex flex-col gap-1 max-w-xs">${matchedValuesHtml}</div>
                 </td>
                 <td class="p-4 align-middle">
-                  <button class="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 opacity-0 hover:opacity-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-red-500"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                  </button>
+                  <div class="flex flex-col gap-1">
+                    <span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold bg-red-500 text-white gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+                      BLOCKED
+                    </span>
+                    <span class="text-xs text-muted-foreground">${blockedByIcon} ${blockedBy}</span>
+                  </div>
                 </td>
               </tr>`;
       }).join('');
@@ -765,7 +797,7 @@ function injectPostRequests(requests) {
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[300px]">Source</th>
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Matched Fields</th>
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Matched Input Values</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[80px]">Actions</th>
+                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[120px]">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -1252,6 +1284,151 @@ function injectDownloads(downloads) {
 
   } catch (error) {
     console.error('[Dashboard Override] Error injecting Downloads:', error);
+  }
+}
+
+// Inject whitelist management page
+function injectWhitelistPage(whitelist) {
+  try {
+    console.log('[Dashboard Override] Injecting whitelist management page');
+
+    const container = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+
+    const whitelistHTML = `
+      <div style="padding: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 1rem;">Whitelist Management</h1>
+        <p style="color: #6b7280; margin-bottom: 2rem;">Add URLs or hostnames to whitelist. Whitelisted requests will not be blocked even if detected as bot activity.</p>
+
+        <!-- Whitelisted URLs Section -->
+        <div style="margin-bottom: 3rem;">
+          <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">Whitelisted URLs</h2>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com/api)" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" />
+            <button id="addUrlBtn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">Add URL</button>
+          </div>
+          <div id="urlList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${whitelist.urls.map((url, index) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f3f4f6; border-radius: 0.375rem;">
+                <span style="font-family: monospace; font-size: 0.875rem;">${url}</span>
+                <button class="removeUrl" data-index="${index}" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">Remove</button>
+              </div>
+            `).join('') || '<p style="color: #9ca3af; font-size: 0.875rem;">No URLs whitelisted yet</p>'}
+          </div>
+        </div>
+
+        <!-- Whitelisted Hostnames Section -->
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">Whitelisted Hostnames</h2>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="hostnameInput" placeholder="Enter hostname (e.g., api.example.com)" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" />
+            <button id="addHostnameBtn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">Add Hostname</button>
+          </div>
+          <div id="hostnameList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${whitelist.hostnames.map((hostname, index) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f3f4f6; border-radius: 0.375rem;">
+                <span style="font-family: monospace; font-size: 0.875rem;">${hostname}</span>
+                <button class="removeHostname" data-index="${index}" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">Remove</button>
+              </div>
+            `).join('') || '<p style="color: #9ca3af; font-size: 0.875rem;">No hostnames whitelisted yet</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = whitelistHTML;
+
+    // Add event listeners
+    document.getElementById('addUrlBtn').addEventListener('click', () => addToWhitelist('url'));
+    document.getElementById('addHostnameBtn').addEventListener('click', () => addToWhitelist('hostname'));
+
+    document.querySelectorAll('.removeUrl').forEach(btn => {
+      btn.addEventListener('click', (e) => removeFromWhitelist('url', parseInt(e.target.dataset.index)));
+    });
+
+    document.querySelectorAll('.removeHostname').forEach(btn => {
+      btn.addEventListener('click', (e) => removeFromWhitelist('hostname', parseInt(e.target.dataset.index)));
+    });
+
+    // Allow Enter key to add
+    document.getElementById('urlInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addToWhitelist('url');
+    });
+    document.getElementById('hostnameInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addToWhitelist('hostname');
+    });
+
+    console.log('[Dashboard Override] Whitelist page injected successfully!');
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting whitelist page:', error);
+  }
+}
+
+// Add to whitelist
+async function addToWhitelist(type) {
+  try {
+    const input = document.getElementById(type === 'url' ? 'urlInput' : 'hostnameInput');
+    const value = input.value.trim();
+
+    if (!value) {
+      alert('Please enter a value');
+      return;
+    }
+
+    // Get current whitelist
+    const result = await chrome.storage.local.get(['whitelist']);
+    const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+    // Add to appropriate array
+    if (type === 'url') {
+      if (whitelist.urls.includes(value)) {
+        alert('URL already whitelisted');
+        return;
+      }
+      whitelist.urls.push(value);
+    } else {
+      if (whitelist.hostnames.includes(value)) {
+        alert('Hostname already whitelisted');
+        return;
+      }
+      whitelist.hostnames.push(value);
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ whitelist });
+    console.log('[Dashboard Override] Added to whitelist:', value);
+
+    // Clear input and reload
+    input.value = '';
+    loadDataAndInject(false);
+  } catch (error) {
+    console.error('[Dashboard Override] Error adding to whitelist:', error);
+    alert('Error adding to whitelist');
+  }
+}
+
+// Remove from whitelist
+async function removeFromWhitelist(type, index) {
+  try {
+    // Get current whitelist
+    const result = await chrome.storage.local.get(['whitelist']);
+    const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+    // Remove from appropriate array
+    if (type === 'url') {
+      whitelist.urls.splice(index, 1);
+    } else {
+      whitelist.hostnames.splice(index, 1);
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ whitelist });
+    console.log('[Dashboard Override] Removed from whitelist');
+
+    // Reload
+    loadDataAndInject(false);
+  } catch (error) {
+    console.error('[Dashboard Override] Error removing from whitelist:', error);
+    alert('Error removing from whitelist');
   }
 }
 

@@ -2,6 +2,41 @@
 console.log('[POST Monitor] Content script starting...');
 
 let pageInputData = {};
+// Track which fields user has actually typed in (using unique identifiers)
+let userTypedFieldIdentifiers = new Set();
+
+// Get whitelist from background
+let whitelist = { urls: [], hostnames: [] };
+chrome.storage.local.get(['whitelist'], (result) => {
+  if (result.whitelist) {
+    whitelist = result.whitelist;
+    console.log('[Click Detection] Loaded whitelist:', whitelist);
+  }
+});
+
+// Listen for whitelist updates
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && changes.whitelist) {
+    whitelist = changes.whitelist.newValue || { urls: [], hostnames: [] };
+    console.log('[Click Detection] Whitelist updated:', whitelist);
+  }
+});
+
+// Check if current page is whitelisted
+function isCurrentPageWhitelisted() {
+  const currentUrl = window.location.href;
+  const currentHostname = window.location.hostname;
+
+  // Check URL match
+  if (whitelist.urls.some(url => currentUrl.includes(url))) {
+    return true;
+  }
+  // Check hostname match
+  if (whitelist.hostnames.some(hostname => currentHostname.includes(hostname))) {
+    return true;
+  }
+  return false;
+}
 
 // Listen for alerts from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -126,12 +161,37 @@ function showPageAlert(data) {
   }, 10000);
 }
 
+// Get unique identifier for an input element
+function getInputIdentifier(input) {
+  // Use name, id, or create a stable identifier
+  if (input.name) return `name:${input.name}`;
+  if (input.id) return `id:${input.id}`;
+  // For contenteditable or elements without name/id, use a path-based identifier
+  const path = [];
+  let elem = input;
+  while (elem && elem !== document.body) {
+    const tag = elem.tagName.toLowerCase();
+    const index = Array.from(elem.parentNode?.children || []).indexOf(elem);
+    path.unshift(`${tag}[${index}]`);
+    elem = elem.parentNode;
+  }
+  return `path:${path.join('>')}`;
+}
+
 // Collect all input values from the page
+// ONLY collect fields that the user has actually typed in
 function collectAllInputs() {
   const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="tel"], input[type="url"], input:not([type]), textarea, [contenteditable="true"]');
 
   const data = {};
   inputs.forEach((input, index) => {
+    const identifier = getInputIdentifier(input);
+
+    // CRITICAL: Only include fields user has actually typed in
+    if (!userTypedFieldIdentifiers.has(identifier)) {
+      return; // Skip fields user never touched
+    }
+
     let value = '';
 
     if (input.isContentEditable) {
@@ -140,7 +200,7 @@ function collectAllInputs() {
       value = input.value;
     }
 
-    // Store non-empty values
+    // Store non-empty values from user-typed fields only
     if (value && value.trim().length > 0) {
       const fieldName = input.name || input.id || input.placeholder || `field_${index}`;
       data[fieldName] = value.trim();
@@ -153,11 +213,19 @@ function collectAllInputs() {
 // Update stored input data whenever user types
 function updateInputData(element) {
   element.addEventListener('input', () => {
+    // Mark this field as user-typed using its identifier
+    const identifier = getInputIdentifier(element);
+    userTypedFieldIdentifiers.add(identifier);
+    console.log('[POST Monitor] User typed in field:', identifier);
+
     pageInputData = collectAllInputs();
-    console.log('[POST Monitor] Updated input data:', Object.keys(pageInputData).length, 'fields');
+    console.log('[POST Monitor] Updated input data:', Object.keys(pageInputData).length, 'user-typed fields');
   });
 
   element.addEventListener('change', () => {
+    // Also track change events
+    const identifier = getInputIdentifier(element);
+    userTypedFieldIdentifiers.add(identifier);
     pageInputData = collectAllInputs();
   });
 }
@@ -442,6 +510,71 @@ function showClickBlockingPopup() {
 }
 
 /**
+ * Save blocked action to storage
+ * Returns true if action was saved (has user input), false otherwise
+ */
+async function saveBlockedAction(target, event) {
+  try {
+    // Collect all input data from the page
+    const inputData = collectAllInputs();
+
+    // Get matched fields (fields with user input)
+    const matchedFields = Object.keys(inputData);
+
+    // Only save if there are matched input fields
+    if (matchedFields.length === 0) {
+      console.log('[Click Detection] No user input data - blocking silently without popup');
+      return false;
+    }
+
+    // Build blocked request data
+    const blockedData = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      target_url: window.location.href,
+      target_hostname: window.location.hostname,
+      source_url: window.location.href,
+      matched_fields: matchedFields,
+      matched_values: inputData,
+      request_method: 'POST', // Assumed for blocked form submission
+      status: 'blocked',
+      has_click_correlation: true,
+      is_bot: true,
+      click_correlation_id: Date.now(),
+      click_time_diff_ms: 0,
+      click_coordinates: { x: event.clientX, y: event.clientY },
+      blocked_by: 'content_script', // Indicate this was blocked before POST
+      element_type: target.tagName,
+      element_classes: target.className,
+      element_text: target.textContent?.substring(0, 50) || ''
+    };
+
+    console.log('[Click Detection] 💾 Saving blocked action to storage:', blockedData);
+
+    // Save to Chrome local storage
+    const result = await chrome.storage.local.get(['blockedRequests']);
+    let requests = result.blockedRequests || [];
+
+    // Add new request to the beginning
+    requests.unshift(blockedData);
+
+    // Keep only last 1000 requests
+    if (requests.length > 1000) {
+      requests = requests.slice(0, 1000);
+    }
+
+    await chrome.storage.local.set({ blockedRequests: requests });
+    console.log('[Click Detection] ✓✓ Blocked action saved! Total requests:', requests.length);
+
+    return true; // Successfully saved
+
+  } catch (error) {
+    console.error('[Click Detection] Error saving blocked action:', error);
+    return false; // Failed to save
+  }
+}
+
+/**
  * Play blocking sound
  */
 function playClickBlockSound() {
@@ -544,11 +677,20 @@ function disableClickDetection() {
   document.removeEventListener('click', handleClickDetection, true);
 }
 
+// Track clicks we've already processed to avoid re-checking
+const processedClicks = new WeakSet();
+
 /**
  * Handle click events for detection
  */
 async function handleClickDetection(event) {
   if (!clickDetectionEnabled) return;
+
+  // Skip if this click was already processed (re-triggered by us)
+  if (processedClicks.has(event)) {
+    console.log('[Click Detection] Skipping already-processed click');
+    return;
+  }
 
   const timestamp = Date.now() / 1000;
   const target = event.target.closest('a, button, input[type="submit"], input[type="button"], [role="button"]') || event.target;
@@ -579,6 +721,59 @@ async function handleClickDetection(event) {
 
   const isEmailSend = isEmailCompose() && isEmailSendButton(target);
 
+  // Check if this is ANY actionable element (button, submit, etc.)
+  const isActionableElement =
+    target.tagName === 'BUTTON' ||
+    target.type === 'submit' ||
+    target.role === 'button' ||
+    target.closest('button') !== null ||
+    target.closest('[role="button"]') !== null ||
+    isEmailSend;
+
+  // Check if current page is whitelisted
+  if (isCurrentPageWhitelisted()) {
+    console.log('[Click Detection] ✅ Page is WHITELISTED - allowing all actions');
+    return; // Don't block anything on whitelisted pages
+  }
+
+  // Check if there's user input data FIRST before deciding to block
+  const currentInputs = collectAllInputs();
+  const hasUserInput = Object.keys(currentInputs).length > 0;
+  console.log('[Click Detection] User input check:', {
+    hasUserInput,
+    inputFieldCount: Object.keys(currentInputs).length,
+    userTypedFieldsTracked: userTypedFieldIdentifiers.size,
+    inputFields: Object.keys(currentInputs)
+  });
+
+  // ONLY intercept actionable elements that have user input data
+  // Don't block random clicks like "Compose" button - only block when user data is at risk
+  if (isActionableElement && hasUserInput) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    console.log('[Click Detection] Actionable element with user input intercepted - checking for suspicious activity...');
+
+    // Notify background script to monitor for POST requests
+    console.log('[Click Detection] Notifying background of', Object.keys(currentInputs).length, 'input fields');
+    chrome.runtime.sendMessage({
+      type: 'CLICK_WITH_INPUT',
+      inputs: currentInputs,
+      url: window.location.href,
+      timestamp: Date.now(),
+      isUserAction: true,
+      clickedElement: {
+        tag: target.tagName,
+        id: target.id,
+        className: target.className
+      }
+    }).catch(err => console.log('[Click Detection] Could not send to background:', err));
+  } else if (isActionableElement && !hasUserInput) {
+    console.log('[Click Detection] Actionable element clicked but no user input - allowing without check');
+    // Let it proceed normally - no user data at risk
+    return;
+  }
+
   const clickData = {
     x: event.clientX,
     y: event.clientY,
@@ -601,8 +796,14 @@ async function handleClickDetection(event) {
 
   console.log('[Click Detection] Click detected:', clickData);
 
+  // Only check for bot/human if there's user input (already checked above)
+  if (!hasUserInput) {
+    // No user input - nothing to check or block
+    return;
+  }
+
   try {
-    // Send click data to background script to avoid per-site local network permission prompts
+    // Send click data to background script to check if bot or human
     const result = await chrome.runtime.sendMessage({
       type: 'SEND_CLICK_TO_API',
       clickData: {
@@ -623,12 +824,14 @@ async function handleClickDetection(event) {
     if (result && result.is_suspicious) {
       console.warn('[Click Detection] ⚠️ SUSPICIOUS CLICK DETECTED!', result);
 
-      if (isEmailSend) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+      if (isActionableElement && hasUserInput) {
+        console.error('[Click Detection] 🛑 ACTION BLOCKED - Suspicious activity detected!');
+        // Note: Already called stopPropagation() earlier to block Gmail handlers
 
-        console.error('[Click Detection] 🛑 EMAIL SEND BLOCKED - Suspicious activity detected!');
+        // Save the blocked action to storage
+        await saveBlockedAction(target, event);
+
+        // Show popup since we know there's user input
         showClickBlockingPopup();
 
         return false;
@@ -637,6 +840,38 @@ async function handleClickDetection(event) {
       showSuspiciousClickWarning(event.clientX, event.clientY);
     } else {
       console.log('[Click Detection] ✓ Click verified as legitimate');
+
+      // If it's an actionable element with user input and it was legitimate, allow it to proceed
+      if (isActionableElement && hasUserInput) {
+        console.log('[Click Detection] ✅ Action allowed - re-dispatching click event');
+
+        // Create a new click event with the same properties
+        const newClickEvent = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          screenX: event.screenX,
+          screenY: event.screenY,
+          ctrlKey: event.ctrlKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          metaKey: event.metaKey,
+          button: event.button,
+          buttons: event.buttons
+        });
+
+        // Mark this new event as already processed so we don't intercept it again
+        processedClicks.add(newClickEvent);
+
+        console.log('[Click Detection] Dispatching new click event to allow natural submission');
+
+        // Dispatch the new event on the target after a tiny delay
+        setTimeout(() => {
+          target.dispatchEvent(newClickEvent);
+        }, 10);
+      }
     }
   } catch (error) {
     console.error('[Click Detection] Failed to send click:', error);
