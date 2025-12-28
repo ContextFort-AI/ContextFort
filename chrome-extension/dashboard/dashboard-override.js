@@ -1017,15 +1017,19 @@ function injectClickDetection(clickEvents) {
 
 function updateDownloadsStats(downloads) {
   try {
-    // Calculate stats
-    const totalDownloads = downloads.length;
-    const completedDownloads = downloads.filter(d => d.state === 'complete').length;
-    const dangerousDownloads = downloads.filter(d => d.danger !== 'safe').length;
+    // Calculate stats based on Human/Bot classification
+    const totalDownloads = downloads.filter(d => d.has_click_correlation).length; // Only downloads with click correlation
+    const humanDownloads = downloads.filter(d =>
+      d.has_click_correlation && !d.is_bot
+    ).length;
+    const botDownloads = downloads.filter(d =>
+      d.has_click_correlation && d.is_bot
+    ).length;
 
     console.log('[Dashboard Override] Downloads Stats:', {
       total: totalDownloads,
-      completed: completedDownloads,
-      dangerous: dangerousDownloads
+      human: humanDownloads,
+      bot: botDownloads
     });
 
     // Wait for DOM to be ready
@@ -1038,7 +1042,7 @@ function updateDownloadsStats(downloads) {
         return;
       }
 
-      // Update stat cards (assuming order: Total, Completed, Dangerous)
+      // Update stat cards (assuming order: Total, Human, Bot)
       // Total Downloads (first card)
       const totalCard = cardContainers[0];
       const totalValueEl = totalCard.querySelector('div.text-2xl');
@@ -1046,18 +1050,18 @@ function updateDownloadsStats(downloads) {
         totalValueEl.textContent = totalDownloads.toLocaleString();
       }
 
-      // Completed Downloads (second card)
-      const completedCard = cardContainers[1];
-      const completedValueEl = completedCard.querySelector('div.text-2xl');
-      if (completedValueEl) {
-        completedValueEl.textContent = completedDownloads.toLocaleString();
+      // Human Downloads (second card)
+      const humanCard = cardContainers[1];
+      const humanValueEl = humanCard.querySelector('div.text-2xl');
+      if (humanValueEl) {
+        humanValueEl.textContent = humanDownloads.toLocaleString();
       }
 
-      // Dangerous Downloads (third card)
-      const dangerousCard = cardContainers[2];
-      const dangerousValueEl = dangerousCard.querySelector('div.text-2xl');
-      if (dangerousValueEl) {
-        dangerousValueEl.textContent = dangerousDownloads.toLocaleString();
+      // Bot Downloads (third card)
+      const botCard = cardContainers[2];
+      const botValueEl = botCard.querySelector('div.text-2xl');
+      if (botValueEl) {
+        botValueEl.textContent = botDownloads.toLocaleString();
       }
 
       console.log('[Dashboard Override] Downloads stats updated!');
@@ -1072,6 +1076,10 @@ function injectDownloads(downloads) {
   try {
     console.log('[Dashboard Override] Injecting Downloads data...');
 
+    // Filter to only show downloads with click correlation (exclude background downloads)
+    const filteredDownloads = downloads.filter(d => d.has_click_correlation);
+    console.log('[Dashboard Override] Filtered downloads (with click correlation):', filteredDownloads.length);
+
     // Wait for DOM to be ready
     setTimeout(() => {
       // Find all card content containers - the last one should be the table container
@@ -1085,10 +1093,10 @@ function injectDownloads(downloads) {
 
       // Calculate pagination
       const itemsPerPage = 20;
-      const totalPages = Math.ceil(downloads.length / itemsPerPage);
+      const totalPages = Math.ceil(filteredDownloads.length / itemsPerPage);
       const startIdx = (currentPage - 1) * itemsPerPage;
       const endIdx = startIdx + itemsPerPage;
-      const pageDownloads = downloads.slice(startIdx, endIdx);
+      const pageDownloads = filteredDownloads.slice(startIdx, endIdx);
 
       console.log('[Dashboard Override] Showing page', currentPage, 'of', totalPages, '(', pageDownloads.length, 'downloads)');
 
@@ -1140,6 +1148,7 @@ function injectDownloads(downloads) {
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Filename</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Size</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Category</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Trigger</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Status</th>
               </tr>
             </thead>
@@ -1153,9 +1162,11 @@ function injectDownloads(downloads) {
         const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        const isDangerous = download.danger !== 'safe';
-        const statusColor = isDangerous ? '#ef4444' : '#22c55e'; // red for dangerous, green for safe
-        const statusText = isDangerous ? 'Danger' : 'Safe';
+        // Status is based on Human/Bot classification, not Chrome's danger field
+        const isBot = download.is_bot;
+        const statusColor = isBot ? '#ef4444' : '#22c55e'; // red for bot, green for human
+        const statusText = isBot ? 'Bot' : 'Human';
+        const statusIcon = isBot ? '🤖' : '👤';
 
         const filename = download.filename || 'Unknown';
         const fileSize = download.file_size_str || 'Unknown';
@@ -1169,6 +1180,27 @@ function injectDownloads(downloads) {
           hostname = new URL(download.url).hostname;
         } catch (e) {
           hostname = download.url;
+        }
+
+        // Determine trigger type (Human/Bot/Background)
+        let triggerIcon = '❓';
+        let triggerText = 'Unknown';
+        let triggerColor = '#6b7280';
+
+        if (download.has_click_correlation) {
+          if (download.is_bot) {
+            triggerIcon = '🤖';
+            triggerText = 'Bot';
+            triggerColor = '#ef4444'; // red
+          } else {
+            triggerIcon = '👤';
+            triggerText = 'Human';
+            triggerColor = '#22c55e'; // green
+          }
+        } else {
+          triggerIcon = '🔄';
+          triggerText = 'Background';
+          triggerColor = '#f59e0b'; // amber
         }
 
         tableHTML += `
@@ -1187,7 +1219,17 @@ function injectDownloads(downloads) {
               </span>
             </td>
             <td style="padding: 12px 16px;">
-              <span style="display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor};">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${triggerColor}20; color: ${triggerColor}; border: 1px solid ${triggerColor}; width: fit-content;">
+                  <span style="font-size: 14px;">${triggerIcon}</span>
+                  ${triggerText}
+                </span>
+                ${download.has_click_correlation && download.click_time_diff_ms !== undefined ? `<div style="font-size: 11px; color: var(--muted-foreground);">Δt: ${download.click_time_diff_ms}ms</div>` : ''}
+              </div>
+            </td>
+            <td style="padding: 12px 16px;">
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor};">
+                <span style="font-size: 14px;">${statusIcon}</span>
                 ${statusText}
               </span>
             </td>
@@ -1206,7 +1248,7 @@ function injectDownloads(downloads) {
         tableHTML += `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 0;">
             <div style="color: var(--muted-foreground); font-size: 14px;">
-              Showing ${startIdx + 1} to ${Math.min(endIdx, downloads.length)} of ${downloads.length} downloads
+              Showing ${startIdx + 1} to ${Math.min(endIdx, filteredDownloads.length)} of ${filteredDownloads.length} downloads
             </div>
             <div style="display: flex; gap: 8px;">
               <button id="prevPageBtn" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); cursor: pointer; ${currentPage === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${currentPage === 1 ? 'disabled' : ''}>

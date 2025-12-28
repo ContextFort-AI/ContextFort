@@ -353,19 +353,19 @@ chrome.webRequest.onBeforeRequest.addListener(
         }
       });
 
-      // Send in-page alert to the tab (for the red modal popup)
-      if (details.tabId && details.tabId >= 0) {
-        chrome.tabs.sendMessage(details.tabId, {
-          type: 'ALERT_DETECTED',
-          classification: clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN',
-          matchedFields: matchedFields.map(f => f.field),
-          url: targetHostname,
-          method: details.method,
-          count: matchedFields.length
-        }).catch(err => {
-          console.log('[POST Monitor] Could not send alert to tab:', err);
-        });
-      }
+      // In-page alert disabled - alerts are only shown in dashboard
+      // if (details.tabId && details.tabId >= 0) {
+      //   chrome.tabs.sendMessage(details.tabId, {
+      //     type: 'ALERT_DETECTED',
+      //     classification: clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN',
+      //     matchedFields: matchedFields.map(f => f.field),
+      //     url: targetHostname,
+      //     method: details.method,
+      //     count: matchedFields.length
+      //   }).catch(err => {
+      //     console.log('[POST Monitor] Could not send alert to tab:', err);
+      //   });
+      // }
     } // End of if (clickCorrelation)
   },
   { urls: ['<all_urls>'] },
@@ -455,6 +455,17 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
   try {
     console.log('[Download Monitor] Download detected:', downloadItem.filename);
 
+    const now = Date.now();
+
+    // Query click correlation to determine if download is human or bot
+    const clickCorrelation = await queryRecentClick(now);
+
+    if (clickCorrelation) {
+      console.log('[Download Monitor] Click correlation found:', clickCorrelation.is_suspicious ? 'BOT' : 'HUMAN');
+    } else {
+      console.log('[Download Monitor] No click correlation found - marking as background download');
+    }
+
     // Extract file extension
     const filename = downloadItem.filename || '';
     const fileExtension = filename.includes('.') ? filename.split('.').pop().toLowerCase() : 'unknown';
@@ -477,9 +488,16 @@ chrome.downloads.onCreated.addListener(async (downloadItem) => {
       file_size: fileSize,
       file_size_str: fileSizeStr,
       start_time: new Date(downloadItem.startTime).toISOString(),
-      timestamp: Date.now(),
+      timestamp: now,
       danger: downloadItem.danger || 'safe',
-      state: downloadItem.state || 'in_progress'
+      state: downloadItem.state || 'in_progress',
+
+      // Human/Bot Classification from click correlation
+      has_click_correlation: clickCorrelation ? true : false,
+      is_bot: clickCorrelation ? clickCorrelation.is_suspicious : false,
+      click_correlation_id: clickCorrelation ? clickCorrelation.click_id : null,
+      click_time_diff_ms: clickCorrelation ? clickCorrelation.time_diff_ms : null,
+      click_coordinates: clickCorrelation ? clickCorrelation.click_coordinates : null
     };
 
     // Save to Chrome local storage
