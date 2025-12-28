@@ -154,15 +154,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.type === 'SEND_CLICK_TO_API') {
     (async () => {
       try {
+        // Check if bot mode is enabled (for testing)
+        const botModeResult = await chrome.storage.local.get(['botModeEnabled']);
+        const isBotModeEnabled = botModeResult.botModeEnabled || false;
+
         // Add metadata to click event
         const clickEvent = {
           ...message.clickData,
           id: Date.now(),
           created_at: new Date().toISOString(),
           timestamp: Date.now(),
-          // Simple bot detection: check if time between clicks is suspiciously fast
-          is_suspicious: false // We'll calculate this based on click patterns
+          // Force suspicious if bot mode is enabled, otherwise normal detection
+          is_suspicious: isBotModeEnabled ? true : false
         };
+
+        if (isBotModeEnabled) {
+          console.log('[Click Detection] 🤖 BOT MODE ACTIVE - Marking click as suspicious');
+        }
 
         // Save to Chrome local storage
         const result = await chrome.storage.local.get(['clickEvents']);
@@ -439,3 +447,103 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 console.log('[Click Detection] Global toggle system initialized');
+
+// ===== DOWNLOAD TRACKING =====
+
+// Track all downloads
+chrome.downloads.onCreated.addListener(async (downloadItem) => {
+  try {
+    console.log('[Download Monitor] Download detected:', downloadItem.filename);
+
+    // Extract file extension
+    const filename = downloadItem.filename || '';
+    const fileExtension = filename.includes('.') ? filename.split('.').pop().toLowerCase() : 'unknown';
+
+    // Get file size in readable format
+    const fileSize = downloadItem.fileSize || downloadItem.estimatedEndTime || 0;
+    const fileSizeStr = formatFileSize(fileSize);
+
+    // Determine file type category
+    const fileCategory = getFileCategory(fileExtension);
+
+    const downloadData = {
+      id: downloadItem.id,
+      filename: filename,
+      url: downloadItem.url,
+      referrer: downloadItem.referrer || downloadItem.url,
+      mime_type: downloadItem.mime || 'unknown',
+      file_extension: fileExtension,
+      file_category: fileCategory,
+      file_size: fileSize,
+      file_size_str: fileSizeStr,
+      start_time: new Date(downloadItem.startTime).toISOString(),
+      timestamp: Date.now(),
+      danger: downloadItem.danger || 'safe',
+      state: downloadItem.state || 'in_progress'
+    };
+
+    // Save to Chrome local storage
+    const result = await chrome.storage.local.get(['downloadRequests']);
+    let downloads = result.downloadRequests || [];
+
+    // Add new download to the beginning
+    downloads.unshift(downloadData);
+
+    // Keep only last 1000 downloads
+    if (downloads.length > 1000) {
+      downloads = downloads.slice(0, 1000);
+    }
+
+    await chrome.storage.local.set({ downloadRequests: downloads });
+    console.log('[Download Monitor] ✓ Saved to local storage. Total downloads:', downloads.length);
+
+    // Show notification for potentially dangerous downloads
+    if (downloadItem.danger && downloadItem.danger !== 'safe') {
+      const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      chrome.notifications.create('download-' + downloadItem.id, {
+        type: 'basic',
+        iconUrl: iconDataUri,
+        title: '⚠️ Potentially Dangerous Download',
+        message: `${filename} (${downloadItem.danger})`,
+        priority: 2
+      });
+    }
+  } catch (error) {
+    console.error('[Download Monitor] Error saving download:', error);
+  }
+});
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return 'Unknown';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
+// Helper function to categorize file types
+function getFileCategory(extension) {
+  const categories = {
+    'document': ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'pages'],
+    'spreadsheet': ['xls', 'xlsx', 'csv', 'ods', 'numbers'],
+    'presentation': ['ppt', 'pptx', 'key', 'odp'],
+    'image': ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'],
+    'video': ['mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'webm'],
+    'audio': ['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg'],
+    'archive': ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
+    'executable': ['exe', 'dmg', 'app', 'deb', 'rpm', 'apk', 'msi'],
+    'code': ['js', 'py', 'java', 'cpp', 'c', 'html', 'css', 'php', 'rb', 'go', 'ts'],
+    'data': ['json', 'xml', 'yaml', 'sql', 'db']
+  };
+
+  for (const [category, extensions] of Object.entries(categories)) {
+    if (extensions.includes(extension)) {
+      return category;
+    }
+  }
+
+  return 'other';
+}
+
+console.log('[Download Monitor] Download tracking initialized');

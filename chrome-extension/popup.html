@@ -131,6 +131,20 @@
       border-color: #0bc300;
     }
 
+    #toggle-bot-mode-btn {
+      margin-top: 12px;
+    }
+
+    #toggle-bot-mode-btn.active {
+      background: #ff4757;
+      border-color: #ff4757;
+    }
+
+    #toggle-bot-mode-btn.active:hover {
+      background: #ff3838;
+      border-color: #ff3838;
+    }
+
     /* Status Text */
     .status-text {
       font-size: 12px;
@@ -219,6 +233,28 @@
 
     <div class="hint-text">
       Connects to Unified Backend API at localhost:8000
+    </div>
+  </div>
+
+  <!-- Bot Mode (Testing) -->
+  <div class="feature-section">
+    <div class="feature-header">
+      <div class="feature-title">🤖 Bot Mode (Testing)</div>
+      <div class="feature-description">
+        Simulate bot behavior for testing - all clicks will be marked as suspicious
+      </div>
+    </div>
+
+    <button id="toggle-bot-mode-btn" class="button">
+      Enable Bot Mode
+    </button>
+
+    <div id="bot-mode-status" class="status-text">
+      Status: Disabled
+    </div>
+
+    <div class="hint-text">
+      ⚠️ Temporary testing feature - will be removed later
     </div>
   </div>
 

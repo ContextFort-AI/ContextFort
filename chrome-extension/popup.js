@@ -73,4 +73,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       clickDetectionStatus.style.color = '#666';
     }
   }
+
+  // ===== BOT MODE FEATURE (TESTING) =====
+
+  const toggleBotModeBtn = document.getElementById('toggle-bot-mode-btn');
+  const botModeStatus = document.getElementById('bot-mode-status');
+
+  // Load bot mode state
+  chrome.storage.local.get(['botModeEnabled'], (result) => {
+    const isBotModeActive = result.botModeEnabled || false;
+    updateBotModeUI(isBotModeActive);
+  });
+
+  // Toggle bot mode button click handler
+  toggleBotModeBtn.addEventListener('click', async () => {
+    // Get current state
+    const currentState = await new Promise((resolve) => {
+      chrome.storage.local.get(['botModeEnabled'], (result) => {
+        resolve(result.botModeEnabled || false);
+      });
+    });
+
+    const newState = !currentState;
+
+    // Update state in storage
+    await chrome.storage.local.set({ botModeEnabled: newState });
+
+    updateBotModeUI(newState);
+
+    // Show status message
+    botModeStatus.textContent = newState
+      ? 'Status: Active - All clicks marked as suspicious'
+      : 'Status: Disabled';
+
+    console.log('[Popup] Bot mode:', newState ? 'ENABLED' : 'DISABLED');
+  });
+
+  // Update UI based on bot mode state
+  function updateBotModeUI(isActive) {
+    if (isActive) {
+      toggleBotModeBtn.textContent = 'Disable Bot Mode';
+      toggleBotModeBtn.classList.add('active');
+      botModeStatus.textContent = 'Status: Active - All clicks marked as suspicious';
+      botModeStatus.style.color = '#ff4757';
+    } else {
+      toggleBotModeBtn.textContent = 'Enable Bot Mode';
+      toggleBotModeBtn.classList.remove('active');
+      botModeStatus.textContent = 'Status: Disabled';
+      botModeStatus.style.color = '#666';
+    }
+  }
 });
