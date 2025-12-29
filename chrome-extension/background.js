@@ -768,6 +768,15 @@ async function checkDebuggers() {
 
         debuggerState.set(tab.id, true);
 
+        // Tell content script to censor sensitive content
+        // Add delay to ensure content script is ready
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { type: 'CENSOR_CONTENT' }).catch(err => {
+            // Silently ignore if content script not ready (expected for some pages)
+            console.log('[Agent Detector] Content script not available on tab', tab.id, '(this is normal for some pages)');
+          });
+        }, 200);
+
         // Show notification for agent detection
         const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
         chrome.notifications.create('agent-detected-' + Date.now(), {
@@ -792,6 +801,15 @@ async function checkDebuggers() {
         console.log('');
 
         debuggerState.set(tab.id, false);
+
+        // Tell content script to uncensor sensitive content
+        // Add delay to ensure content script is ready
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { type: 'UNCENSOR_CONTENT' }).catch(err => {
+            // Silently ignore if content script not ready (expected for some pages)
+            console.log('[Agent Detector] Content script not available on tab', tab.id, '(this is normal for some pages)');
+          });
+        }, 200);
 
         // Show notification for agent ending
         const iconDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
