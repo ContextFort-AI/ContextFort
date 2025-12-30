@@ -34,6 +34,7 @@ function getPageType() {
   if (path.includes('post-requests')) return 'post';
   if (path.includes('click-detection')) return 'click-detection';
   if (path.includes('downloads')) return 'downloads';
+  if (path.includes('screenshots')) return 'screenshots';
   if (path.includes('whitelist')) return 'whitelist';
   return null;
 }
@@ -83,6 +84,21 @@ async function loadDataAndInject(resetPage = true) {
 
       updateDownloadsStats(downloads);
       injectDownloads(downloads);
+      return;
+    }
+
+    // Handle Screenshots separately (uses different storage key)
+    if (pageType === 'screenshots') {
+      const result = await chrome.storage.local.get(['screenshots']);
+      const screenshots = result.screenshots || [];
+      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots from storage');
+
+      if (resetPage) {
+        currentPage = 1;
+      }
+
+      updateScreenshotsStats(screenshots);
+      injectScreenshots(screenshots);
       return;
     }
 
@@ -1430,6 +1446,457 @@ async function removeFromWhitelist(type, index) {
     console.error('[Dashboard Override] Error removing from whitelist:', error);
     alert('Error removing from whitelist');
   }
+}
+
+// ============================================================================
+// SCREENSHOTS PAGE
+// ============================================================================
+
+function updateScreenshotsStats(screenshots) {
+  try {
+    // Calculate stats
+    const totalScreenshots = screenshots.length;
+    const domChangeCount = screenshots.filter(s => s.reason && s.reason.includes('dom_change')).length;
+    const scrollCount = screenshots.filter(s => s.reason && s.reason.includes('scroll')).length;
+
+    console.log('[Dashboard Override] Screenshots Stats:', {
+      total: totalScreenshots,
+      domChanges: domChangeCount,
+      scrolls: scrollCount
+    });
+
+    // Wait for DOM to be ready
+    setTimeout(() => {
+      // Find all card content containers
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+
+      if (cardContainers.length < 3) {
+        console.error('[Dashboard Override] Not enough stat cards found for Screenshots');
+        return;
+      }
+
+      // Update stat cards (assuming order: Total, DOM Changes, Scroll Events)
+      // Total Screenshots (first card)
+      const totalCard = cardContainers[0];
+      const totalValueEl = totalCard.querySelector('div.text-2xl');
+      if (totalValueEl) {
+        totalValueEl.textContent = totalScreenshots.toLocaleString();
+      }
+
+      // DOM Changes (second card)
+      const domCard = cardContainers[1];
+      const domValueEl = domCard.querySelector('div.text-2xl');
+      if (domValueEl) {
+        domValueEl.textContent = domChangeCount.toLocaleString();
+      }
+
+      // Scroll Events (third card)
+      const scrollCard = cardContainers[2];
+      const scrollValueEl = scrollCard.querySelector('div.text-2xl');
+      if (scrollValueEl) {
+        scrollValueEl.textContent = scrollCount.toLocaleString();
+      }
+
+      console.log('[Dashboard Override] Screenshots stats updated!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error updating Screenshots stats:', error);
+  }
+}
+
+function injectScreenshots(screenshots) {
+  try {
+    console.log('[Dashboard Override] Injecting Screenshots data...');
+
+    // Wait for DOM to be ready
+    setTimeout(() => {
+      // Find all card content containers - the last one should be the gallery container
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+      const targetContainer = cardContainers[cardContainers.length - 1];
+
+      if (!targetContainer) {
+        console.error('[Dashboard Override] Could not find gallery container for Screenshots');
+        return;
+      }
+
+      // Reverse to show newest first
+      const reversedScreenshots = [...screenshots].reverse();
+
+      // Calculate pagination
+      const itemsPerPage = 12;
+      const totalPages = Math.ceil(reversedScreenshots.length / itemsPerPage);
+      const startIdx = (currentPage - 1) * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const pageScreenshots = reversedScreenshots.slice(startIdx, endIdx);
+
+      console.log('[Dashboard Override] Showing page', currentPage, 'of', totalPages, '(', pageScreenshots.length, 'screenshots)');
+
+      // Helper function to get reason badge
+      const getReasonBadge = (reason) => {
+        if (reason && reason.includes('dom_change')) {
+          return {
+            color: 'background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid #a855f7',
+            icon: '📝',
+            label: 'DOM Change'
+          };
+        } else if (reason && reason.includes('scroll')) {
+          return {
+            color: 'background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid #3b82f6',
+            icon: '🖱️',
+            label: 'Scroll'
+          };
+        }
+        return {
+          color: 'background: rgba(107, 114, 128, 0.1); color: #6b7280; border: 1px solid #6b7280',
+          icon: '📸',
+          label: 'Other'
+        };
+      };
+
+      // Format time helper
+      const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      };
+
+      // Format date helper
+      const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      };
+
+      // Build gallery HTML
+      if (reversedScreenshots.length === 0) {
+        targetContainer.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No screenshots yet</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">
+              Screenshots will appear here when DOM changes or scrolling occurs
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Build grid HTML
+      let gridHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+      `;
+
+      pageScreenshots.forEach(screenshot => {
+        const badge = getReasonBadge(screenshot.reason);
+        const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
+
+        gridHTML += `
+          <div
+            data-screenshot-id="${screenshot.id}"
+            class="screenshot-card"
+            style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; cursor: pointer; transition: box-shadow 0.2s;"
+          >
+            <div style="position: relative; width: 100%; height: 12rem; background: #f3f4f6;">
+              <img
+                src="${screenshot.dataUrl}"
+                alt="Screenshot ${screenshot.id}"
+                style="width: 100%; height: 100%; object-fit: cover;"
+              />
+            </div>
+            <div style="padding: 0.75rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; ${badge.color}">
+                  ${badge.icon} ${badge.label}
+                </div>
+                <span style="font-size: 0.75rem; color: #6b7280;">
+                  #${screenshot.id}
+                </span>
+              </div>
+              <div style="font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.25rem;" title="${screenshot.title || 'Unknown'}">
+                ${screenshot.title || 'Unknown'}
+              </div>
+              <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.5rem;" title="${screenshot.url || 'Unknown'}">
+                ${hostname}
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #6b7280;">
+                <span>${formatDate(screenshot.timestamp)}</span>
+                <span style="font-family: monospace;">${formatTime(screenshot.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      gridHTML += `</div>`;
+
+      // Add pagination if needed
+      if (totalPages > 1) {
+        gridHTML += `
+          <div style="display: flex; align-items: center; justify-content: between; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid #e5e7eb;">
+            <div style="font-size: 0.875rem; color: #6b7280;">
+              Showing ${startIdx + 1} to ${Math.min(endIdx, reversedScreenshots.length)} of ${reversedScreenshots.length} screenshots
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button id="prevPage" ${currentPage === 1 ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === 1 ? 0.5 : 1};">
+                ← Previous
+              </button>
+              <div style="font-size: 0.875rem; font-weight: 500;">
+                Page ${currentPage} of ${totalPages}
+              </div>
+              <button id="nextPage" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === totalPages ? 0.5 : 1};">
+                Next →
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      targetContainer.innerHTML = gridHTML;
+
+      // Add click and hover handlers for screenshots
+      document.querySelectorAll('[data-screenshot-id]').forEach(card => {
+        card.addEventListener('click', function() {
+          const screenshotId = parseInt(this.dataset.screenshotId);
+          const screenshot = screenshots.find(s => s.id === screenshotId);
+          if (screenshot) {
+            openScreenshotModal(screenshot);
+          }
+        });
+
+        // Add hover effects
+        card.addEventListener('mouseover', function() {
+          this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+        });
+        card.addEventListener('mouseout', function() {
+          this.style.boxShadow = 'none';
+        });
+      });
+
+      // Add pagination handlers
+      if (totalPages > 1) {
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+
+        if (prevBtn && currentPage > 1) {
+          prevBtn.addEventListener('click', () => {
+            currentPage--;
+            loadDataAndInject(false);
+          });
+        }
+
+        if (nextBtn && currentPage < totalPages) {
+          nextBtn.addEventListener('click', () => {
+            currentPage++;
+            loadDataAndInject(false);
+          });
+        }
+      }
+
+      // Add handlers for Refresh and Clear All buttons
+      addScreenshotButtonHandlers();
+
+      console.log('[Dashboard Override] Screenshots injected!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting Screenshots:', error);
+  }
+}
+
+// Add event listeners for Refresh and Clear All buttons using MutationObserver
+function addScreenshotButtonHandlers() {
+  if (window.screenshotButtonHandlerAttached) {
+    return;
+  }
+
+  window.screenshotButtonHandlerAttached = true;
+
+  // Function to hijack button clicks
+  const hijackButton = (button, buttonText) => {
+    if (buttonText.includes('Refresh')) {
+      console.log('[Dashboard Override] Hijacking Refresh button');
+
+      // Remove all existing event listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      // Force enable and make clickable
+      newButton.disabled = false;
+      newButton.style.pointerEvents = 'auto';
+
+      // Add our handler with highest priority
+      const handler = (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('[Dashboard Override] Refresh clicked!');
+        currentPage = 1;
+        loadDataAndInject(false);
+        return false;
+      };
+
+      newButton.onclick = handler;
+      newButton.addEventListener('click', handler, true);
+
+      return newButton;
+    }
+
+    if (buttonText.includes('Clear')) {
+      console.log('[Dashboard Override] Hijacking Clear All button, disabled:', button.disabled);
+
+      // Remove all existing event listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      // Force enable and make clickable
+      newButton.disabled = false;
+      newButton.style.pointerEvents = 'auto';
+      newButton.removeAttribute('disabled');
+
+      // Add our handler with highest priority
+      const handler = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('[Dashboard Override] Clear All clicked!');
+
+        if (confirm('Are you sure you want to clear all screenshots?')) {
+          try {
+            await chrome.storage.local.set({ screenshots: [] });
+            console.log('[Dashboard Override] All screenshots cleared');
+            currentPage = 1;
+            loadDataAndInject(false);
+          } catch (error) {
+            console.error('[Dashboard Override] Error clearing screenshots:', error);
+            alert('Error clearing screenshots');
+          }
+        }
+        return false;
+      };
+
+      newButton.onclick = handler;
+      newButton.addEventListener('click', handler, true);
+
+      console.log('[Dashboard Override] Clear All button setup complete, onclick:', !!newButton.onclick);
+
+      return newButton;
+    }
+  };
+
+  // Watch for button changes and hijack them
+  const observer = new MutationObserver(() => {
+    const buttons = document.querySelectorAll('button');
+
+    buttons.forEach(button => {
+      const buttonText = button.textContent.trim();
+
+      if ((buttonText.includes('Refresh') || buttonText.includes('Clear')) &&
+          !button.dataset.hijacked) {
+        button.dataset.hijacked = 'true';
+        hijackButton(button, buttonText);
+      }
+    });
+  });
+
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Initial hijack
+  setTimeout(() => {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => {
+      const buttonText = button.textContent.trim();
+      if (buttonText.includes('Refresh') || buttonText.includes('Clear')) {
+        button.dataset.hijacked = 'true';
+        hijackButton(button, buttonText);
+      }
+    });
+  }, 500);
+
+  console.log('[Dashboard Override] Button hijacking enabled');
+}
+
+// Helper function to open screenshot in modal
+function openScreenshotModal(screenshot) {
+  const badge = screenshot.reason && screenshot.reason.includes('dom_change')
+    ? { icon: '📝', label: 'DOM Change' }
+    : screenshot.reason && screenshot.reason.includes('scroll')
+    ? { icon: '🖱️', label: 'Scroll' }
+    : { icon: '📸', label: 'Other' };
+
+  const formatDateTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
+  const modalHTML = `
+    <div id="screenshotModal" class="screenshot-modal-overlay" style="position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem;">
+      <div class="screenshot-modal-content" style="max-width: 72rem; width: 100%; max-height: 90vh; overflow: auto; background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h3 style="font-size: 1.125rem; font-weight: 600;">Screenshot #${screenshot.id}</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">${screenshot.title || 'Unknown'}</p>
+          </div>
+          <button class="close-modal-btn" style="padding: 0.5rem; border: none; background: transparent; cursor: pointer; font-size: 1.5rem; color: #6b7280;">×</button>
+        </div>
+        <div style="padding: 1rem;">
+          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: auto; border-radius: 0.375rem;" />
+          <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">URL:</span>
+              <span style="color: #6b7280;">${screenshot.url || 'Unknown'}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">Reason:</span>
+              <span style="color: #6b7280;">${badge.icon} ${screenshot.reason || 'Unknown'}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">Time:</span>
+              <span style="color: #6b7280;">${formatDateTime(screenshot.timestamp)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Add event listeners after inserting HTML
+  const modal = document.getElementById('screenshotModal');
+  const closeBtn = modal.querySelector('.close-modal-btn');
+  const modalContent = modal.querySelector('.screenshot-modal-content');
+
+  // Close modal when clicking overlay
+  modal.addEventListener('click', function() {
+    this.remove();
+  });
+
+  // Prevent closing when clicking modal content
+  modalContent.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+
+  // Close button
+  closeBtn.addEventListener('click', function() {
+    modal.remove();
+  });
 }
 
 console.log('[Dashboard Override] Script loaded - will auto-refresh every 5 seconds');

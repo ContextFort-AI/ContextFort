@@ -1122,3 +1122,85 @@ function uncensorContent() {
 console.log('[Content Censor] Ready - will censor on agent mode detection');
 
 // ===== END CONTENT CENSORING FEATURE =====
+
+// ============================================================================
+// SCREENSHOT LOGGER - Captures screenshots on DOM changes and scrolling
+// ============================================================================
+
+console.log('[Screenshot Logger] Content script loaded');
+
+let mutationTimeout;
+let scrollTimeout;
+let lastScreenshotTime = 0;
+const MIN_SCREENSHOT_INTERVAL = 1000; // Don't take screenshots more than once per second
+
+function captureScreenshot(reason) {
+  const now = Date.now();
+
+  // Throttle screenshots
+  if (now - lastScreenshotTime < MIN_SCREENSHOT_INTERVAL) {
+    console.log(`[Screenshot Logger] Throttled (${reason})`);
+    return;
+  }
+
+  lastScreenshotTime = now;
+
+  console.log(`[Screenshot Logger] Requesting screenshot: ${reason}`);
+
+  chrome.runtime.sendMessage({
+    type: 'CAPTURE_SCREENSHOT',
+    reason: reason
+  }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[Screenshot Logger] Error:', chrome.runtime.lastError.message);
+    } else if (response?.success) {
+      console.log(`[Screenshot Logger] ✅ Screenshot captured: ${reason}`);
+    }
+  });
+}
+
+// Watch for DOM changes
+const screenshotObserver = new MutationObserver((mutations) => {
+  clearTimeout(mutationTimeout);
+
+  mutationTimeout = setTimeout(() => {
+    const mutationTypes = mutations.map(m => m.type).join(', ');
+    console.log(`[Screenshot Logger] DOM changed: ${mutations.length} mutations (${mutationTypes})`);
+    captureScreenshot(`dom_change (${mutations.length} mutations)`);
+  }, 500); // Debounce 500ms
+});
+
+// Start observing after page loads
+function startScreenshotObserving() {
+  screenshotObserver.observe(document.body, {
+    childList: true,      // Detect added/removed nodes
+    subtree: true,        // Watch entire tree
+    attributes: true,     // Detect attribute changes
+    characterData: true   // Detect text changes
+  });
+
+  console.log('[Screenshot Logger] Started observing DOM changes');
+}
+
+// Watch for scrolling
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollTimeout);
+
+  scrollTimeout = setTimeout(() => {
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    console.log(`[Screenshot Logger] Scrolled to: (${scrollX}, ${scrollY})`);
+    captureScreenshot(`scroll (x:${scrollX}, y:${scrollY})`);
+  }, 500); // Debounce 500ms
+}, { passive: true });
+
+// Initialize screenshot observer
+if (document.body) {
+  startScreenshotObserving();
+} else {
+  window.addEventListener('DOMContentLoaded', startScreenshotObserving);
+}
+
+console.log('[Screenshot Logger] Ready - monitoring DOM changes and scrolling');
+
+// ===== END SCREENSHOT LOGGER FEATURE =====

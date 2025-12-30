@@ -34,6 +34,8 @@ function getPageType() {
   if (path.includes('post-requests')) return 'post';
   if (path.includes('click-detection')) return 'click-detection';
   if (path.includes('downloads')) return 'downloads';
+  if (path.includes('screenshots')) return 'screenshots';
+  if (path.includes('whitelist')) return 'whitelist';
   return null;
 }
 
@@ -43,6 +45,15 @@ async function loadDataAndInject(resetPage = true) {
     const pageType = getPageType();
     if (!pageType) {
       console.log('[Dashboard Override] Not on a requests page, skipping...');
+      return;
+    }
+
+    // Handle Whitelist page separately
+    if (pageType === 'whitelist') {
+      const result = await chrome.storage.local.get(['whitelist']);
+      const whitelist = result.whitelist || { urls: [], hostnames: [] };
+      console.log('[Dashboard Override] Loaded whitelist from storage');
+      injectWhitelistPage(whitelist);
       return;
     }
 
@@ -76,6 +87,21 @@ async function loadDataAndInject(resetPage = true) {
       return;
     }
 
+    // Handle Screenshots separately (uses different storage key)
+    if (pageType === 'screenshots') {
+      const result = await chrome.storage.local.get(['screenshots']);
+      const screenshots = result.screenshots || [];
+      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots from storage');
+
+      if (resetPage) {
+        currentPage = 1;
+      }
+
+      updateScreenshotsStats(screenshots);
+      injectScreenshots(screenshots);
+      return;
+    }
+
     // Get data from Chrome storage for other pages
     const result = await chrome.storage.local.get(['blockedRequests']);
     const allRequests = result.blockedRequests || [];
@@ -94,14 +120,28 @@ async function loadDataAndInject(resetPage = true) {
       filteredRequests = allRequests.filter(req => req.is_bot === true);
       console.log('[Dashboard Override] Found', filteredRequests.length, 'bot requests');
     } else if (pageType === 'post') {
-      // Blocked Requests: ONLY BOT requests with user input data triggered by button clicks
-      // (Human requests with input data go to Human Requests page)
+      // Blocked Requests: ONLY requests that were ACTUALLY BLOCKED (status='blocked')
+      // These are BOT requests with user input data that were prevented from executing
       filteredRequests = allRequests.filter(req =>
+        req.status === 'blocked' &&
         req.is_bot === true &&
         req.has_click_correlation === true &&
         req.matched_fields && req.matched_fields.length > 0
       );
-      console.log('[Dashboard Override] Found', filteredRequests.length, 'blocked BOT requests with user input');
+      console.log('[Dashboard Override] Found', filteredRequests.length, 'BLOCKED bot requests');
+      console.log('[Dashboard Override] Total requests in storage:', allRequests.length);
+
+      // Debug: Show how many requests meet each condition
+      const botRequests = allRequests.filter(req => req.is_bot === true);
+      const withCorrelation = allRequests.filter(req => req.has_click_correlation === true);
+      const withMatchedFields = allRequests.filter(req => req.matched_fields && req.matched_fields.length > 0);
+      const withBlockedStatus = allRequests.filter(req => req.status === 'blocked');
+      console.log('[Dashboard Override] Debug counts:', {
+        bot: botRequests.length,
+        withCorrelation: withCorrelation.length,
+        withMatchedFields: withMatchedFields.length,
+        blockedStatus: withBlockedStatus.length
+      });
     }
 
     // Reset to page 1 if requested
@@ -664,7 +704,7 @@ function injectPostRequests(requests) {
   let tableRows = '';
 
   if (requests.length === 0) {
-    tableRows = '<tr><td colspan="7" class="p-8 text-center text-muted-foreground">No requests detected yet.</td></tr>';
+    tableRows = '<tr><td colspan="7" class="p-8 text-center text-muted-foreground">No blocked bot requests yet. Bot requests with user input data will appear here when blocked.</td></tr>';
   } else {
     tableRows = paginatedRequests.map((req) => {
       const timestamp = formatTime(req.timestamp);
@@ -695,8 +735,12 @@ function injectPostRequests(requests) {
           }
         }
 
+        // Determine blocking layer
+        const blockedBy = req.blocked_by === 'content_script' ? 'Form Prevention' : 'Network Layer';
+        const blockedByIcon = req.blocked_by === 'content_script' ? '🛡️' : '🌐';
+
         return `
-              <tr class="border-b transition-colors hover:bg-muted/50">
+              <tr class="border-b transition-colors hover:bg-muted/50 bg-red-500/5">
                 <td class="p-4 align-middle font-medium text-muted-foreground">${timestamp}</td>
                 <td class="p-4 align-middle">
                   <code class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] text-xs font-mono">${targetUrl}</code>
@@ -714,9 +758,13 @@ function injectPostRequests(requests) {
                   <div class="flex flex-col gap-1 max-w-xs">${matchedValuesHtml}</div>
                 </td>
                 <td class="p-4 align-middle">
-                  <button class="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 opacity-0 hover:opacity-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-red-500"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                  </button>
+                  <div class="flex flex-col gap-1">
+                    <span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold bg-red-500 text-white gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+                      BLOCKED
+                    </span>
+                    <span class="text-xs text-muted-foreground">${blockedByIcon} ${blockedBy}</span>
+                  </div>
                 </td>
               </tr>`;
       }).join('');
@@ -765,7 +813,7 @@ function injectPostRequests(requests) {
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[300px]">Source</th>
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Matched Fields</th>
                 <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Matched Input Values</th>
-                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[80px]">Actions</th>
+                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground w-[120px]">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -1017,19 +1065,15 @@ function injectClickDetection(clickEvents) {
 
 function updateDownloadsStats(downloads) {
   try {
-    // Calculate stats based on Human/Bot classification
-    const totalDownloads = downloads.filter(d => d.has_click_correlation).length; // Only downloads with click correlation
-    const humanDownloads = downloads.filter(d =>
-      d.has_click_correlation && !d.is_bot
-    ).length;
-    const botDownloads = downloads.filter(d =>
-      d.has_click_correlation && d.is_bot
-    ).length;
+    // Calculate stats
+    const totalDownloads = downloads.length;
+    const completedDownloads = downloads.filter(d => d.state === 'complete').length;
+    const dangerousDownloads = downloads.filter(d => d.danger !== 'safe').length;
 
     console.log('[Dashboard Override] Downloads Stats:', {
       total: totalDownloads,
-      human: humanDownloads,
-      bot: botDownloads
+      completed: completedDownloads,
+      dangerous: dangerousDownloads
     });
 
     // Wait for DOM to be ready
@@ -1042,7 +1086,7 @@ function updateDownloadsStats(downloads) {
         return;
       }
 
-      // Update stat cards (assuming order: Total, Human, Bot)
+      // Update stat cards (assuming order: Total, Completed, Dangerous)
       // Total Downloads (first card)
       const totalCard = cardContainers[0];
       const totalValueEl = totalCard.querySelector('div.text-2xl');
@@ -1050,18 +1094,18 @@ function updateDownloadsStats(downloads) {
         totalValueEl.textContent = totalDownloads.toLocaleString();
       }
 
-      // Human Downloads (second card)
-      const humanCard = cardContainers[1];
-      const humanValueEl = humanCard.querySelector('div.text-2xl');
-      if (humanValueEl) {
-        humanValueEl.textContent = humanDownloads.toLocaleString();
+      // Completed Downloads (second card)
+      const completedCard = cardContainers[1];
+      const completedValueEl = completedCard.querySelector('div.text-2xl');
+      if (completedValueEl) {
+        completedValueEl.textContent = completedDownloads.toLocaleString();
       }
 
-      // Bot Downloads (third card)
-      const botCard = cardContainers[2];
-      const botValueEl = botCard.querySelector('div.text-2xl');
-      if (botValueEl) {
-        botValueEl.textContent = botDownloads.toLocaleString();
+      // Dangerous Downloads (third card)
+      const dangerousCard = cardContainers[2];
+      const dangerousValueEl = dangerousCard.querySelector('div.text-2xl');
+      if (dangerousValueEl) {
+        dangerousValueEl.textContent = dangerousDownloads.toLocaleString();
       }
 
       console.log('[Dashboard Override] Downloads stats updated!');
@@ -1076,10 +1120,6 @@ function injectDownloads(downloads) {
   try {
     console.log('[Dashboard Override] Injecting Downloads data...');
 
-    // Filter to only show downloads with click correlation (exclude background downloads)
-    const filteredDownloads = downloads.filter(d => d.has_click_correlation);
-    console.log('[Dashboard Override] Filtered downloads (with click correlation):', filteredDownloads.length);
-
     // Wait for DOM to be ready
     setTimeout(() => {
       // Find all card content containers - the last one should be the table container
@@ -1093,10 +1133,10 @@ function injectDownloads(downloads) {
 
       // Calculate pagination
       const itemsPerPage = 20;
-      const totalPages = Math.ceil(filteredDownloads.length / itemsPerPage);
+      const totalPages = Math.ceil(downloads.length / itemsPerPage);
       const startIdx = (currentPage - 1) * itemsPerPage;
       const endIdx = startIdx + itemsPerPage;
-      const pageDownloads = filteredDownloads.slice(startIdx, endIdx);
+      const pageDownloads = downloads.slice(startIdx, endIdx);
 
       console.log('[Dashboard Override] Showing page', currentPage, 'of', totalPages, '(', pageDownloads.length, 'downloads)');
 
@@ -1148,7 +1188,6 @@ function injectDownloads(downloads) {
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Filename</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Size</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Category</th>
-                <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Trigger</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 500; color: var(--muted-foreground);">Status</th>
               </tr>
             </thead>
@@ -1162,11 +1201,9 @@ function injectDownloads(downloads) {
         const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        // Status is based on Human/Bot classification, not Chrome's danger field
-        const isBot = download.is_bot;
-        const statusColor = isBot ? '#ef4444' : '#22c55e'; // red for bot, green for human
-        const statusText = isBot ? 'Bot' : 'Human';
-        const statusIcon = isBot ? '🤖' : '👤';
+        const isDangerous = download.danger !== 'safe';
+        const statusColor = isDangerous ? '#ef4444' : '#22c55e'; // red for dangerous, green for safe
+        const statusText = isDangerous ? 'Danger' : 'Safe';
 
         const filename = download.filename || 'Unknown';
         const fileSize = download.file_size_str || 'Unknown';
@@ -1180,27 +1217,6 @@ function injectDownloads(downloads) {
           hostname = new URL(download.url).hostname;
         } catch (e) {
           hostname = download.url;
-        }
-
-        // Determine trigger type (Human/Bot/Background)
-        let triggerIcon = '❓';
-        let triggerText = 'Unknown';
-        let triggerColor = '#6b7280';
-
-        if (download.has_click_correlation) {
-          if (download.is_bot) {
-            triggerIcon = '🤖';
-            triggerText = 'Bot';
-            triggerColor = '#ef4444'; // red
-          } else {
-            triggerIcon = '👤';
-            triggerText = 'Human';
-            triggerColor = '#22c55e'; // green
-          }
-        } else {
-          triggerIcon = '🔄';
-          triggerText = 'Background';
-          triggerColor = '#f59e0b'; // amber
         }
 
         tableHTML += `
@@ -1219,17 +1235,7 @@ function injectDownloads(downloads) {
               </span>
             </td>
             <td style="padding: 12px 16px;">
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${triggerColor}20; color: ${triggerColor}; border: 1px solid ${triggerColor}; width: fit-content;">
-                  <span style="font-size: 14px;">${triggerIcon}</span>
-                  ${triggerText}
-                </span>
-                ${download.has_click_correlation && download.click_time_diff_ms !== undefined ? `<div style="font-size: 11px; color: var(--muted-foreground);">Δt: ${download.click_time_diff_ms}ms</div>` : ''}
-              </div>
-            </td>
-            <td style="padding: 12px 16px;">
-              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor};">
-                <span style="font-size: 14px;">${statusIcon}</span>
+              <span style="display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor};">
                 ${statusText}
               </span>
             </td>
@@ -1248,7 +1254,7 @@ function injectDownloads(downloads) {
         tableHTML += `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 0;">
             <div style="color: var(--muted-foreground); font-size: 14px;">
-              Showing ${startIdx + 1} to ${Math.min(endIdx, filteredDownloads.length)} of ${filteredDownloads.length} downloads
+              Showing ${startIdx + 1} to ${Math.min(endIdx, downloads.length)} of ${downloads.length} downloads
             </div>
             <div style="display: flex; gap: 8px;">
               <button id="prevPageBtn" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--foreground); cursor: pointer; ${currentPage === 1 ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${currentPage === 1 ? 'disabled' : ''}>
@@ -1295,6 +1301,602 @@ function injectDownloads(downloads) {
   } catch (error) {
     console.error('[Dashboard Override] Error injecting Downloads:', error);
   }
+}
+
+// Inject whitelist management page
+function injectWhitelistPage(whitelist) {
+  try {
+    console.log('[Dashboard Override] Injecting whitelist management page');
+
+    const container = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+
+    const whitelistHTML = `
+      <div style="padding: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 1rem;">Whitelist Management</h1>
+        <p style="color: #6b7280; margin-bottom: 2rem;">Add URLs or hostnames to whitelist. Whitelisted requests will not be blocked even if detected as bot activity.</p>
+
+        <!-- Whitelisted URLs Section -->
+        <div style="margin-bottom: 3rem;">
+          <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">Whitelisted URLs</h2>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com/api)" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" />
+            <button id="addUrlBtn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">Add URL</button>
+          </div>
+          <div id="urlList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${whitelist.urls.map((url, index) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f3f4f6; border-radius: 0.375rem;">
+                <span style="font-family: monospace; font-size: 0.875rem;">${url}</span>
+                <button class="removeUrl" data-index="${index}" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">Remove</button>
+              </div>
+            `).join('') || '<p style="color: #9ca3af; font-size: 0.875rem;">No URLs whitelisted yet</p>'}
+          </div>
+        </div>
+
+        <!-- Whitelisted Hostnames Section -->
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">Whitelisted Hostnames</h2>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="hostnameInput" placeholder="Enter hostname (e.g., api.example.com)" style="flex: 1; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;" />
+            <button id="addHostnameBtn" style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">Add Hostname</button>
+          </div>
+          <div id="hostnameList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${whitelist.hostnames.map((hostname, index) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f3f4f6; border-radius: 0.375rem;">
+                <span style="font-family: monospace; font-size: 0.875rem;">${hostname}</span>
+                <button class="removeHostname" data-index="${index}" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer; font-size: 0.75rem;">Remove</button>
+              </div>
+            `).join('') || '<p style="color: #9ca3af; font-size: 0.875rem;">No hostnames whitelisted yet</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = whitelistHTML;
+
+    // Add event listeners
+    document.getElementById('addUrlBtn').addEventListener('click', () => addToWhitelist('url'));
+    document.getElementById('addHostnameBtn').addEventListener('click', () => addToWhitelist('hostname'));
+
+    document.querySelectorAll('.removeUrl').forEach(btn => {
+      btn.addEventListener('click', (e) => removeFromWhitelist('url', parseInt(e.target.dataset.index)));
+    });
+
+    document.querySelectorAll('.removeHostname').forEach(btn => {
+      btn.addEventListener('click', (e) => removeFromWhitelist('hostname', parseInt(e.target.dataset.index)));
+    });
+
+    // Allow Enter key to add
+    document.getElementById('urlInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addToWhitelist('url');
+    });
+    document.getElementById('hostnameInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addToWhitelist('hostname');
+    });
+
+    console.log('[Dashboard Override] Whitelist page injected successfully!');
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting whitelist page:', error);
+  }
+}
+
+// Add to whitelist
+async function addToWhitelist(type) {
+  try {
+    const input = document.getElementById(type === 'url' ? 'urlInput' : 'hostnameInput');
+    const value = input.value.trim();
+
+    if (!value) {
+      alert('Please enter a value');
+      return;
+    }
+
+    // Get current whitelist
+    const result = await chrome.storage.local.get(['whitelist']);
+    const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+    // Add to appropriate array
+    if (type === 'url') {
+      if (whitelist.urls.includes(value)) {
+        alert('URL already whitelisted');
+        return;
+      }
+      whitelist.urls.push(value);
+    } else {
+      if (whitelist.hostnames.includes(value)) {
+        alert('Hostname already whitelisted');
+        return;
+      }
+      whitelist.hostnames.push(value);
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ whitelist });
+    console.log('[Dashboard Override] Added to whitelist:', value);
+
+    // Clear input and reload
+    input.value = '';
+    loadDataAndInject(false);
+  } catch (error) {
+    console.error('[Dashboard Override] Error adding to whitelist:', error);
+    alert('Error adding to whitelist');
+  }
+}
+
+// Remove from whitelist
+async function removeFromWhitelist(type, index) {
+  try {
+    // Get current whitelist
+    const result = await chrome.storage.local.get(['whitelist']);
+    const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+    // Remove from appropriate array
+    if (type === 'url') {
+      whitelist.urls.splice(index, 1);
+    } else {
+      whitelist.hostnames.splice(index, 1);
+    }
+
+    // Save to storage
+    await chrome.storage.local.set({ whitelist });
+    console.log('[Dashboard Override] Removed from whitelist');
+
+    // Reload
+    loadDataAndInject(false);
+  } catch (error) {
+    console.error('[Dashboard Override] Error removing from whitelist:', error);
+    alert('Error removing from whitelist');
+  }
+}
+
+// ============================================================================
+// SCREENSHOTS PAGE
+// ============================================================================
+
+function updateScreenshotsStats(screenshots) {
+  try {
+    // Calculate stats
+    const totalScreenshots = screenshots.length;
+    const domChangeCount = screenshots.filter(s => s.reason && s.reason.includes('dom_change')).length;
+    const scrollCount = screenshots.filter(s => s.reason && s.reason.includes('scroll')).length;
+
+    console.log('[Dashboard Override] Screenshots Stats:', {
+      total: totalScreenshots,
+      domChanges: domChangeCount,
+      scrolls: scrollCount
+    });
+
+    // Wait for DOM to be ready
+    setTimeout(() => {
+      // Find all card content containers
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+
+      if (cardContainers.length < 3) {
+        console.error('[Dashboard Override] Not enough stat cards found for Screenshots');
+        return;
+      }
+
+      // Update stat cards (assuming order: Total, DOM Changes, Scroll Events)
+      // Total Screenshots (first card)
+      const totalCard = cardContainers[0];
+      const totalValueEl = totalCard.querySelector('div.text-2xl');
+      if (totalValueEl) {
+        totalValueEl.textContent = totalScreenshots.toLocaleString();
+      }
+
+      // DOM Changes (second card)
+      const domCard = cardContainers[1];
+      const domValueEl = domCard.querySelector('div.text-2xl');
+      if (domValueEl) {
+        domValueEl.textContent = domChangeCount.toLocaleString();
+      }
+
+      // Scroll Events (third card)
+      const scrollCard = cardContainers[2];
+      const scrollValueEl = scrollCard.querySelector('div.text-2xl');
+      if (scrollValueEl) {
+        scrollValueEl.textContent = scrollCount.toLocaleString();
+      }
+
+      console.log('[Dashboard Override] Screenshots stats updated!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error updating Screenshots stats:', error);
+  }
+}
+
+function injectScreenshots(screenshots) {
+  try {
+    console.log('[Dashboard Override] Injecting Screenshots data...');
+
+    // Wait for DOM to be ready
+    setTimeout(() => {
+      // Find all card content containers - the last one should be the gallery container
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+      const targetContainer = cardContainers[cardContainers.length - 1];
+
+      if (!targetContainer) {
+        console.error('[Dashboard Override] Could not find gallery container for Screenshots');
+        return;
+      }
+
+      // Reverse to show newest first
+      const reversedScreenshots = [...screenshots].reverse();
+
+      // Calculate pagination
+      const itemsPerPage = 12;
+      const totalPages = Math.ceil(reversedScreenshots.length / itemsPerPage);
+      const startIdx = (currentPage - 1) * itemsPerPage;
+      const endIdx = startIdx + itemsPerPage;
+      const pageScreenshots = reversedScreenshots.slice(startIdx, endIdx);
+
+      console.log('[Dashboard Override] Showing page', currentPage, 'of', totalPages, '(', pageScreenshots.length, 'screenshots)');
+
+      // Helper function to get reason badge
+      const getReasonBadge = (reason) => {
+        if (reason && reason.includes('dom_change')) {
+          return {
+            color: 'background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid #a855f7',
+            icon: '📝',
+            label: 'DOM Change'
+          };
+        } else if (reason && reason.includes('scroll')) {
+          return {
+            color: 'background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid #3b82f6',
+            icon: '🖱️',
+            label: 'Scroll'
+          };
+        }
+        return {
+          color: 'background: rgba(107, 114, 128, 0.1); color: #6b7280; border: 1px solid #6b7280',
+          icon: '📸',
+          label: 'Other'
+        };
+      };
+
+      // Format time helper
+      const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      };
+
+      // Format date helper
+      const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      };
+
+      // Build gallery HTML
+      if (reversedScreenshots.length === 0) {
+        targetContainer.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No screenshots yet</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">
+              Screenshots will appear here when DOM changes or scrolling occurs
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Build grid HTML
+      let gridHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+      `;
+
+      pageScreenshots.forEach(screenshot => {
+        const badge = getReasonBadge(screenshot.reason);
+        const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
+
+        gridHTML += `
+          <div
+            data-screenshot-id="${screenshot.id}"
+            class="screenshot-card"
+            style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; cursor: pointer; transition: box-shadow 0.2s;"
+          >
+            <div style="position: relative; width: 100%; height: 12rem; background: #f3f4f6;">
+              <img
+                src="${screenshot.dataUrl}"
+                alt="Screenshot ${screenshot.id}"
+                style="width: 100%; height: 100%; object-fit: cover;"
+              />
+            </div>
+            <div style="padding: 0.75rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; ${badge.color}">
+                  ${badge.icon} ${badge.label}
+                </div>
+                <span style="font-size: 0.75rem; color: #6b7280;">
+                  #${screenshot.id}
+                </span>
+              </div>
+              <div style="font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.25rem;" title="${screenshot.title || 'Unknown'}">
+                ${screenshot.title || 'Unknown'}
+              </div>
+              <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.5rem;" title="${screenshot.url || 'Unknown'}">
+                ${hostname}
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #6b7280;">
+                <span>${formatDate(screenshot.timestamp)}</span>
+                <span style="font-family: monospace;">${formatTime(screenshot.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      gridHTML += `</div>`;
+
+      // Add pagination if needed
+      if (totalPages > 1) {
+        gridHTML += `
+          <div style="display: flex; align-items: center; justify-content: between; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid #e5e7eb;">
+            <div style="font-size: 0.875rem; color: #6b7280;">
+              Showing ${startIdx + 1} to ${Math.min(endIdx, reversedScreenshots.length)} of ${reversedScreenshots.length} screenshots
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button id="prevPage" ${currentPage === 1 ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === 1 ? 0.5 : 1};">
+                ← Previous
+              </button>
+              <div style="font-size: 0.875rem; font-weight: 500;">
+                Page ${currentPage} of ${totalPages}
+              </div>
+              <button id="nextPage" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === totalPages ? 0.5 : 1};">
+                Next →
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      targetContainer.innerHTML = gridHTML;
+
+      // Add click and hover handlers for screenshots
+      document.querySelectorAll('[data-screenshot-id]').forEach(card => {
+        card.addEventListener('click', function() {
+          const screenshotId = parseInt(this.dataset.screenshotId);
+          const screenshot = screenshots.find(s => s.id === screenshotId);
+          if (screenshot) {
+            openScreenshotModal(screenshot);
+          }
+        });
+
+        // Add hover effects
+        card.addEventListener('mouseover', function() {
+          this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+        });
+        card.addEventListener('mouseout', function() {
+          this.style.boxShadow = 'none';
+        });
+      });
+
+      // Add pagination handlers
+      if (totalPages > 1) {
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+
+        if (prevBtn && currentPage > 1) {
+          prevBtn.addEventListener('click', () => {
+            currentPage--;
+            loadDataAndInject(false);
+          });
+        }
+
+        if (nextBtn && currentPage < totalPages) {
+          nextBtn.addEventListener('click', () => {
+            currentPage++;
+            loadDataAndInject(false);
+          });
+        }
+      }
+
+      // Add handlers for Refresh and Clear All buttons
+      addScreenshotButtonHandlers();
+
+      console.log('[Dashboard Override] Screenshots injected!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting Screenshots:', error);
+  }
+}
+
+// Add event listeners for Refresh and Clear All buttons using MutationObserver
+function addScreenshotButtonHandlers() {
+  if (window.screenshotButtonHandlerAttached) {
+    return;
+  }
+
+  window.screenshotButtonHandlerAttached = true;
+
+  // Function to hijack button clicks
+  const hijackButton = (button, buttonText) => {
+    if (buttonText.includes('Refresh')) {
+      console.log('[Dashboard Override] Hijacking Refresh button');
+
+      // Remove all existing event listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      // Force enable and make clickable
+      newButton.disabled = false;
+      newButton.style.pointerEvents = 'auto';
+
+      // Add our handler with highest priority
+      const handler = (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('[Dashboard Override] Refresh clicked!');
+        currentPage = 1;
+        loadDataAndInject(false);
+        return false;
+      };
+
+      newButton.onclick = handler;
+      newButton.addEventListener('click', handler, true);
+
+      return newButton;
+    }
+
+    if (buttonText.includes('Clear')) {
+      console.log('[Dashboard Override] Hijacking Clear All button, disabled:', button.disabled);
+
+      // Remove all existing event listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      // Force enable and make clickable
+      newButton.disabled = false;
+      newButton.style.pointerEvents = 'auto';
+      newButton.removeAttribute('disabled');
+
+      // Add our handler with highest priority
+      const handler = async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('[Dashboard Override] Clear All clicked!');
+
+        if (confirm('Are you sure you want to clear all screenshots?')) {
+          try {
+            await chrome.storage.local.set({ screenshots: [] });
+            console.log('[Dashboard Override] All screenshots cleared');
+            currentPage = 1;
+            loadDataAndInject(false);
+          } catch (error) {
+            console.error('[Dashboard Override] Error clearing screenshots:', error);
+            alert('Error clearing screenshots');
+          }
+        }
+        return false;
+      };
+
+      newButton.onclick = handler;
+      newButton.addEventListener('click', handler, true);
+
+      console.log('[Dashboard Override] Clear All button setup complete, onclick:', !!newButton.onclick);
+
+      return newButton;
+    }
+  };
+
+  // Watch for button changes and hijack them
+  const observer = new MutationObserver(() => {
+    const buttons = document.querySelectorAll('button');
+
+    buttons.forEach(button => {
+      const buttonText = button.textContent.trim();
+
+      if ((buttonText.includes('Refresh') || buttonText.includes('Clear')) &&
+          !button.dataset.hijacked) {
+        button.dataset.hijacked = 'true';
+        hijackButton(button, buttonText);
+      }
+    });
+  });
+
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Initial hijack
+  setTimeout(() => {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => {
+      const buttonText = button.textContent.trim();
+      if (buttonText.includes('Refresh') || buttonText.includes('Clear')) {
+        button.dataset.hijacked = 'true';
+        hijackButton(button, buttonText);
+      }
+    });
+  }, 500);
+
+  console.log('[Dashboard Override] Button hijacking enabled');
+}
+
+// Helper function to open screenshot in modal
+function openScreenshotModal(screenshot) {
+  const badge = screenshot.reason && screenshot.reason.includes('dom_change')
+    ? { icon: '📝', label: 'DOM Change' }
+    : screenshot.reason && screenshot.reason.includes('scroll')
+    ? { icon: '🖱️', label: 'Scroll' }
+    : { icon: '📸', label: 'Other' };
+
+  const formatDateTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  };
+
+  const modalHTML = `
+    <div id="screenshotModal" class="screenshot-modal-overlay" style="position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem;">
+      <div class="screenshot-modal-content" style="max-width: 72rem; width: 100%; max-height: 90vh; overflow: auto; background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h3 style="font-size: 1.125rem; font-weight: 600;">Screenshot #${screenshot.id}</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">${screenshot.title || 'Unknown'}</p>
+          </div>
+          <button class="close-modal-btn" style="padding: 0.5rem; border: none; background: transparent; cursor: pointer; font-size: 1.5rem; color: #6b7280;">×</button>
+        </div>
+        <div style="padding: 1rem;">
+          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: auto; border-radius: 0.375rem;" />
+          <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">URL:</span>
+              <span style="color: #6b7280;">${screenshot.url || 'Unknown'}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">Reason:</span>
+              <span style="color: #6b7280;">${badge.icon} ${screenshot.reason || 'Unknown'}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 500;">Time:</span>
+              <span style="color: #6b7280;">${formatDateTime(screenshot.timestamp)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Add event listeners after inserting HTML
+  const modal = document.getElementById('screenshotModal');
+  const closeBtn = modal.querySelector('.close-modal-btn');
+  const modalContent = modal.querySelector('.screenshot-modal-content');
+
+  // Close modal when clicking overlay
+  modal.addEventListener('click', function() {
+    this.remove();
+  });
+
+  // Prevent closing when clicking modal content
+  modalContent.addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+
+  // Close button
+  closeBtn.addEventListener('click', function() {
+    modal.remove();
+  });
 }
 
 console.log('[Dashboard Override] Script loaded - will auto-refresh every 5 seconds');

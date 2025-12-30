@@ -985,3 +985,73 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 });
 
 console.log('[Link Blocker] Ready - Blocking external links with query params from Perplexity');
+
+// ============================================================================
+// SCREENSHOT LOGGER - Handles screenshot capture requests from content script
+// ============================================================================
+
+console.log('[Screenshot Logger] Extension loaded');
+
+let screenshotCount = 0;
+
+// Add screenshot capture handler to the existing message listener
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'CAPTURE_SCREENSHOT') {
+    if (!sender.tab) {
+      console.warn('[Screenshot Logger] No tab info');
+      sendResponse({ error: 'No tab info' });
+      return;
+    }
+
+    const tabId = sender.tab.id;
+    const reason = message.reason || 'unknown';
+
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Screenshot Logger] Error:', chrome.runtime.lastError.message);
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        screenshotCount++;
+        const timestamp = new Date().toISOString();
+
+        console.log(`[Screenshot Logger] 📸 Screenshot #${screenshotCount} captured`);
+        console.log(`  Tab: ${tabId}`);
+        console.log(`  Reason: ${reason}`);
+        console.log(`  Time: ${timestamp}`);
+        console.log(`  URL: ${sender.tab.url}`);
+
+        // Store screenshot
+        chrome.storage.local.get(['screenshots'], (result) => {
+          const screenshots = result.screenshots || [];
+          screenshots.push({
+            id: screenshotCount,
+            tabId: tabId,
+            url: sender.tab.url,
+            title: sender.tab.title,
+            reason: reason,
+            timestamp: timestamp,
+            dataUrl: dataUrl
+          });
+
+          // Keep only last 50 screenshots
+          if (screenshots.length > 50) {
+            screenshots.shift();
+          }
+
+          chrome.storage.local.set({ screenshots: screenshots });
+        });
+
+        sendResponse({ success: true, screenshot: dataUrl, id: screenshotCount });
+      }
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'GET_SCREENSHOTS') {
+    chrome.storage.local.get(['screenshots'], (result) => {
+      sendResponse({ screenshots: result.screenshots || [] });
+    });
+    return true;
+  }
+});
+
+console.log('[Screenshot Logger] Ready to capture screenshots');
