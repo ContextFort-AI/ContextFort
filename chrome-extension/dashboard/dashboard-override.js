@@ -23,7 +23,13 @@ window.addEventListener('DOMContentLoaded', () => {
   loadDataAndInject();
 
   // Auto-refresh every 5 seconds (but keep the same page)
-  setInterval(() => loadDataAndInject(false), 5000);
+  // Don't auto-refresh on React-managed pages
+  setInterval(() => {
+    const pageType = getPageType();
+    if (pageType !== 'whitelist' && pageType !== 'sensitive-words') {
+      loadDataAndInject(false);
+    }
+  }, 5000);
 });
 
 // Detect which page we're on
@@ -36,6 +42,7 @@ function getPageType() {
   if (path.includes('downloads')) return 'downloads';
   if (path.includes('screenshots')) return 'screenshots';
   if (path.includes('whitelist')) return 'whitelist';
+  if (path.includes('sensitive-words')) return 'sensitive-words';
   return null;
 }
 
@@ -45,15 +52,6 @@ async function loadDataAndInject(resetPage = true) {
     const pageType = getPageType();
     if (!pageType) {
       console.log('[Dashboard Override] Not on a requests page, skipping...');
-      return;
-    }
-
-    // Handle Whitelist page separately
-    if (pageType === 'whitelist') {
-      const result = await chrome.storage.local.get(['whitelist']);
-      const whitelist = result.whitelist || { urls: [], hostnames: [] };
-      console.log('[Dashboard Override] Loaded whitelist from storage');
-      injectWhitelistPage(whitelist);
       return;
     }
 
@@ -99,6 +97,26 @@ async function loadDataAndInject(resetPage = true) {
 
       updateScreenshotsStats(screenshots);
       injectScreenshots(screenshots);
+      return;
+    }
+
+    // Handle Whitelist page - load data and inject
+    if (pageType === 'whitelist') {
+      const whitelistResult = await chrome.storage.local.get(['whitelist']);
+      const whitelist = whitelistResult.whitelist || { urls: [], hostnames: [] };
+      console.log('[Dashboard Override] Loaded whitelist:', whitelist);
+      injectWhitelist(whitelist);
+      attachWhitelistHandlers();
+      return;
+    }
+
+    // Handle Sensitive Words page - load data and inject
+    if (pageType === 'sensitive-words') {
+      const wordsResult = await chrome.storage.local.get(['sensitiveWords']);
+      const words = wordsResult.sensitiveWords || DEFAULT_SENSITIVE_WORDS;
+      console.log('[Dashboard Override] Loaded sensitive words:', words);
+      injectSensitiveWords(words);
+      attachSensitiveWordsHandlers();
       return;
     }
 
@@ -1897,6 +1915,478 @@ function openScreenshotModal(screenshot) {
   closeBtn.addEventListener('click', function() {
     modal.remove();
   });
+}
+
+// ============================================================================
+// SENSITIVE WORDS & WHITELIST - Data injection
+// ============================================================================
+
+const DEFAULT_SENSITIVE_WORDS = ['password', 'secret', 'token', 'api_key', 'credential', 'private'];
+
+function injectSensitiveWords(words) {
+  console.log('[Dashboard Override] Injecting sensitive words:', words);
+
+  setTimeout(() => {
+    // Find the "Add Word" button to locate the correct section
+    const allButtons = document.querySelectorAll('button');
+    let addWordButton = null;
+
+    for (let button of allButtons) {
+      if (button.textContent.includes('Add Word')) {
+        addWordButton = button;
+        console.log('[Dashboard Override] Found Add Word button');
+        break;
+      }
+    }
+
+    if (!addWordButton) {
+      console.error('[Dashboard Override] Could not find Add Word button');
+      return;
+    }
+
+    // Walk up from the button to find the card container
+    let cardContainer = addWordButton;
+    for (let i = 0; i < 15; i++) {
+      cardContainer = cardContainer.parentElement;
+      if (!cardContainer) break;
+
+      // Look for a container that has both the button and code elements or empty space
+      const hasInput = cardContainer.querySelector('input[type="text"]');
+      const spaceYDivs = cardContainer.querySelectorAll('div[class*="space-y"]');
+
+      if (hasInput && spaceYDivs.length > 0) {
+        console.log('[Dashboard Override] Found card container with', spaceYDivs.length, 'space-y divs');
+
+        // Find the right space-y div - should be after the input and before "Reset to Default Words"
+        let wordsListContainer = null;
+
+        // Since we're already in the correct card (found via "Add Word" button),
+        // just use the first space-y div that doesn't contain an input
+        // The "Default Sensitive Words" section is in a different card entirely
+        for (let div of spaceYDivs) {
+          // Skip if it contains the input
+          if (div.querySelector('input')) {
+            console.log('[Dashboard Override] Skipping div with input');
+            continue;
+          }
+
+          // This should be our words list!
+          wordsListContainer = div;
+          console.log('[Dashboard Override] Found words list container!');
+          break;
+        }
+
+        if (wordsListContainer) {
+          console.log('[Dashboard Override] Clearing and rebuilding with', words.length, 'words');
+
+          // Clear and rebuild the words list
+          wordsListContainer.innerHTML = '';
+
+          if (words.length === 0) {
+            wordsListContainer.innerHTML = '<p class="text-sm text-muted-foreground italic">No sensitive words configured. Using default words.</p>';
+          } else {
+            words.forEach((word) => {
+              const wordDiv = document.createElement('div');
+              wordDiv.className = 'flex items-center justify-between p-3 bg-muted rounded-md';
+              wordDiv.innerHTML = `
+                <code class="text-sm text-green-600 dark:text-green-400">${word}</code>
+                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-3" data-word="${word}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </button>
+              `;
+              wordsListContainer.appendChild(wordDiv);
+            });
+          }
+
+          // Update the count in the stats card
+          const statsCards = document.querySelectorAll('div[class*="rounded"]');
+          for (let card of statsCards) {
+            const titleElement = card.querySelector('h3, p');
+            if (titleElement && titleElement.textContent && titleElement.textContent.includes('Active Words')) {
+              const valueElement = card.querySelector('div[class*="text-2xl"], div[class*="text-3xl"]');
+              if (valueElement) {
+                valueElement.textContent = words.length.toString();
+              }
+            }
+          }
+
+          console.log('[Dashboard Override] Sensitive words injected successfully');
+          return;
+        }
+
+        console.error('[Dashboard Override] Could not find words list container in card');
+        return;
+      }
+    }
+
+    console.error('[Dashboard Override] Could not find card container');
+  }, 200);
+}
+
+function injectWhitelist(whitelist) {
+  console.log('[Dashboard Override] Injecting whitelist:', whitelist);
+
+  setTimeout(() => {
+    // Find the input fields - first is URL, second is hostname
+    const inputs = document.querySelectorAll('input[type="text"]');
+    if (inputs.length < 2) {
+      console.error('[Dashboard Override] Could not find input fields');
+      return;
+    }
+
+    const urlInput = inputs[0];
+    const hostnameInput = inputs[1];
+
+    // Find the containers for URLs and Hostnames by looking for space-y divs near each input
+    let urlsContainer = null;
+    let hostnamesContainer = null;
+
+    // Find URLs container - it should be in the same parent as the URL input
+    let urlParent = urlInput;
+    for (let i = 0; i < 10; i++) {
+      urlParent = urlParent.parentElement;
+      if (!urlParent) break;
+
+      const spaceYContainers = urlParent.querySelectorAll('div[class*="space-y"]');
+      for (let container of spaceYContainers) {
+        // Skip if this container has an input
+        if (container.querySelector('input')) continue;
+
+        // Check if this is within the URL section (should have the "Add URL" button nearby)
+        let parent = container;
+        let hasUrlButton = false;
+        for (let j = 0; j < 5; j++) {
+          parent = parent.parentElement;
+          if (!parent) break;
+          if (parent.textContent && parent.textContent.includes('Add URL')) {
+            hasUrlButton = true;
+            break;
+          }
+        }
+
+        if (hasUrlButton) {
+          urlsContainer = container;
+          break;
+        }
+      }
+
+      if (urlsContainer) break;
+    }
+
+    // Find Hostnames container - it should be in the same parent as the hostname input
+    let hostnameParent = hostnameInput;
+    for (let i = 0; i < 10; i++) {
+      hostnameParent = hostnameParent.parentElement;
+      if (!hostnameParent) break;
+
+      const spaceYContainers = hostnameParent.querySelectorAll('div[class*="space-y"]');
+      for (let container of spaceYContainers) {
+        // Skip if this container has an input
+        if (container.querySelector('input')) continue;
+
+        // Check if this is within the Hostname section
+        let parent = container;
+        let hasHostnameButton = false;
+        for (let j = 0; j < 5; j++) {
+          parent = parent.parentElement;
+          if (!parent) break;
+          if (parent.textContent && parent.textContent.includes('Add Hostname')) {
+            hasHostnameButton = true;
+            break;
+          }
+        }
+
+        if (hasHostnameButton) {
+          hostnamesContainer = container;
+          break;
+        }
+      }
+
+      if (hostnamesContainer) break;
+    }
+
+    if (!urlsContainer || !hostnamesContainer) {
+      console.error('[Dashboard Override] Could not find list containers');
+      return;
+    }
+
+      // Inject URLs
+      urlsContainer.innerHTML = '';
+      if (whitelist.urls.length === 0) {
+        urlsContainer.innerHTML = '<p class="text-sm text-muted-foreground italic">No URLs whitelisted</p>';
+      } else {
+        whitelist.urls.forEach((url) => {
+          const urlDiv = document.createElement('div');
+          urlDiv.className = 'flex items-center justify-between p-3 bg-muted rounded-md';
+          urlDiv.innerHTML = `
+            <code class="text-sm text-blue-600 dark:text-blue-400">${url}</code>
+            <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-3" data-value="${url}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+            </button>
+          `;
+          urlsContainer.appendChild(urlDiv);
+        });
+      }
+
+      // Inject Hostnames
+      hostnamesContainer.innerHTML = '';
+      if (whitelist.hostnames.length === 0) {
+        hostnamesContainer.innerHTML = '<p class="text-sm text-muted-foreground italic">No hostnames whitelisted</p>';
+      } else {
+        whitelist.hostnames.forEach((hostname) => {
+          const hostnameDiv = document.createElement('div');
+          hostnameDiv.className = 'flex items-center justify-between p-3 bg-muted rounded-md';
+          hostnameDiv.innerHTML = `
+            <code class="text-sm text-purple-600 dark:text-purple-400">${hostname}</code>
+            <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-3" data-value="${hostname}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+            </button>
+          `;
+          hostnamesContainer.appendChild(hostnameDiv);
+        });
+      }
+
+    // Update stats cards
+    const statsCards = document.querySelectorAll('div[class*="rounded"]');
+    for (let card of statsCards) {
+      const titleElement = card.querySelector('h3, p');
+      if (titleElement && titleElement.textContent) {
+        if (titleElement.textContent.includes('Whitelisted URLs')) {
+          const valueElement = card.querySelector('div[class*="text-2xl"], div[class*="text-3xl"]');
+          if (valueElement) {
+            valueElement.textContent = whitelist.urls.length.toString();
+          }
+        } else if (titleElement.textContent.includes('Whitelisted Hostnames')) {
+          const valueElement = card.querySelector('div[class*="text-2xl"], div[class*="text-3xl"]');
+          if (valueElement) {
+            valueElement.textContent = whitelist.hostnames.length.toString();
+          }
+        }
+      }
+    }
+
+    console.log('[Dashboard Override] Whitelist injected successfully');
+  }, 100);
+}
+
+// ============================================================================
+// SENSITIVE WORDS PAGE - Button hijacking
+// ============================================================================
+
+function attachSensitiveWordsHandlers() {
+  console.log('[Dashboard Override] Setting up Sensitive Words button handlers');
+
+  // Use event delegation on document body to catch all button clicks
+  document.body.addEventListener('click', async (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const buttonText = button.textContent.trim();
+    console.log('[Sensitive Words] Button clicked:', buttonText);
+
+    // Handle "Add Word" button
+    if (buttonText.includes('Add Word') && window.location.pathname.includes('sensitive-words')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const input = document.querySelector('input[type="text"]');
+      const value = input?.value?.trim();
+
+      if (!value) {
+        alert('Please enter a word');
+        return;
+      }
+
+      console.log('[Sensitive Words] Adding word:', value);
+
+      try {
+        const result = await chrome.storage.local.get(['sensitiveWords']);
+        const words = result.sensitiveWords || DEFAULT_SENSITIVE_WORDS;
+
+        // Check if already exists
+        if (words.some(w => w.toLowerCase() === value.toLowerCase())) {
+          alert('This word is already in the list');
+          return;
+        }
+
+        const newWords = [...words, value];
+        await chrome.storage.local.set({ sensitiveWords: newWords });
+        console.log('[Sensitive Words] Word added successfully');
+
+        // Clear input and re-inject data
+        if (input) input.value = '';
+        injectSensitiveWords(newWords);
+      } catch (error) {
+        console.error('[Sensitive Words] Error adding word:', error);
+        alert('Error adding word');
+      }
+    }
+
+    // Handle "Reset to Default Words" button
+    if (buttonText.includes('Reset') && window.location.pathname.includes('sensitive-words')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      if (!confirm('Reset to default sensitive words? This will remove all custom words.')) {
+        return;
+      }
+
+      console.log('[Sensitive Words] Resetting to defaults');
+
+      try {
+        await chrome.storage.local.set({ sensitiveWords: DEFAULT_SENSITIVE_WORDS });
+        console.log('[Sensitive Words] Reset successful');
+        injectSensitiveWords(DEFAULT_SENSITIVE_WORDS);
+      } catch (error) {
+        console.error('[Sensitive Words] Error resetting:', error);
+        alert('Error resetting to defaults');
+      }
+    }
+
+    // Handle delete buttons (trash icon)
+    if (button.querySelector('svg') && window.location.pathname.includes('sensitive-words')) {
+      const wordElement = button.closest('div')?.querySelector('code');
+      if (wordElement) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const wordToRemove = wordElement.textContent.trim();
+        console.log('[Sensitive Words] Removing word:', wordToRemove);
+
+        try {
+          const result = await chrome.storage.local.get(['sensitiveWords']);
+          const words = result.sensitiveWords || DEFAULT_SENSITIVE_WORDS;
+          const newWords = words.filter(w => w !== wordToRemove);
+
+          await chrome.storage.local.set({ sensitiveWords: newWords });
+          console.log('[Sensitive Words] Word removed successfully');
+          injectSensitiveWords(newWords);
+        } catch (error) {
+          console.error('[Sensitive Words] Error removing word:', error);
+          alert('Error removing word');
+        }
+      }
+    }
+  }, true); // Use capture phase
+}
+
+// ============================================================================
+// WHITELIST PAGE - Button hijacking
+// ============================================================================
+
+function attachWhitelistHandlers() {
+  console.log('[Dashboard Override] Setting up Whitelist button handlers');
+
+  // Use event delegation on document body to catch all button clicks
+  document.body.addEventListener('click', async (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const buttonText = button.textContent.trim();
+    console.log('[Whitelist] Button clicked:', buttonText);
+
+    // Handle "Add URL" button
+    if (buttonText.includes('Add URL') && window.location.pathname.includes('whitelist')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const inputs = document.querySelectorAll('input[type="text"]');
+      const urlInput = inputs[0];
+      const value = urlInput?.value?.trim();
+
+      if (!value) {
+        alert('Please enter a URL');
+        return;
+      }
+
+      console.log('[Whitelist] Adding URL:', value);
+
+      try {
+        const result = await chrome.storage.local.get(['whitelist']);
+        const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+        if (whitelist.urls.includes(value)) {
+          alert('URL already whitelisted');
+          return;
+        }
+
+        whitelist.urls.push(value);
+        await chrome.storage.local.set({ whitelist });
+        console.log('[Whitelist] URL added successfully');
+
+        if (urlInput) urlInput.value = '';
+        injectWhitelist(whitelist);
+      } catch (error) {
+        console.error('[Whitelist] Error adding URL:', error);
+        alert('Error adding URL');
+      }
+    }
+
+    // Handle "Add Hostname" button
+    if (buttonText.includes('Add Hostname') && window.location.pathname.includes('whitelist')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const inputs = document.querySelectorAll('input[type="text"]');
+      const hostnameInput = inputs[1];
+      const value = hostnameInput?.value?.trim();
+
+      if (!value) {
+        alert('Please enter a hostname');
+        return;
+      }
+
+      console.log('[Whitelist] Adding hostname:', value);
+
+      try {
+        const result = await chrome.storage.local.get(['whitelist']);
+        const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+        if (whitelist.hostnames.includes(value)) {
+          alert('Hostname already whitelisted');
+          return;
+        }
+
+        whitelist.hostnames.push(value);
+        await chrome.storage.local.set({ whitelist });
+        console.log('[Whitelist] Hostname added successfully');
+
+        if (hostnameInput) hostnameInput.value = '';
+        injectWhitelist(whitelist);
+      } catch (error) {
+        console.error('[Whitelist] Error adding hostname:', error);
+        alert('Error adding hostname');
+      }
+    }
+
+    // Handle delete buttons (trash icon)
+    if (button.querySelector('svg') && window.location.pathname.includes('whitelist')) {
+      const codeElement = button.closest('div')?.querySelector('code');
+      if (codeElement) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const valueToRemove = codeElement.textContent.trim();
+        console.log('[Whitelist] Removing:', valueToRemove);
+
+        try {
+          const result = await chrome.storage.local.get(['whitelist']);
+          const whitelist = result.whitelist || { urls: [], hostnames: [] };
+
+          // Try removing from both arrays
+          whitelist.urls = whitelist.urls.filter(url => url !== valueToRemove);
+          whitelist.hostnames = whitelist.hostnames.filter(hostname => hostname !== valueToRemove);
+
+          await chrome.storage.local.set({ whitelist });
+          console.log('[Whitelist] Item removed successfully');
+          injectWhitelist(whitelist);
+        } catch (error) {
+          console.error('[Whitelist] Error removing item:', error);
+          alert('Error removing item');
+        }
+      }
+    }
+  }, true); // Use capture phase
 }
 
 console.log('[Dashboard Override] Script loaded - will auto-refresh every 5 seconds');
