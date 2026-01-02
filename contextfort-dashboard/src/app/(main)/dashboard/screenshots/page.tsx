@@ -70,6 +70,7 @@ export default function ScreenshotsPage() {
   const [rawSessionData, setRawSessionData] = useState<Session[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempts, setLoadAttempts] = useState(0);
+  const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<Record<number, number>>({});
   const itemsPerPage = 12;
 
   // Load screenshots and sessions from Chrome storage
@@ -129,6 +130,23 @@ export default function ScreenshotsPage() {
     const interval = setInterval(loadScreenshots, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Rotation timer for screenshot previews (every 2 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentScreenshotIndex(prevIndices => {
+        const newIndices = { ...prevIndices };
+        groupedScreenshots.forEach(({ session, screenshots: sessionScreenshots }) => {
+          if (sessionScreenshots.length > 0) {
+            const currentIndex = newIndices[session.id] || 0;
+            newIndices[session.id] = (currentIndex + 1) % sessionScreenshots.length;
+          }
+        });
+        return newIndices;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [sessions, screenshots]);
 
   // Calculate stats
   const totalScreenshots = screenshots.length;
@@ -492,35 +510,72 @@ export default function ScreenshotsPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {/* Render each session */}
-          {groupedScreenshots.map(({ session, screenshots: sessionScreenshots }) => (
-            <Card key={session.id} className={session.status === 'active' ? 'border-orange-500/50' : ''}>
-              <CardHeader
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => toggleSession(session.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${session.status === 'active' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
-                    <div>
-                      <CardTitle className="text-lg">
-                        Session #{session.id}
-                        {session.status === 'active' && <Badge className="ml-2 bg-orange-500">Active</Badge>}
-                      </CardTitle>
-                      <CardDescription>
-                        {session.tabTitle || 'Unknown Page'} • {getSessionDuration(session)} • {sessionScreenshots.length} screenshots
-                      </CardDescription>
+          {groupedScreenshots.map(({ session, screenshots: sessionScreenshots }) => {
+            const currentIndex = currentScreenshotIndex[session.id] || 0;
+            const currentScreenshot = sessionScreenshots[currentIndex];
+            const reasonBadge = currentScreenshot ? getReasonBadge(currentScreenshot.reason) : null;
+
+            return (
+              <Card key={session.id} className={session.status === 'active' ? 'border-orange-500/50' : ''}>
+                <CardHeader
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleSession(session.id)}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className={`w-3 h-3 rounded-full mt-1 ${session.status === 'active' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
+                      <div className="flex-1">
+                        <CardTitle className="text-lg mb-2">
+                          Session #{session.id}
+                          {session.status === 'active' && <Badge className="ml-2 bg-orange-500">Active</Badge>}
+                        </CardTitle>
+                        <CardDescription className="mb-3">
+                          {session.tabTitle || 'Unknown Page'} • {getSessionDuration(session)} • {sessionScreenshots.length} screenshots
+                        </CardDescription>
+
+                        {/* Rotating Screenshot Preview */}
+                        {currentScreenshot && !expandedSessions.has(session.id) && (
+                          <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg border">
+                            <div className="relative w-32 h-20 flex-shrink-0 bg-background rounded overflow-hidden">
+                              <img
+                                src={currentScreenshot.dataUrl}
+                                alt={`Preview ${currentScreenshot.id}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {reasonBadge && (
+                                  <Badge variant="outline" className={`text-xs gap-1 ${reasonBadge.color}`}>
+                                    {reasonBadge.icon}
+                                    {reasonBadge.label}
+                                  </Badge>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  #{currentScreenshot.id}
+                                </span>
+                              </div>
+                              <div className="text-sm font-medium truncate" title={currentScreenshot.url}>
+                                {new URL(currentScreenshot.url).hostname}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDate(currentScreenshot.timestamp)} {formatTime(currentScreenshot.timestamp)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {formatDate(session.startTime)} {formatTime(session.startTime)}
+                      </Badge>
+                      <ChevronDownIcon
+                        className={`h-5 w-5 transition-transform ${expandedSessions.has(session.id) ? 'rotate-180' : ''}`}
+                      />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {formatDate(session.startTime)} {formatTime(session.startTime)}
-                    </Badge>
-                    <ChevronRightIcon
-                      className={`h-5 w-5 transition-transform ${expandedSessions.has(session.id) ? 'rotate-90' : ''}`}
-                    />
-                  </div>
-                </div>
-              </CardHeader>
+                </CardHeader>
               {expandedSessions.has(session.id) && (
                 <CardContent>
                   {sessionScreenshots.length === 0 ? (
@@ -529,80 +584,95 @@ export default function ScreenshotsPage() {
                       <p className="text-sm text-muted-foreground">No screenshots captured in this session</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {sessionScreenshots.map((screenshot) => {
-                        const reasonBadge = getReasonBadge(screenshot.reason);
-                        const isSuspicious = screenshot.reason === 'suspicious_click';
-                        return (
-                          <div
-                            key={screenshot.id}
-                            className={`border rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer ${isSuspicious ? 'border-red-500/50 bg-red-500/5' : ''}`}
-                            onClick={() => openFullSize(screenshot)}
-                          >
-                            <div className="relative w-full h-48 bg-muted">
-                              <img
-                                src={screenshot.dataUrl}
-                                alt={`Screenshot ${screenshot.id}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <Badge variant="outline" className={`text-xs gap-1 ${reasonBadge.color}`}>
-                                  {reasonBadge.icon}
-                                  {reasonBadge.label}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  #{screenshot.id}
-                                </span>
-                              </div>
-                              <div className="text-xs font-medium truncate mb-1" title={screenshot.title}>
-                                {screenshot.title}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate mb-2" title={screenshot.url}>
-                                {new URL(screenshot.url).hostname}
-                              </div>
-
-                              {/* Show clicked element info for suspicious clicks */}
-                              {screenshot.clickedElement && (
-                                <div className="mb-2 p-2 bg-orange-500/10 rounded text-xs border border-orange-500/30">
-                                  <div className="font-semibold text-orange-600 mb-1">🖱️ Clicked Element:</div>
-                                  <div className="text-orange-700">
-                                    &lt;{screenshot.clickedElement.tag.toLowerCase()}&gt; {screenshot.clickedElement.text.substring(0, 30)}
-                                    {screenshot.clickedElement.text.length > 30 ? '...' : ''}
+                    <div className="rounded-md border overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Screenshot</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Event</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">URL</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold">Date/Time</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {sessionScreenshots.map((screenshot) => {
+                            const reasonBadge = getReasonBadge(screenshot.reason);
+                            const isSuspicious = screenshot.reason === 'suspicious_click';
+                            return (
+                              <tr
+                                key={screenshot.id}
+                                className={`hover:bg-muted/30 transition-colors cursor-pointer ${isSuspicious ? 'bg-red-500/5' : ''}`}
+                                onClick={() => openFullSize(screenshot)}
+                              >
+                                {/* Screenshot Column */}
+                                <td className="px-4 py-3">
+                                  <div className="relative w-32 h-20 bg-background rounded overflow-hidden border">
+                                    <img
+                                      src={screenshot.dataUrl}
+                                      alt={`Screenshot ${screenshot.id}`}
+                                      className="w-full h-full object-cover"
+                                    />
                                   </div>
-                                </div>
-                              )}
+                                </td>
 
-                              {/* Show POST request info if available */}
-                              {screenshot.postRequest && (
-                                <div className="mb-2 p-2 bg-blue-500/10 rounded text-xs border border-blue-500/30">
-                                  <div className="font-semibold text-blue-600 mb-1">📡 POST Request:</div>
-                                  <div className="text-blue-700 truncate" title={screenshot.postRequest.url}>
-                                    {screenshot.postRequest.method} → {screenshot.postRequest.hostname}
-                                  </div>
-                                  {screenshot.postRequest.matched_fields.length > 0 && (
-                                    <div className="text-blue-600 mt-1">
-                                      Fields: {screenshot.postRequest.matched_fields.join(', ')}
+                                {/* Event Column */}
+                                <td className="px-4 py-3">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className={`text-xs gap-1 ${reasonBadge.color}`}>
+                                        {reasonBadge.icon}
+                                        {reasonBadge.label}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        #{screenshot.id}
+                                      </span>
                                     </div>
-                                  )}
-                                </div>
-                              )}
+                                    {screenshot.clickedElement && (
+                                      <div className="text-xs text-orange-600">
+                                        🖱️ &lt;{screenshot.clickedElement.tag.toLowerCase()}&gt;
+                                      </div>
+                                    )}
+                                    {screenshot.postRequest && (
+                                      <div className="text-xs text-blue-600">
+                                        📡 {screenshot.postRequest.method}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
 
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span>{formatDate(screenshot.timestamp)}</span>
-                                <span className="font-mono">{formatTime(screenshot.timestamp)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                                {/* URL Column */}
+                                <td className="px-4 py-3">
+                                  <div className="max-w-xs">
+                                    <div className="text-sm font-medium truncate" title={screenshot.url}>
+                                      {new URL(screenshot.url).hostname}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate" title={screenshot.title}>
+                                      {screenshot.title}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Date/Time Column */}
+                                <td className="px-4 py-3">
+                                  <div className="text-sm whitespace-nowrap">
+                                    <div>{formatDate(screenshot.timestamp)}</div>
+                                    <div className="text-xs text-muted-foreground font-mono">
+                                      {formatTime(screenshot.timestamp)}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
               )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
