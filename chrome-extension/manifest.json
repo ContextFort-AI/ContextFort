@@ -1,36 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "ContextFort Security",
-  "version": "2.0.0",
-  "description": "POST request monitoring and AI-powered click detection for enhanced security",
+  "name": "Claude Agent Detector",
+  "version": "1.0.0",
+  "description": "Detects Claude agent mode, captures screenshots, and tracks sessions",
 
   "permissions": [
-    "webRequest",
     "storage",
     "activeTab",
     "tabs",
-    "debugger",
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
-    "declarativeNetRequestFeedback",
-    "webNavigation",
-    "notifications",
-    "downloads"
+    "tabGroups"
   ],
 
   "host_permissions": [
     "<all_urls>"
   ],
-
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "block_perplexity_links",
-        "enabled": true,
-        "path": "rules.json"
-      }
-    ]
-  },
 
   "background": {
     "service_worker": "background.js"
@@ -44,18 +27,12 @@
     }
   ],
 
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "action": {},
 
   "web_accessible_resources": [
     {
-      "resources": ["icon128.png", "dashboard/**"],
+      "resources": ["dashboard/**"],
       "matches": ["<all_urls>"]
     }
-  ],
-
-  "icons": {
-    "128": "icon128.png"
-  }
+  ]
 }
