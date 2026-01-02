@@ -23,7 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadDataAndInject();
 
   // Auto-refresh every 5 seconds (but keep the same page)
-  // Don't auto-refresh on React-managed pages or screenshots page (to avoid collapsing expanded sessions)
+  // Don't auto-refresh on React-managed pages (whitelist, sensitive-words, screenshots)
   setInterval(() => {
     const pageType = getPageType();
     if (pageType !== 'whitelist' && pageType !== 'sensitive-words' && pageType !== 'screenshots') {
@@ -1537,6 +1537,7 @@ function updateScreenshotsStats(screenshots, sessions) {
   }
 }
 
+// Updated injectScreenshots function with table-based rolling UI
 function injectScreenshots(screenshots, sessions) {
   try {
     console.log('[Dashboard Override] Injecting Screenshots data...');
@@ -1572,7 +1573,7 @@ function injectScreenshots(screenshots, sessions) {
 
       const formatDate = (timestamp) => {
         const date = new Date(timestamp);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       };
 
       const formatDuration = (seconds) => {
@@ -1583,46 +1584,70 @@ function injectScreenshots(screenshots, sessions) {
         return `${hours}h ${mins % 60}m`;
       };
 
-      // Build session table HTML
+      const getEventBadge = (screenshot) => {
+        // Priority 1: Use eventType if available
+        if (screenshot.eventType) {
+          const eventType = screenshot.eventType.toLowerCase();
+          const eventColors = {
+            'click': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', label: 'Click' },
+            'input': { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', label: 'Input' },
+            'change': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', label: 'Change' },
+            'submit': { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', label: 'Submit' },
+            'keypress': { color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)', label: 'Keypress' },
+            'navigation': { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)', label: 'Navigation' },
+            'new_tab': { color: '#f97316', bg: 'rgba(249, 115, 22, 0.1)', label: 'New Tab' }
+          };
+          if (eventColors[eventType]) {
+            return eventColors[eventType];
+          }
+        }
+
+        // Priority 2: Parse from reason field
+        const reason = screenshot.reason || '';
+        if (reason === 'suspicious_click' || reason.includes('click')) {
+          return { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)', label: 'Suspicious Click' };
+        } else if (reason.includes('dom_change')) {
+          return { color: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)', label: 'DOM Change' };
+        } else if (reason.includes('scroll')) {
+          return { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', label: 'Scroll' };
+        } else if (reason.includes('input')) {
+          return { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', label: 'Input' };
+        } else if (reason.includes('navigation')) {
+          return { color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)', label: 'Navigation' };
+        }
+
+        // Default
+        return { color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)', label: 'Other' };
+      };
+
+      // Build session containers HTML
       if (sessions.length === 0) {
         targetContainer.innerHTML = `
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
             <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No sessions yet</h3>
             <p style="font-size: 0.875rem; color: #6b7280;">
-              Sessions will appear here when agent mode (debugger) is detected
+              Sessions will appear here when agent mode (debugger) is attached
             </p>
           </div>
         `;
         return;
       }
-      // Build expandable session table
-      let tableHTML = `
-        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead style="background: #f9fafb;">
-              <tr>
-                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Session ID</th>
-                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Status</th>
-                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Tab URL</th>
-                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Start Time</th>
-                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Duration</th>
-                <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Screenshots</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
 
       // Sort sessions by start time (newest first)
       const sortedSessions = [...sessions].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-      sortedSessions.forEach((session, index) => {
+      // Build session containers HTML
+      let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+
+      sortedSessions.forEach((session) => {
         const sessionData = sessionMap.get(session.id);
         const sessionScreenshots = sessionData ? sessionData.screenshots : [];
         const isActive = session.status === 'active';
         const statusColor = isActive ? '#f97316' : '#22c55e';
         const statusBg = isActive ? 'rgba(249, 115, 22, 0.1)' : 'rgba(34, 197, 94, 0.1)';
-        
+        const borderColor = isActive ? 'rgba(249, 115, 22, 0.5)' : '#e5e7eb';
+
         // Calculate duration
         let duration = '';
         if (session.duration) {
@@ -1634,56 +1659,127 @@ function injectScreenshots(screenshots, sessions) {
           duration = formatDuration(seconds) + ' (active)';
         }
 
-        tableHTML += `
-          <tr class="session-row" data-session-id="${session.id}" style="cursor: pointer; border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 1rem; font-family: monospace; font-size: 0.875rem;">#${session.id}</td>
-            <td style="padding: 1rem;">
-              <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background: ${statusBg};">
-                ${isActive ? '● Active' : '✓ Ended'}
-              </span>
-            </td>
-            <td style="padding: 1rem; font-size: 0.875rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${session.tabUrl || 'Unknown'}">${session.tabTitle || session.tabUrl || 'Unknown'}</td>
-            <td style="padding: 1rem; font-size: 0.875rem;">${formatDate(session.startTime)} ${formatTime(session.startTime)}</td>
-            <td style="padding: 1rem; font-size: 0.875rem;">${duration}</td>
-            <td style="padding: 1rem; text-align: center; font-weight: 600;">${sessionScreenshots.length}</td>
-          </tr>
-          <tr class="session-details" data-session-id="${session.id}" style="display: none; background: #f9fafb;">
-            <td colspan="6" style="padding: 0;">
-              <div id="session-content-${session.id}" style="padding: 1rem;">
-                <!-- Screenshots will be loaded here when expanded -->
+        html += `
+          <div style="border: 1px solid ${borderColor}; border-radius: 0.75rem; overflow: hidden; background: white;">
+            <!-- Session Header -->
+            <div style="padding: 1rem 1.5rem; background: #fafafa; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background: ${statusColor}; ${isActive ? 'animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;' : ''}"></div>
+                <div>
+                  <span style="font-size: 1.125rem; font-weight: 600;">Session #${session.id}</span>
+                  ${isActive ? `<span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background: ${statusBg}; margin-left: 0.5rem;">Active</span>` : ''}
+                </div>
               </div>
-            </td>
-          </tr>
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="font-size: 0.875rem; color: #6b7280;">
+                  ${session.tabTitle || 'Unknown Page'} • ${duration} • ${sessionScreenshots.length} screenshots
+                </div>
+                <div style="font-size: 0.75rem; color: #6b7280; padding: 0.25rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; white-space: nowrap;">
+                  ${formatDate(session.startTime)} ${formatTime(session.startTime)}
+                </div>
+                <svg class="expand-icon" data-session-id="${session.id}" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; transition: transform 0.2s;">
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Rolling Preview Table (Collapsed) -->
+            ${sessionScreenshots.length > 0 ? `
+            <div class="rolling-preview-table" data-session-id="${session.id}" style="border-bottom: 1px solid #e5e7eb;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #f9fafb;">
+                  <tr>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 180px;">Screenshot</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 200px;">Event</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">URL</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 150px;">Date/Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="rolling-row" data-session-id="${session.id}" style="transition: opacity 0.3s;">
+                    <td style="padding: 0.75rem 1rem;">
+                      <div style="position: relative; width: 8rem; height: 5rem; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
+                        <img class="rolling-screenshot" src="${sessionScreenshots[0].dataUrl}" alt="Screenshot" style="width: 100%; height: 100%; object-fit: cover;" />
+                      </div>
+                    </td>
+                    <td style="padding: 0.75rem 1rem;">
+                      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                          <span class="rolling-event-badge" style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.625rem; font-weight: 600; color: ${getEventBadge(sessionScreenshots[0]).color}; background: ${getEventBadge(sessionScreenshots[0]).bg};">
+                            ${getEventBadge(sessionScreenshots[0]).label}
+                          </span>
+                        </div>
+                        ${sessionScreenshots[0].clickedElement ? `<div class="rolling-clicked" style="font-size: 0.75rem; color: #f97316;">🖱️ &lt;${sessionScreenshots[0].clickedElement.tag ? sessionScreenshots[0].clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : '<div class="rolling-clicked"></div>'}
+                        ${sessionScreenshots[0].postRequest ? `<div class="rolling-post" style="font-size: 0.75rem; color: #3b82f6;">📡 ${sessionScreenshots[0].postRequest.method}</div>` : '<div class="rolling-post"></div>'}
+                      </div>
+                    </td>
+                    <td style="padding: 0.75rem 1rem;">
+                      <div style="max-width: 18rem;">
+                        <div class="rolling-hostname" style="font-size: 0.875rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${sessionScreenshots[0].url}">
+                          ${sessionScreenshots[0].url ? new URL(sessionScreenshots[0].url).hostname : 'Unknown'}
+                        </div>
+                        <div class="rolling-title" style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${sessionScreenshots[0].title}">
+                          ${sessionScreenshots[0].title || 'Untitled'}
+                        </div>
+                      </div>
+                    </td>
+                    <td style="padding: 0.75rem 1rem;">
+                      <div style="font-size: 0.875rem; white-space: nowrap;">
+                        <div class="rolling-date">${formatDate(sessionScreenshots[0].timestamp)}</div>
+                        <div class="rolling-time" style="font-size: 0.75rem; color: #6b7280; font-family: monospace;">
+                          ${formatTime(sessionScreenshots[0].timestamp)}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            ` : ''}
+
+            <!-- Expanded Table (All Screenshots) -->
+            <div class="expanded-table" data-session-id="${session.id}" style="display: none;">
+              <div id="session-content-${session.id}"></div>
+            </div>
+          </div>
         `;
       });
 
-      tableHTML += `
-            </tbody>
-          </table>
-        </div>
-      `;
+      html += '</div>';
+      targetContainer.innerHTML = html;
 
-      targetContainer.innerHTML = tableHTML;
-
-      // Add click handlers to expand/collapse sessions
-      document.querySelectorAll('.session-row').forEach(row => {
-        row.addEventListener('click', function() {
+      // Add click handlers for expand/collapse
+      document.querySelectorAll('.expand-icon').forEach(icon => {
+        icon.addEventListener('click', function() {
           const sessionId = this.dataset.sessionId;
-          const detailsRow = document.querySelector(`.session-details[data-session-id="${sessionId}"]`);
+          const expandedTable = document.querySelector(`.expanded-table[data-session-id="${sessionId}"]`);
+          const rollingTable = document.querySelector(`.rolling-preview-table[data-session-id="${sessionId}"]`);
           const contentDiv = document.getElementById(`session-content-${sessionId}`);
-          
-          if (detailsRow.style.display === 'none') {
+
+          // Toggle display
+          const isExpanded = expandedTable.style.display !== 'none';
+
+          if (isExpanded) {
+            // Collapse
+            expandedTable.style.display = 'none';
+            if (rollingTable) rollingTable.style.display = '';
+            this.style.transform = 'rotate(0deg)';
+          } else {
             // Collapse all other sessions first
-            document.querySelectorAll('.session-details').forEach(r => r.style.display = 'none');
-            
+            document.querySelectorAll('.expanded-table').forEach(t => t.style.display = 'none');
+            document.querySelectorAll('.rolling-preview-table').forEach(t => t.style.display = '');
+            document.querySelectorAll('.expand-icon').forEach(i => i.style.transform = 'rotate(0deg)');
+
             // Expand this session
-            detailsRow.style.display = '';
-            
-            // Load screenshots if not already loaded
+            expandedTable.style.display = 'block';
+            if (rollingTable) rollingTable.style.display = 'none';
+            this.style.transform = 'rotate(180deg)';
+
+            // Load table if not already loaded
             if (!contentDiv.dataset.loaded) {
               const sessionData = sessionMap.get(parseInt(sessionId));
               const sessionScreenshots = sessionData ? sessionData.screenshots : [];
-              
+
               if (sessionScreenshots.length === 0) {
                 contentDiv.innerHTML = `
                   <div style="text-align: center; padding: 2rem; color: #6b7280;">
@@ -1691,97 +1787,167 @@ function injectScreenshots(screenshots, sessions) {
                   </div>
                 `;
               } else {
-                let screenshotsHTML = `
-                  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                // Build full table HTML
+                let tableHTML = `
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                      <tr>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 180px;">Screenshot</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 200px;">Event</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">URL</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 150px;">Date/Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                 `;
-                
-                sessionScreenshots.forEach(screenshot => {
+
+                sessionScreenshots.forEach((screenshot, idx) => {
                   const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
+                  const eventBadge = getEventBadge(screenshot);
+                  const isSuspicious = screenshot.reason === 'suspicious_click';
 
-                  // Format event type with badge color
-                  let eventBadge = '';
-                  if (screenshot.eventType) {
-                    const eventColors = {
-                      'click': '#3b82f6',
-                      'input': '#10b981',
-                      'change': '#8b5cf6',
-                      'submit': '#f59e0b',
-                      'keypress': '#ec4899',
-                      'navigation': '#06b6d4',
-                      'new_tab': '#f97316'
-                    };
-                    const color = eventColors[screenshot.eventType] || '#6b7280';
-                    const eventLabel = screenshot.eventType === 'new_tab' ? 'NEW TAB' : screenshot.eventType.toUpperCase();
-                    eventBadge = `<span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.65rem; font-weight: 600; color: white; background: ${color}; margin-bottom: 0.5rem;">${eventLabel}</span>`;
-                  }
-
-                  // Format element details
-                  let elementInfo = '';
-                  if (screenshot.eventDetails && screenshot.eventDetails.element) {
-                    const elem = screenshot.eventDetails.element;
-
-                    // Special handling for new tab events
-                    if (screenshot.eventType === 'new_tab') {
-                      const newTabUrl = elem.newTabUrl || screenshot.url || 'Unknown';
-                      const newTabTitle = elem.newTabTitle || screenshot.title || 'New Tab';
-                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">
-                        <div><strong>🗗 ${newTabTitle}</strong></div>
-                        <div style="opacity: 0.7; word-break: break-all;">${newTabUrl}</div>
-                      </div>`;
-                    }
-                    // Special handling for navigation events
-                    else if (screenshot.eventType === 'navigation') {
-                      const navType = elem.navigationType || 'unknown';
-                      const fromUrl = elem.fromUrl || 'Unknown';
-                      const toUrl = elem.toUrl || 'Unknown';
-                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">
-                        <div><strong>${navType}</strong></div>
-                        <div style="opacity: 0.7;">→ ${toUrl}</div>
-                      </div>`;
-                    } else {
-                      const elemText = elem.text ? `: "${elem.text}"` : '';
-                      const elemId = elem.id ? `#${elem.id}` : '';
-                      const elemClass = elem.className && !elem.className.includes(' ') ? `.${elem.className}` : '';
-                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">${elem.tag}${elemId}${elemClass}${elemText}</div>`;
-                    }
-                  }
-
-                  screenshotsHTML += `
-                    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: white;">
-                      <div style="position: relative; width: 100%; height: 10rem; background: #f3f4f6;">
-                        <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: 100%; object-fit: cover;" />
-                      </div>
-                      <div style="padding: 0.75rem;">
-                        ${eventBadge}
-                        ${elementInfo}
-                        <div style="font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.25rem;" title="${screenshot.title || 'Unknown'}">
-                          ${screenshot.title || 'Unknown'}
+                  tableHTML += `
+                    <tr style="cursor: pointer; background: ${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}; transition: background 0.2s; ${idx < sessionScreenshots.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}'">
+                      <td style="padding: 0.75rem 1rem;">
+                        <div style="position: relative; width: 8rem; height: 5rem; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
+                          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: 100%; object-fit: cover;" />
                         </div>
-                        <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.5rem;" title="${screenshot.url || 'Unknown'}">
-                          ${hostname}
+                      </td>
+                      <td style="padding: 0.75rem 1rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                          <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.625rem; font-weight: 600; color: ${eventBadge.color}; background: ${eventBadge.bg};">
+                              ${eventBadge.label}
+                            </span>
+                          </div>
+                          ${screenshot.clickedElement ? `<div style="font-size: 0.75rem; color: #f97316;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
+                          ${screenshot.postRequest ? `<div style="font-size: 0.75rem; color: #3b82f6;">📡 ${screenshot.postRequest.method}</div>` : ''}
                         </div>
-                        <div style="font-size: 0.75rem; color: #6b7280;">
-                          ${formatDate(screenshot.timestamp)} ${formatTime(screenshot.timestamp)}
+                      </td>
+                      <td style="padding: 0.75rem 1rem;">
+                        <div style="max-width: 18rem;">
+                          <div style="font-size: 0.875rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${screenshot.url}">
+                            ${hostname}
+                          </div>
+                          <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${screenshot.title}">
+                            ${screenshot.title || 'Untitled'}
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </td>
+                      <td style="padding: 0.75rem 1rem;">
+                        <div style="font-size: 0.875rem; white-space: nowrap;">
+                          <div>${formatDate(screenshot.timestamp)}</div>
+                          <div style="font-size: 0.75rem; color: #6b7280; font-family: monospace;">
+                            ${formatTime(screenshot.timestamp)}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   `;
                 });
-                
-                screenshotsHTML += `</div>`;
-                contentDiv.innerHTML = screenshotsHTML;
+
+                tableHTML += `
+                    </tbody>
+                  </table>
+                `;
+
+                contentDiv.innerHTML = tableHTML;
               }
-              
+
               contentDiv.dataset.loaded = 'true';
             }
-          } else {
-            // Collapse this session
-            detailsRow.style.display = 'none';
           }
         });
       });
 
-      console.log('[Dashboard Override] Screenshots table injected!');
+      // Setup rolling animation (every 2 seconds)
+      const rotationState = {};
+      sortedSessions.forEach(session => {
+        const sessionData = sessionMap.get(session.id);
+        const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+        if (sessionScreenshots.length > 1) {
+          rotationState[session.id] = 0;
+        }
+      });
+
+      setInterval(() => {
+        sortedSessions.forEach(session => {
+          const sessionData = sessionMap.get(session.id);
+          const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+
+          if (sessionScreenshots.length > 1) {
+            const rollingRow = document.querySelector(`.rolling-row[data-session-id="${session.id}"]`);
+            if (rollingRow && rollingRow.closest('.rolling-preview-table').style.display !== 'none') {
+              const currentIndex = rotationState[session.id] || 0;
+              const nextIndex = (currentIndex + 1) % sessionScreenshots.length;
+              rotationState[session.id] = nextIndex;
+
+              const screenshot = sessionScreenshots[nextIndex];
+              const eventBadge = getEventBadge(screenshot);
+
+              // Add fade animation
+              rollingRow.style.opacity = '0';
+
+              setTimeout(() => {
+                // Update content
+                const img = rollingRow.querySelector('.rolling-screenshot');
+                const badge = rollingRow.querySelector('.rolling-event-badge');
+                const clickedDiv = rollingRow.querySelector('.rolling-clicked');
+                const postDiv = rollingRow.querySelector('.rolling-post');
+                const hostnameDiv = rollingRow.querySelector('.rolling-hostname');
+                const titleDiv = rollingRow.querySelector('.rolling-title');
+                const dateDiv = rollingRow.querySelector('.rolling-date');
+                const timeDiv = rollingRow.querySelector('.rolling-time');
+
+                if (img) img.src = screenshot.dataUrl;
+                if (badge) {
+                  badge.textContent = eventBadge.label;
+                  badge.style.color = eventBadge.color;
+                  badge.style.background = eventBadge.bg;
+                }
+                if (clickedDiv) {
+                  if (screenshot.clickedElement) {
+                    clickedDiv.style.fontSize = '0.75rem';
+                    clickedDiv.style.color = '#f97316';
+                    clickedDiv.textContent = `🖱️ <${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}>`;
+                  } else {
+                    clickedDiv.textContent = '';
+                    clickedDiv.style.fontSize = '';
+                    clickedDiv.style.color = '';
+                  }
+                }
+                if (postDiv) {
+                  if (screenshot.postRequest) {
+                    postDiv.style.fontSize = '0.75rem';
+                    postDiv.style.color = '#3b82f6';
+                    postDiv.textContent = `📡 ${screenshot.postRequest.method}`;
+                  } else {
+                    postDiv.textContent = '';
+                    postDiv.style.fontSize = '';
+                    postDiv.style.color = '';
+                  }
+                }
+                if (hostnameDiv) {
+                  const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
+                  hostnameDiv.textContent = hostname;
+                  hostnameDiv.title = screenshot.url;
+                }
+                if (titleDiv) {
+                  titleDiv.textContent = screenshot.title || 'Untitled';
+                  titleDiv.title = screenshot.title;
+                }
+                if (dateDiv) dateDiv.textContent = formatDate(screenshot.timestamp);
+                if (timeDiv) timeDiv.textContent = formatTime(screenshot.timestamp);
+
+                // Fade back in
+                rollingRow.style.opacity = '1';
+              }, 150);
+            }
+          }
+        });
+      }, 2000);
+
+      console.log('[Dashboard Override] Screenshots with rolling table UI injected!');
     }, 100);
 
   } catch (error) {
@@ -1901,81 +2067,6 @@ function addScreenshotButtonHandlers() {
   }, 500);
 
   console.log('[Dashboard Override] Button hijacking enabled');
-}
-
-// Helper function to open screenshot in modal
-function openScreenshotModal(screenshot) {
-  const badge = screenshot.reason && screenshot.reason.includes('dom_change')
-    ? { icon: '📝', label: 'DOM Change' }
-    : screenshot.reason && screenshot.reason.includes('scroll')
-    ? { icon: '🖱️', label: 'Scroll' }
-    : { icon: '📸', label: 'Other' };
-
-  const formatDateTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  };
-
-  const modalHTML = `
-    <div id="screenshotModal" class="screenshot-modal-overlay" style="position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; padding: 1rem;">
-      <div class="screenshot-modal-content" style="max-width: 72rem; width: 100%; max-height: 90vh; overflow: auto; background: white; border-radius: 0.5rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-        <div style="padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <h3 style="font-size: 1.125rem; font-weight: 600;">Screenshot #${screenshot.id}</h3>
-            <p style="font-size: 0.875rem; color: #6b7280;">${screenshot.title || 'Unknown'}</p>
-          </div>
-          <button class="close-modal-btn" style="padding: 0.5rem; border: none; background: transparent; cursor: pointer; font-size: 1.5rem; color: #6b7280;">×</button>
-        </div>
-        <div style="padding: 1rem;">
-          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: auto; border-radius: 0.375rem;" />
-          <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem;">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-weight: 500;">URL:</span>
-              <span style="color: #6b7280;">${screenshot.url || 'Unknown'}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-weight: 500;">Reason:</span>
-              <span style="color: #6b7280;">${badge.icon} ${screenshot.reason || 'Unknown'}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span style="font-weight: 500;">Time:</span>
-              <span style="color: #6b7280;">${formatDateTime(screenshot.timestamp)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-  // Add event listeners after inserting HTML
-  const modal = document.getElementById('screenshotModal');
-  const closeBtn = modal.querySelector('.close-modal-btn');
-  const modalContent = modal.querySelector('.screenshot-modal-content');
-
-  // Close modal when clicking overlay
-  modal.addEventListener('click', function() {
-    this.remove();
-  });
-
-  // Prevent closing when clicking modal content
-  modalContent.addEventListener('click', function(event) {
-    event.stopPropagation();
-  });
-
-  // Close button
-  closeBtn.addEventListener('click', function() {
-    modal.remove();
-  });
 }
 
 // ============================================================================
