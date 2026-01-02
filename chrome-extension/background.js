@@ -257,6 +257,111 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true; // Keep message channel open for async response
   }
+  // Handle DevTools state changes from content script
+  else if (message.type === 'DEVTOOLS_STATE_CHANGED') {
+    const tabId = sender.tab?.id;
+    if (!tabId) return;
+
+    if (message.isOpen) {
+      // DevTools opened - start session
+      console.log('🔴 ═══════════════════════════════════════════════════════');
+      console.log('🔴 DEVTOOLS OPENED - AGENT MODE DETECTED');
+      console.log('🔴 ═══════════════════════════════════════════════════════');
+      console.log(`Tab ID: ${tabId}`);
+      console.log(`Tab Title: ${message.tabTitle?.substring(0, 60)}`);
+      console.log(`Tab URL: ${message.tabUrl?.substring(0, 80)}`);
+      console.log('🔴 ═══════════════════════════════════════════════════════');
+
+      debuggerState.set(tabId, true);
+
+      // Check if session already exists for this tab
+      if (activeSessionsByTab.has(tabId)) {
+        const existingSessionId = activeSessionsByTab.get(tabId);
+        console.log('[DevTools Detector] ⚠️ Session already exists for tab', tabId, '- skipping duplicate. Existing session:', existingSessionId);
+      } else {
+        // Start new session for this tab
+        const sessionId = Date.now();
+        console.log('[DevTools Detector] 🆕 Creating new session:', sessionId, 'for tab', tabId);
+        activeSessionsByTab.set(tabId, sessionId);
+        console.log('[DevTools Detector] 📋 Active sessions map:', Array.from(activeSessionsByTab.entries()));
+
+        const sessionData = {
+          id: sessionId,
+          startTime: new Date().toISOString(),
+          endTime: null,
+          tabId: tabId,
+          tabTitle: message.tabTitle || 'Unknown',
+          tabUrl: message.tabUrl || 'Unknown',
+          screenshotCount: 0,
+          status: 'active'
+        };
+
+        // Save session to storage
+        chrome.storage.local.get(['sessions'], (result) => {
+          let sessions = result.sessions || [];
+
+          // Check for duplicate sessions with same tab ID that are still active
+          const duplicateIndex = sessions.findIndex(s =>
+            s.tabId === tabId && s.status === 'active' && s.id !== sessionId
+          );
+
+          if (duplicateIndex !== -1) {
+            console.log('[DevTools Detector] ⚠️ Found duplicate active session in storage:', sessions[duplicateIndex].id, '- ending it');
+            sessions[duplicateIndex].status = 'ended';
+            sessions[duplicateIndex].endTime = new Date().toISOString();
+            const start = new Date(sessions[duplicateIndex].startTime);
+            const end = new Date(sessions[duplicateIndex].endTime);
+            sessions[duplicateIndex].duration = Math.round((end - start) / 1000);
+          }
+
+          // Add new session
+          sessions.unshift(sessionData);
+          console.log('[DevTools Detector] 💾 Saving session to storage. Total sessions:', sessions.length);
+
+          chrome.storage.local.set({ sessions: sessions }, () => {
+            console.log('[DevTools Detector] ✅ Session saved successfully');
+          });
+        });
+      }
+    } else {
+      // DevTools closed - end session
+      console.log('🟢 ═══════════════════════════════════════════════════════');
+      console.log('🟢 DEVTOOLS CLOSED - AGENT MODE ENDED');
+      console.log('🟢 ═══════════════════════════════════════════════════════');
+      console.log(`Tab ID: ${tabId}`);
+
+      debuggerState.set(tabId, false);
+
+      // End the session
+      const sessionId = activeSessionsByTab.get(tabId);
+      if (sessionId) {
+        console.log('[DevTools Detector] 🏁 Ending session:', sessionId);
+        activeSessionsByTab.delete(tabId);
+
+        // Update session in storage
+        chrome.storage.local.get(['sessions'], (result) => {
+          let sessions = result.sessions || [];
+          const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+
+          if (sessionIndex !== -1) {
+            sessions[sessionIndex].status = 'ended';
+            sessions[sessionIndex].endTime = new Date().toISOString();
+            const start = new Date(sessions[sessionIndex].startTime);
+            const end = new Date(sessions[sessionIndex].endTime);
+            sessions[sessionIndex].duration = Math.round((end - start) / 1000);
+
+            console.log('[DevTools Detector] Session ended. Duration:', sessions[sessionIndex].duration, 'seconds');
+            chrome.storage.local.set({ sessions: sessions });
+          } else {
+            console.log('[DevTools Detector] ⚠️ Session not found in storage:', sessionId);
+          }
+        });
+      } else {
+        console.log('[DevTools Detector] ⚠️ No active session found for tab', tabId);
+      }
+    }
+    sendResponse({ success: true });
+  }
 
   return true;
 });
@@ -445,6 +550,11 @@ chrome.webRequest.onBeforeRequest.addListener(
         matched_fields_count: backendData.matched_fields.length,
         matched_fields: backendData.matched_fields
       });
+
+      // Correlate with recent screenshots and update
+      correlatePostWithScreenshot(backendData).catch(err =>
+        console.error('[POST Monitor] Error correlating with screenshot:', err)
+      );
 
       // Save to backend asynchronously (don't await, fire and forget)
       saveToBackend(backendData).catch(err =>
@@ -728,6 +838,8 @@ console.log('[Download Monitor] Download tracking initialized');
 console.log('[Agent Detector] Initializing agent detection...');
 
 let checkCount = 0;
+// Track active session per tab (key: tabId, value: sessionId)
+const activeSessionsByTab = new Map();
 
 async function checkDebuggers() {
   try {
@@ -768,12 +880,93 @@ async function checkDebuggers() {
 
         debuggerState.set(tab.id, true);
 
-        // Tell content script to censor sensitive content
+        console.log('[Agent Detector] ✅ debuggerState updated. Now checking for existing session...');
+        console.log('[Agent Detector] 🔍 activeSessionsByTab.has(' + tab.id + '):', activeSessionsByTab.has(tab.id));
+        console.log('[Agent Detector] 🔍 Current activeSessionsByTab:', Array.from(activeSessionsByTab.entries()));
+
+        // Check if session already exists for this tab
+        if (activeSessionsByTab.has(tab.id)) {
+          const existingSessionId = activeSessionsByTab.get(tab.id);
+          console.log('[Agent Detector] ⚠️ Session already exists for tab', tab.id, '- skipping duplicate. Existing session:', existingSessionId);
+        } else {
+          console.log('[Agent Detector] ✅ No existing session found. Creating new session...');
+          // Start new session for this tab
+          const sessionId = Date.now();
+
+          console.log('[Agent Detector] 🆕 Creating new session:', sessionId, 'for tab', tab.id);
+          activeSessionsByTab.set(tab.id, sessionId);
+          console.log('[Agent Detector] 📋 Active sessions map:', Array.from(activeSessionsByTab.entries()));
+
+          const sessionData = {
+            id: sessionId,
+            startTime: new Date().toISOString(),
+            endTime: null,
+            tabId: tab.id,
+            tabTitle: tab.title,
+            tabUrl: tab.url,
+            screenshotCount: 0,
+            status: 'active'
+          };
+
+          // Save session to storage
+          chrome.storage.local.get(['sessions'], (result) => {
+            let sessions = result.sessions || [];
+
+            // Check if this session ID already exists (should never happen, but just in case)
+            const existingSessionIndex = sessions.findIndex(s => s.id === sessionId);
+            if (existingSessionIndex !== -1) {
+              console.log('[Agent Detector] ⚠️ Session ID', sessionId, 'already exists in storage - skipping duplicate');
+              return;
+            }
+
+            // Check for duplicate sessions with same tab ID that are still active
+            const duplicateIndex = sessions.findIndex(s =>
+              s.tabId === tab.id && s.status === 'active' && s.id !== sessionId
+            );
+
+            if (duplicateIndex !== -1) {
+              console.log('[Agent Detector] ⚠️ Found duplicate active session in storage:', sessions[duplicateIndex].id, '- ending it');
+              sessions[duplicateIndex].status = 'ended';
+              sessions[duplicateIndex].endTime = new Date().toISOString();
+            }
+
+            // Deduplicate sessions by ID before adding new one
+            const uniqueSessions = [];
+            const seenIds = new Set();
+            for (const session of sessions) {
+              if (!seenIds.has(session.id)) {
+                seenIds.add(session.id);
+                uniqueSessions.push(session);
+              } else {
+                console.log('[Agent Detector] 🗑️ Removing duplicate session from storage:', session.id);
+              }
+            }
+
+            uniqueSessions.unshift(sessionData); // Add to beginning
+            chrome.storage.local.set({ sessions: uniqueSessions });
+            console.log('[Agent Detector] ✅ Session saved to storage. Total sessions in storage:', uniqueSessions.length);
+          });
+        }
+
+        // Tell content script to censor sensitive content and enable event tracking
         // Add delay to ensure content script is ready
         setTimeout(() => {
-          chrome.tabs.sendMessage(tab.id, { type: 'CENSOR_CONTENT' }).catch(err => {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'CENSOR_CONTENT'
+          }).catch(err => {
             // Silently ignore if content script not ready (expected for some pages)
             console.log('[Agent Detector] Content script not available on tab', tab.id, '(this is normal for some pages)');
+          });
+
+          // Notify content script that agent mode started
+          console.log('[Agent Detector] 📤 Sending AGENT_MODE_STARTED message to tab', tab.id, 'with session', sessionId);
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'AGENT_MODE_STARTED',
+            sessionId: sessionId
+          }).then(() => {
+            console.log('[Agent Detector] ✅ AGENT_MODE_STARTED message sent successfully to tab', tab.id);
+          }).catch(err => {
+            console.log('[Agent Detector] ❌ Could not notify content script of agent mode start on tab', tab.id, ':', err.message);
           });
         }, 200);
 
@@ -802,12 +995,48 @@ async function checkDebuggers() {
 
         debuggerState.set(tab.id, false);
 
-        // Tell content script to uncensor sensitive content
+        // End session for this tab
+        const sessionId = activeSessionsByTab.get(tab.id);
+        if (sessionId) {
+          const endTime = new Date().toISOString();
+          chrome.storage.local.get(['sessions'], (result) => {
+            const sessions = result.sessions || [];
+            const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+
+            if (sessionIndex !== -1) {
+              sessions[sessionIndex].endTime = endTime;
+              sessions[sessionIndex].status = 'ended';
+
+              // Calculate duration
+              const start = new Date(sessions[sessionIndex].startTime);
+              const end = new Date(endTime);
+              sessions[sessionIndex].duration = Math.round((end - start) / 1000); // in seconds
+
+              chrome.storage.local.set({ sessions: sessions });
+              console.log('[Agent Detector] ✅ Session ended:', sessionId, `(${sessions[sessionIndex].duration}s) for tab`, tab.id);
+            }
+          });
+
+          // Remove from active sessions
+          activeSessionsByTab.delete(tab.id);
+        }
+
+        // Tell content script to uncensor sensitive content and disable event tracking
         // Add delay to ensure content script is ready
         setTimeout(() => {
           chrome.tabs.sendMessage(tab.id, { type: 'UNCENSOR_CONTENT' }).catch(err => {
             // Silently ignore if content script not ready (expected for some pages)
             console.log('[Agent Detector] Content script not available on tab', tab.id, '(this is normal for some pages)');
+          });
+
+          // Notify content script that agent mode ended
+          console.log('[Agent Detector] 📤 Sending AGENT_MODE_ENDED message to tab', tab.id);
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'AGENT_MODE_ENDED'
+          }).then(() => {
+            console.log('[Agent Detector] ✅ AGENT_MODE_ENDED message sent successfully to tab', tab.id);
+          }).catch(err => {
+            console.log('[Agent Detector] ❌ Could not notify content script of agent mode end on tab', tab.id, ':', err.message);
           });
         }, 200);
 
@@ -827,12 +1056,164 @@ async function checkDebuggers() {
   }
 }
 
+// Clean up orphaned active sessions on extension startup/reload
+async function cleanupOrphanedSessions() {
+  try {
+    const result = await chrome.storage.local.get(['sessions']);
+    let sessions = result.sessions || [];
+    let cleanedCount = 0;
+    let removedCount = 0;
+
+    // End all active sessions (extension was reloaded, so no sessions are truly active)
+    sessions.forEach(session => {
+      if (session.status === 'active') {
+        session.status = 'ended';
+        session.endTime = new Date().toISOString();
+
+        const start = new Date(session.startTime);
+        const end = new Date(session.endTime);
+        session.duration = Math.round((end - start) / 1000);
+
+        cleanedCount++;
+      }
+    });
+
+    // Remove ended sessions older than 24 hours to keep storage clean
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    const before = sessions.length;
+    sessions = sessions.filter(session => {
+      if (session.status === 'ended') {
+        const sessionTime = new Date(session.startTime).getTime();
+        if (sessionTime < oneDayAgo) {
+          removedCount++;
+          return false; // Remove this session
+        }
+      }
+      return true; // Keep this session
+    });
+
+    console.log('[Agent Detector] 📊 Storage stats: Total sessions:', before, '| Active cleaned:', cleanedCount, '| Old removed:', removedCount, '| Remaining:', sessions.length);
+
+    if (cleanedCount > 0 || removedCount > 0) {
+      await chrome.storage.local.set({ sessions: sessions });
+      if (cleanedCount > 0) console.log('[Agent Detector] 🧹 Cleaned up', cleanedCount, 'orphaned active sessions');
+      if (removedCount > 0) console.log('[Agent Detector] 🗑️ Removed', removedCount, 'old sessions (>24h)');
+    }
+  } catch (error) {
+    console.error('[Agent Detector] Error cleaning up sessions:', error);
+  }
+}
+
+// Run cleanup on extension load
+cleanupOrphanedSessions();
+
 // Start polling every 500ms
 setInterval(checkDebuggers, 500);
+
+// Track new tab creation during agent mode
+chrome.tabs.onCreated.addListener((tab) => {
+  console.log('[Agent Detector] New tab created:', tab.id, 'opener:', tab.openerTabId);
+
+  // If this tab was opened from another tab that has an active session, track it
+  if (tab.openerTabId && activeSessionsByTab.has(tab.openerTabId)) {
+    const parentSessionId = activeSessionsByTab.get(tab.openerTabId);
+    console.log('[Agent Detector] 🆕 New tab opened during agent session:', parentSessionId);
+
+    // Wait for the tab to load and capture screenshot
+    chrome.tabs.onUpdated.addListener(function newTabListener(tabId, changeInfo, updatedTab) {
+      if (tabId === tab.id && changeInfo.status === 'complete' && updatedTab.url) {
+        console.log('[Agent Detector] 📸 New tab loaded:', updatedTab.url);
+
+        // Remove this listener
+        chrome.tabs.onUpdated.removeListener(newTabListener);
+
+        // Capture screenshot of the new tab
+        chrome.tabs.captureVisibleTab(updatedTab.windowId, { format: 'png' }, (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Agent Detector] Error capturing new tab screenshot:', chrome.runtime.lastError.message);
+            return;
+          }
+
+          screenshotCount++;
+          const timestamp = new Date().toISOString();
+          const screenshotId = Date.now() + Math.random();
+
+          console.log('[Agent Detector] 📸 New tab screenshot captured');
+
+          // Store screenshot with new tab navigation metadata
+          chrome.storage.local.get(['screenshots', 'sessions'], (result) => {
+            const screenshots = result.screenshots || [];
+            const sessions = result.sessions || [];
+
+            const screenshotData = {
+              id: screenshotId,
+              sessionId: parentSessionId,
+              tabId: tabId,
+              url: updatedTab.url,
+              title: updatedTab.title,
+              reason: 'agent_event',
+              timestamp: timestamp,
+              dataUrl: dataUrl,
+              eventType: 'new_tab',
+              eventDetails: {
+                element: {
+                  tag: 'NEW_TAB',
+                  text: 'Opened in new tab',
+                  newTabUrl: updatedTab.url,
+                  newTabTitle: updatedTab.title
+                },
+                actionType: 'new_tab_navigation'
+              }
+            };
+
+            screenshots.push(screenshotData);
+
+            if (screenshots.length > 100) {
+              screenshots.shift();
+            }
+
+            // Update session screenshot count
+            const sessionIndex = sessions.findIndex(s => s.id === parentSessionId);
+            if (sessionIndex !== -1) {
+              sessions[sessionIndex].screenshotCount = (sessions[sessionIndex].screenshotCount || 0) + 1;
+              chrome.storage.local.set({ screenshots: screenshots, sessions: sessions });
+              console.log('[Agent Detector] ✓ New tab screenshot linked to session', parentSessionId);
+            } else {
+              chrome.storage.local.set({ screenshots: screenshots });
+            }
+          });
+        });
+      }
+    });
+  }
+});
 
 // Clean up state when tabs close
 chrome.tabs.onRemoved.addListener((tabId) => {
   debuggerState.delete(tabId);
+
+  // End any active session for this tab
+  const sessionId = activeSessionsByTab.get(tabId);
+  if (sessionId) {
+    chrome.storage.local.get(['sessions'], (result) => {
+      const sessions = result.sessions || [];
+      const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+
+      if (sessionIndex !== -1 && sessions[sessionIndex].status === 'active') {
+        sessions[sessionIndex].endTime = new Date().toISOString();
+        sessions[sessionIndex].status = 'ended';
+
+        const start = new Date(sessions[sessionIndex].startTime);
+        const end = new Date(sessions[sessionIndex].endTime);
+        sessions[sessionIndex].duration = Math.round((end - start) / 1000);
+
+        chrome.storage.local.set({ sessions: sessions });
+        console.log('[Agent Detector] ✅ Session ended (tab closed):', sessionId);
+      }
+    });
+
+    activeSessionsByTab.delete(tabId);
+  }
 });
 
 console.log('[Agent Detector] Monitoring for debugger attachments every 500ms');
@@ -987,6 +1368,70 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 console.log('[Link Blocker] Ready - Blocking external links with query params from Perplexity');
 
 // ============================================================================
+// POST-SCREENSHOT CORRELATION - Links POST requests to suspicious click screenshots
+// ============================================================================
+
+async function correlatePostWithScreenshot(postData) {
+  try {
+    // Get recent screenshots
+    const cacheResult = await chrome.storage.local.get(['recentScreenshots']);
+    const recentScreenshots = cacheResult.recentScreenshots || [];
+
+    if (recentScreenshots.length === 0) {
+      console.log('[POST-Screenshot Correlation] No recent screenshots to correlate');
+      return;
+    }
+
+    // Find matching screenshot (within last 5 seconds and has matching input fields)
+    const matchedFieldsSet = new Set(postData.matched_fields);
+    let matchedScreenshot = null;
+
+    for (const recentShot of recentScreenshots) {
+      // Check if any input fields match
+      const hasMatchingFields = recentShot.inputFields.some(field =>
+        matchedFieldsSet.has(field)
+      );
+
+      if (hasMatchingFields) {
+        matchedScreenshot = recentShot;
+        console.log('[POST-Screenshot Correlation] Found matching screenshot:', recentShot.id);
+        break;
+      }
+    }
+
+    if (!matchedScreenshot) {
+      console.log('[POST-Screenshot Correlation] No matching screenshot found');
+      return;
+    }
+
+    // Update the screenshot with POST request info
+    const screenshotsResult = await chrome.storage.local.get(['screenshots']);
+    const screenshots = screenshotsResult.screenshots || [];
+
+    const screenshotIndex = screenshots.findIndex(s => s.id === matchedScreenshot.id);
+
+    if (screenshotIndex !== -1) {
+      screenshots[screenshotIndex].postRequest = {
+        url: postData.target_url,
+        hostname: postData.target_hostname,
+        method: postData.request_method,
+        matched_fields: postData.matched_fields,
+        matched_values: postData.matched_values,
+        status: postData.status,
+        is_bot: postData.is_bot,
+        agent_mode_detected: postData.agent_mode_detected,
+        timestamp: new Date().toISOString()
+      };
+
+      await chrome.storage.local.set({ screenshots: screenshots });
+      console.log('[POST-Screenshot Correlation] ✓ Updated screenshot with POST request info');
+    }
+  } catch (error) {
+    console.error('[POST-Screenshot Correlation] Error:', error);
+  }
+}
+
+// ============================================================================
 // SCREENSHOT LOGGER - Handles screenshot capture requests from content script
 // ============================================================================
 
@@ -1046,6 +1491,202 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
     return true; // Keep channel open for async response
+  } else if (message.type === 'CAPTURE_SUSPICIOUS_CLICK_SCREENSHOT') {
+    // Handle suspicious click screenshot with metadata
+    if (!sender.tab) {
+      console.warn('[Screenshot Logger] No tab info for suspicious click');
+      sendResponse({ error: 'No tab info' });
+      return;
+    }
+
+    const tabId = sender.tab.id;
+    const reason = message.reason || 'suspicious_click';
+    const clickMetadata = message.clickMetadata || {};
+
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Screenshot Logger] Error:', chrome.runtime.lastError.message);
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        screenshotCount++;
+        const timestamp = new Date().toISOString();
+        const screenshotId = Date.now(); // Use timestamp as unique ID
+
+        console.log(`[Screenshot Logger] 📸 Suspicious click screenshot #${screenshotCount} captured`);
+        console.log(`  Tab: ${tabId}`);
+        console.log(`  Clicked element: ${clickMetadata.element?.tag} - ${clickMetadata.element?.text}`);
+        console.log(`  Input fields: ${clickMetadata.inputFields?.length || 0}`);
+        console.log(`  Time: ${timestamp}`);
+        console.log(`  URL: ${sender.tab.url}`);
+
+        // Store screenshot with click metadata
+        chrome.storage.local.get(['screenshots', 'sessions'], (result) => {
+          const screenshots = result.screenshots || [];
+          const sessions = result.sessions || [];
+
+          // Get the active session ID for this tab
+          const sessionId = activeSessionsByTab.get(tabId);
+
+          const screenshotData = {
+            id: screenshotId,
+            tabId: tabId,
+            url: message.pageUrl || sender.tab.url,
+            title: message.pageTitle || sender.tab.title,
+            reason: reason,
+            timestamp: timestamp,
+            dataUrl: dataUrl,
+            // Add click metadata
+            clickedElement: clickMetadata.element || null,
+            clickCoordinates: clickMetadata.coordinates || null,
+            inputFields: clickMetadata.inputFields || [],
+            inputValues: clickMetadata.inputValues || {},
+            // POST request info will be added later when detected
+            postRequest: null,
+            // Add session ID from active sessions map
+            sessionId: sessionId || null
+          };
+
+          screenshots.push(screenshotData);
+
+          // Keep only last 100 screenshots (increased for suspicious clicks)
+          if (screenshots.length > 100) {
+            screenshots.shift();
+          }
+
+          // Update session screenshot count
+          if (sessionId) {
+            const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+            if (sessionIndex !== -1) {
+              sessions[sessionIndex].screenshotCount = (sessions[sessionIndex].screenshotCount || 0) + 1;
+              chrome.storage.local.set({ screenshots: screenshots, sessions: sessions });
+              console.log('[Screenshot Logger] ✓ Screenshot linked to session', sessionId);
+            } else {
+              chrome.storage.local.set({ screenshots: screenshots });
+              console.log('[Screenshot Logger] ⚠️ Session not found in storage:', sessionId);
+            }
+          } else {
+            chrome.storage.local.set({ screenshots: screenshots });
+            console.log('[Screenshot Logger] ⚠️ No active session for tab', tabId);
+          }
+
+          // Store screenshot ID in temporary cache for POST correlation
+          chrome.storage.local.get(['recentScreenshots'], (cacheResult) => {
+            const recentScreenshots = cacheResult.recentScreenshots || [];
+            recentScreenshots.unshift({
+              id: screenshotId,
+              timestamp: Date.now(),
+              inputFields: clickMetadata.inputFields || []
+            });
+
+            // Keep only screenshots from last 5 seconds for correlation
+            const fiveSecondsAgo = Date.now() - 5000;
+            const filteredRecent = recentScreenshots.filter(s => s.timestamp > fiveSecondsAgo);
+
+            chrome.storage.local.set({ recentScreenshots: filteredRecent.slice(0, 10) });
+          });
+        });
+
+        sendResponse({ success: true, screenshot: dataUrl, id: screenshotId });
+      }
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'CAPTURE_AGENT_EVENT_SCREENSHOT') {
+    // Capture screenshot for any agent mode event (click, input, button, etc.)
+    if (!sender.tab) {
+      console.warn('[Agent Event] No tab info for agent event');
+      sendResponse({ error: 'No tab info' });
+      return;
+    }
+
+    const tabId = sender.tab.id;
+    const eventData = message.eventData || {};
+
+    // Only capture if this tab has an active agent session
+    const sessionId = activeSessionsByTab.get(tabId);
+    if (!sessionId) {
+      console.log('[Agent Event] No active session for tab', tabId, '- skipping screenshot');
+      sendResponse({ error: 'No active session' });
+      return;
+    }
+
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Agent Event] Error:', chrome.runtime.lastError.message);
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        screenshotCount++;
+        const timestamp = new Date().toISOString();
+        const screenshotId = Date.now() + Math.random(); // Unique ID
+
+        console.log(`[Agent Event] 📸 Agent event screenshot #${screenshotCount} captured`);
+        console.log(`  Tab: ${tabId}`);
+        console.log(`  Session: ${sessionId}`);
+        console.log(`  Event Type: ${eventData.eventType}`);
+        console.log(`  Element: ${eventData.element?.tag} - ${eventData.element?.text}`);
+        console.log(`  Time: ${timestamp}`);
+        console.log(`  URL: ${eventData.url || sender.tab.url}`);
+
+        // Store screenshot with event metadata
+        chrome.storage.local.get(['screenshots', 'sessions'], (result) => {
+          const screenshots = result.screenshots || [];
+          const sessions = result.sessions || [];
+
+          const screenshotData = {
+            id: screenshotId,
+            sessionId: sessionId,
+            tabId: tabId,
+            url: eventData.url || sender.tab.url,
+            title: eventData.title || sender.tab.title,
+            reason: 'agent_event',
+            timestamp: timestamp,
+            dataUrl: dataUrl,
+            // Agent event specific metadata
+            eventType: eventData.eventType || 'unknown',
+            eventDetails: {
+              element: eventData.element || null,
+              coordinates: eventData.coordinates || null,
+              inputValue: eventData.inputValue || null,
+              actionType: eventData.actionType || null
+            }
+          };
+
+          screenshots.push(screenshotData);
+
+          // Keep only last 100 screenshots
+          if (screenshots.length > 100) {
+            screenshots.shift();
+          }
+
+          // Update session screenshot count
+          const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+          if (sessionIndex !== -1) {
+            sessions[sessionIndex].screenshotCount = (sessions[sessionIndex].screenshotCount || 0) + 1;
+            chrome.storage.local.set({ screenshots: screenshots, sessions: sessions });
+            console.log('[Agent Event] ✓ Screenshot linked to session', sessionId);
+          } else {
+            chrome.storage.local.set({ screenshots: screenshots });
+            console.log('[Agent Event] ⚠️ Session not found in storage:', sessionId);
+          }
+        });
+
+        sendResponse({ success: true, screenshot: dataUrl, id: screenshotId });
+      }
+    });
+
+    return true; // Keep channel open for async response
+  } else if (message.type === 'CHECK_AGENT_MODE') {
+    // Check if this tab has an active agent session
+    const tabId = sender.tab?.id;
+    if (tabId && activeSessionsByTab.has(tabId)) {
+      const sessionId = activeSessionsByTab.get(tabId);
+      console.log('[Agent Detector] CHECK_AGENT_MODE: Tab', tabId, 'has active session', sessionId);
+      sendResponse({ isActive: true, sessionId: sessionId });
+    } else {
+      console.log('[Agent Detector] CHECK_AGENT_MODE: Tab', tabId, 'has no active session');
+      sendResponse({ isActive: false });
+    }
+    return true;
   } else if (message.type === 'GET_SCREENSHOTS') {
     chrome.storage.local.get(['screenshots'], (result) => {
       sendResponse({ screenshots: result.screenshots || [] });

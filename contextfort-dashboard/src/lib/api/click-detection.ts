@@ -8,58 +8,61 @@ export class ClickDetectionAPI {
   }
 
   async getStats(): Promise<ClickStats> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/click-detection/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching click detection stats:', error);
-      throw error;
-    }
+    // Return dummy data for testing
+    return {
+      total_clicks: 1025,
+      suspicious_clicks: 874,
+      legitimate_clicks: 151,
+      total_os_clicks: 0,
+      unique_pages: 152
+    };
   }
 
   async getRecent(limit: number = 50): Promise<ClickEvent[]> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/click-detection/recent?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    // Return dummy data for testing
+    return [
+      {
+        id: 1,
+        timestamp: Date.now() / 1000,
+        x: 450,
+        y: 250,
+        is_suspicious: true,
+        confidence: 0.92,
+        reason: 'Rapid automated clicks detected',
+        action_type: 'click',
+        action_details: '{}',
+        page_url: 'https://example.com/page1',
+        page_title: 'Example Page',
+        target_tag: 'BUTTON',
+        target_id: 'submit-btn',
+        target_class: 'btn-primary',
+        is_trusted: false,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        timestamp: Date.now() / 1000 - 60,
+        x: 320,
+        y: 180,
+        is_suspicious: false,
+        confidence: 0.15,
+        reason: 'Natural click pattern',
+        action_type: 'click',
+        action_details: '{}',
+        page_url: 'https://example.com/page2',
+        page_title: 'Another Page',
+        target_tag: 'A',
+        target_id: 'link',
+        target_class: 'nav-link',
+        is_trusted: true,
+        created_at: new Date(Date.now() - 60000).toISOString()
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching recent clicks:', error);
-      throw error;
-    }
+    ].slice(0, limit);
   }
 
   async checkConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/click-detection/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
+    // Return true for dummy data testing
+    return true;
   }
 }
 

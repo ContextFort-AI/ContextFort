@@ -8,23 +8,25 @@ export class POSTMonitorAPI {
   }
 
   async getStats(): Promise<POSTStats> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching POST monitor stats:', error);
-      throw error;
-    }
+    // Return dummy data for testing
+    return {
+      total_requests: 1234,
+      today_requests: 56,
+      blocked_domains: [
+        { hostname: 'malicious-site.com', count: 45 },
+        { hostname: 'tracker.ads.com', count: 32 },
+        { hostname: 'data-collector.io', count: 28 },
+        { hostname: 'analytics-evil.net', count: 15 },
+        { hostname: 'suspicious.xyz', count: 12 }
+      ],
+      recent_activity: [
+        { date: '2025-12-26', count: 56 },
+        { date: '2025-12-25', count: 78 },
+        { date: '2025-12-24', count: 92 },
+        { date: '2025-12-23', count: 64 },
+        { date: '2025-12-22', count: 45 }
+      ]
+    };
   }
 
   async getRequests(limit?: number, offset?: number): Promise<POSTRequest[]> {
@@ -94,45 +96,86 @@ export class POSTMonitorAPI {
   }
 
   async getHumanRequests(limit: number = 100, offset: number = 0): Promise<POSTRequest[]> {
-    try {
-      const url = `${this.baseURL}/api/blocked-requests/human?limit=${limit}&skip=${offset}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    // Return dummy data for testing
+    return [
+      {
+        id: 1,
+        timestamp: new Date().toISOString(),
+        target_url: 'https://malicious-site.com/collect',
+        target_hostname: 'malicious-site.com',
+        source_url: 'https://example.com/page1',
+        matched_fields: ['email', 'password'],
+        matched_values: { 'email': 'test@example.com', 'password': '***' } as Record<string, string>,
+        request_method: 'POST',
+        status: 'blocked',
+        is_bot: false,
+        has_click_correlation: true,
+        click_correlation_id: 101,
+        click_time_diff_ms: 250
+      },
+      {
+        id: 2,
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        target_url: 'https://tracker.ads.com/track',
+        target_hostname: 'tracker.ads.com',
+        source_url: 'https://example.com/page2',
+        matched_fields: ['user_id'],
+        matched_values: { 'user_id': '12345' } as Record<string, string>,
+        request_method: 'POST',
+        status: 'blocked',
+        is_bot: false,
+        has_click_correlation: true,
+        click_correlation_id: 102,
+        click_time_diff_ms: 180
+      },
+      {
+        id: 3,
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        target_url: 'https://data-collector.io/api/send',
+        target_hostname: 'data-collector.io',
+        source_url: 'https://example.com/page3',
+        matched_fields: ['session_id', 'token'],
+        matched_values: { 'session_id': 'abc123', 'token': 'xyz789' } as Record<string, string>,
+        request_method: 'POST',
+        status: 'blocked',
+        is_bot: false,
+        has_click_correlation: true,
+        click_correlation_id: 103,
+        click_time_diff_ms: 320
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching human requests:', error);
-      throw error;
-    }
+    ].slice(offset, offset + limit);
   }
 
   async getHumanBackgroundRequests(limit: number = 100, offset: number = 0): Promise<POSTRequest[]> {
-    try {
-      const url = `${this.baseURL}/api/blocked-requests/human/background?limit=${limit}&skip=${offset}`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    // Return dummy data for testing
+    return [
+      {
+        id: 4,
+        timestamp: new Date(Date.now() - 10800000).toISOString(),
+        target_url: 'https://background-tracker.com/ping',
+        target_hostname: 'background-tracker.com',
+        source_url: 'https://example.com/page4',
+        matched_fields: ['session'],
+        matched_values: { 'session': 'background123' } as Record<string, string>,
+        request_method: 'POST',
+        status: 'blocked',
+        is_bot: false,
+        has_click_correlation: false
+      },
+      {
+        id: 5,
+        timestamp: new Date(Date.now() - 14400000).toISOString(),
+        target_url: 'https://analytics-bg.com/event',
+        target_hostname: 'analytics-bg.com',
+        source_url: 'https://example.com/page5',
+        matched_fields: ['event'],
+        matched_values: { 'event': 'idle' } as Record<string, string>,
+        request_method: 'POST',
+        status: 'blocked',
+        is_bot: false,
+        has_click_correlation: false
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching human background requests:', error);
-      throw error;
-    }
+    ].slice(offset, offset + limit);
   }
 
   async getBotRequests(limit: number = 100, offset: number = 0): Promise<POSTRequest[]> {
@@ -177,18 +220,8 @@ export class POSTMonitorAPI {
   }
 
   async checkConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/api/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
+    // Return true for dummy data testing
+    return true;
   }
 }
 

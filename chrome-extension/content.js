@@ -831,6 +831,9 @@ async function handleClickDetection(event) {
         // Save the blocked action to storage
         await saveBlockedAction(target, event);
 
+        // Capture screenshot with click details
+        captureScreenshotForSuspiciousClick(target, event, currentInputs);
+
         // Show popup since we know there's user input
         showClickBlockingPopup();
 
@@ -892,11 +895,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.type === 'CENSOR_CONTENT') {
     console.log('[Content Censor] Received CENSOR_CONTENT message');
     censorContent();
+
+    // CENSOR_CONTENT means agent mode is active - enable event tracking
+    // We need to access agentModeActive from the Agent Event Tracker section
+    console.log('[Content Censor] Activating agent event tracking...');
+    if (typeof window.activateAgentEventTracking === 'function') {
+      window.activateAgentEventTracking();
+    }
+
     sendResponse({ success: true });
   }
   else if (message.type === 'UNCENSOR_CONTENT') {
     console.log('[Content Censor] Received UNCENSOR_CONTENT message');
     uncensorContent();
+
+    // UNCENSOR_CONTENT means agent mode ended - disable event tracking
+    console.log('[Content Censor] Deactivating agent event tracking...');
+    if (typeof window.deactivateAgentEventTracking === 'function') {
+      window.deactivateAgentEventTracking();
+    }
+
     sendResponse({ success: true });
   }
   return true;
@@ -1126,81 +1144,449 @@ console.log('[Content Censor] Ready - will censor on agent mode detection');
 // ============================================================================
 // SCREENSHOT LOGGER - Captures screenshots on DOM changes and scrolling
 // ============================================================================
+// DISABLED: Screenshots now only capture on suspicious clicks during agent mode
 
-console.log('[Screenshot Logger] Content script loaded');
+console.log('[Screenshot Logger] Content script loaded - DOM/scroll capture DISABLED');
 
 let mutationTimeout;
 let scrollTimeout;
 let lastScreenshotTime = 0;
 const MIN_SCREENSHOT_INTERVAL = 1000; // Don't take screenshots more than once per second
 
+// DISABLED: Old automatic screenshot capture
+// We now only capture screenshots via captureScreenshotForSuspiciousClick()
 function captureScreenshot(reason) {
+  // DISABLED - no longer capturing on DOM changes/scroll
+  console.log(`[Screenshot Logger] Automatic capture disabled (${reason})`);
+  return;
+}
+
+// Capture screenshot for suspicious click with metadata
+function captureScreenshotForSuspiciousClick(target, event, inputData) {
   const now = Date.now();
 
-  // Throttle screenshots
-  if (now - lastScreenshotTime < MIN_SCREENSHOT_INTERVAL) {
-    console.log(`[Screenshot Logger] Throttled (${reason})`);
-    return;
-  }
+  console.log(`[Screenshot Logger] Capturing screenshot for SUSPICIOUS CLICK`);
 
-  lastScreenshotTime = now;
-
-  console.log(`[Screenshot Logger] Requesting screenshot: ${reason}`);
+  // Prepare click metadata
+  const clickMetadata = {
+    element: {
+      tag: target.tagName,
+      id: target.id,
+      className: target.className,
+      text: target.textContent?.substring(0, 100) || '',
+      type: target.type || null
+    },
+    coordinates: {
+      x: event.clientX,
+      y: event.clientY
+    },
+    timestamp: now,
+    inputFields: Object.keys(inputData),
+    inputValues: inputData
+  };
 
   chrome.runtime.sendMessage({
-    type: 'CAPTURE_SCREENSHOT',
-    reason: reason
+    type: 'CAPTURE_SUSPICIOUS_CLICK_SCREENSHOT',
+    reason: 'suspicious_click',
+    clickMetadata: clickMetadata,
+    pageUrl: window.location.href,
+    pageTitle: document.title
   }, (response) => {
     if (chrome.runtime.lastError) {
       console.error('[Screenshot Logger] Error:', chrome.runtime.lastError.message);
     } else if (response?.success) {
-      console.log(`[Screenshot Logger] ✅ Screenshot captured: ${reason}`);
+      console.log(`[Screenshot Logger] ✅ Screenshot captured for suspicious click, ID: ${response.id}`);
     }
   });
 }
 
-// Watch for DOM changes
-const screenshotObserver = new MutationObserver((mutations) => {
-  clearTimeout(mutationTimeout);
+// DISABLED: DOM and scroll observers
+// Screenshots now only capture on suspicious clicks during agent mode
 
-  mutationTimeout = setTimeout(() => {
-    const mutationTypes = mutations.map(m => m.type).join(', ');
-    console.log(`[Screenshot Logger] DOM changed: ${mutations.length} mutations (${mutationTypes})`);
-    captureScreenshot(`dom_change (${mutations.length} mutations)`);
-  }, 500); // Debounce 500ms
-});
+// Watch for DOM changes - DISABLED
+// const screenshotObserver = new MutationObserver((mutations) => {
+//   clearTimeout(mutationTimeout);
+//
+//   mutationTimeout = setTimeout(() => {
+//     const mutationTypes = mutations.map(m => m.type).join(', ');
+//     console.log(`[Screenshot Logger] DOM changed: ${mutations.length} mutations (${mutationTypes})`);
+//     captureScreenshot(`dom_change (${mutations.length} mutations)`);
+//   }, 500); // Debounce 500ms
+// });
 
-// Start observing after page loads
-function startScreenshotObserving() {
-  screenshotObserver.observe(document.body, {
-    childList: true,      // Detect added/removed nodes
-    subtree: true,        // Watch entire tree
-    attributes: true,     // Detect attribute changes
-    characterData: true   // Detect text changes
-  });
+// Start observing after page loads - DISABLED
+// function startScreenshotObserving() {
+//   screenshotObserver.observe(document.body, {
+//     childList: true,      // Detect added/removed nodes
+//     subtree: true,        // Watch entire tree
+//     attributes: true,     // Detect attribute changes
+//     characterData: true   // Detect text changes
+//   });
+//
+//   console.log('[Screenshot Logger] Started observing DOM changes');
+// }
 
-  console.log('[Screenshot Logger] Started observing DOM changes');
-}
+// Watch for scrolling - DISABLED
+// window.addEventListener('scroll', () => {
+//   clearTimeout(scrollTimeout);
+//
+//   scrollTimeout = setTimeout(() => {
+//     const scrollY = window.scrollY;
+//     const scrollX = window.scrollX;
+//     console.log(`[Screenshot Logger] Scrolled to: (${scrollX}, ${scrollY})`);
+//     captureScreenshot(`scroll (x:${scrollX}, y:${scrollY})`);
+//   }, 500); // Debounce 500ms
+// }, { passive: true });
 
-// Watch for scrolling
-window.addEventListener('scroll', () => {
-  clearTimeout(scrollTimeout);
+// Initialize screenshot observer - DISABLED
+// if (document.body) {
+//   startScreenshotObserving();
+// } else {
+//   window.addEventListener('DOMContentLoaded', startScreenshotObserving);
+// }
 
-  scrollTimeout = setTimeout(() => {
-    const scrollY = window.scrollY;
-    const scrollX = window.scrollX;
-    console.log(`[Screenshot Logger] Scrolled to: (${scrollX}, ${scrollY})`);
-    captureScreenshot(`scroll (x:${scrollX}, y:${scrollY})`);
-  }, 500); // Debounce 500ms
-}, { passive: true });
-
-// Initialize screenshot observer
-if (document.body) {
-  startScreenshotObserving();
-} else {
-  window.addEventListener('DOMContentLoaded', startScreenshotObserving);
-}
-
-console.log('[Screenshot Logger] Ready - monitoring DOM changes and scrolling');
+console.log('[Screenshot Logger] Ready - ONLY capturing on suspicious clicks during agent mode');
 
 // ===== END SCREENSHOT LOGGER FEATURE =====
+
+// ============================================================================
+// AGENT MODE EVENT TRACKING - Captures all events during agent mode
+// ============================================================================
+
+console.log('[Agent Event Tracker] ===== INITIALIZING AGENT EVENT TRACKER =====');
+
+let agentModeActive = false;
+let agentSessionId = null;
+const capturedEvents = new Set(); // Track captured events to avoid duplicates
+
+console.log('[Agent Event Tracker] Feature initialized');
+console.log('[Agent Event Tracker] agentModeActive:', agentModeActive);
+
+// Check if agent mode is already active (in case content script loaded after agent mode started)
+// Poll repeatedly to catch agent mode even if timing is off
+console.log('[Agent Event Tracker] Starting agent mode polling...');
+let pollAttempts = 0;
+const maxPollAttempts = 10; // Poll for up to 5 seconds (10 * 500ms)
+
+function checkAgentModeStatus() {
+  pollAttempts++;
+  console.log('[Agent Event Tracker] Polling for agent mode... attempt', pollAttempts);
+
+  chrome.runtime.sendMessage({ type: 'CHECK_AGENT_MODE' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.log('[Agent Event Tracker] Could not check agent mode:', chrome.runtime.lastError.message);
+      return;
+    }
+
+    if (response && response.isActive) {
+      console.log('[Agent Event Tracker] 🔴 Agent mode is ALREADY ACTIVE!');
+      agentModeActive = true;
+      agentSessionId = response.sessionId;
+      console.log('[Agent Event Tracker] Session ID:', agentSessionId);
+      console.log('[Agent Event Tracker] Event tracking enabled');
+    } else {
+      console.log('[Agent Event Tracker] Agent mode not active yet (attempt', pollAttempts, 'of', maxPollAttempts + ')');
+
+      // Continue polling if not found and haven't exceeded max attempts
+      if (pollAttempts < maxPollAttempts && !agentModeActive) {
+        setTimeout(checkAgentModeStatus, 500);
+      } else if (pollAttempts >= maxPollAttempts) {
+        console.log('[Agent Event Tracker] Polling complete - agent mode not detected');
+      }
+    }
+  });
+}
+
+// Start polling after initial delay
+setTimeout(checkAgentModeStatus, 500);
+
+// Expose functions to activate/deactivate agent mode tracking (called from CENSOR_CONTENT handler)
+window.activateAgentEventTracking = function() {
+  console.log('[Agent Event Tracker] 🔴 ACTIVATING via CENSOR_CONTENT signal');
+  agentModeActive = true;
+  console.log('[Agent Event Tracker] agentModeActive set to TRUE');
+  console.log('[Agent Event Tracker] Event tracking is now ENABLED');
+};
+
+window.deactivateAgentEventTracking = function() {
+  console.log('[Agent Event Tracker] 🟢 DEACTIVATING via UNCENSOR_CONTENT signal');
+  agentModeActive = false;
+  agentSessionId = null;
+  capturedEvents.clear();
+  console.log('[Agent Event Tracker] agentModeActive set to FALSE');
+  console.log('[Agent Event Tracker] Event tracking is now DISABLED');
+};
+
+// Listen for agent mode start/end messages from background
+console.log('[Agent Event Tracker] Setting up message listener...');
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[Agent Event Tracker] Message received:', message.type);
+
+  if (message.type === 'AGENT_MODE_STARTED') {
+    console.log('[Agent Event Tracker] 🔴 AGENT MODE STARTED');
+    agentModeActive = true;
+    agentSessionId = message.sessionId;
+    console.log('[Agent Event Tracker] Session ID:', agentSessionId);
+    console.log('[Agent Event Tracker] All events will now be captured with screenshots');
+  } else if (message.type === 'AGENT_MODE_ENDED') {
+    console.log('[Agent Event Tracker] 🟢 AGENT MODE ENDED');
+    agentModeActive = false;
+    agentSessionId = null;
+    capturedEvents.clear();
+    console.log('[Agent Event Tracker] Event tracking stopped');
+  }
+});
+console.log('[Agent Event Tracker] Message listener set up successfully');
+
+/**
+ * Capture screenshot for an agent event
+ */
+function captureAgentEventScreenshot(eventType, eventDetails) {
+  if (!agentModeActive) {
+    return;
+  }
+
+  // Create unique event signature to avoid duplicates
+  const eventSignature = `${eventType}-${eventDetails.element?.tag}-${eventDetails.element?.text}-${Date.now()}`;
+
+  // Debounce: don't capture same event within 100ms
+  const recentSignature = `${eventType}-${eventDetails.element?.tag}-${eventDetails.element?.text}`;
+  if (capturedEvents.has(recentSignature)) {
+    return;
+  }
+
+  capturedEvents.add(recentSignature);
+  setTimeout(() => capturedEvents.delete(recentSignature), 100);
+
+  console.log('[Agent Event Tracker] 📸 Capturing screenshot for:', eventType, eventDetails.element?.tag);
+
+  const eventData = {
+    eventType: eventType,
+    url: window.location.href,
+    title: document.title,
+    element: eventDetails.element || null,
+    coordinates: eventDetails.coordinates || null,
+    inputValue: eventDetails.inputValue || null,
+    actionType: eventDetails.actionType || null
+  };
+
+  try {
+    chrome.runtime.sendMessage({
+      type: 'CAPTURE_AGENT_EVENT_SCREENSHOT',
+      eventData: eventData
+    }).catch(err => {
+      console.error('[Agent Event Tracker] Failed to send screenshot request:', err);
+    });
+  } catch (err) {
+    console.error('[Agent Event Tracker] Error:', err);
+  }
+}
+
+/**
+ * Track click events during agent mode
+ */
+function trackAgentClick(event) {
+  console.log('[Agent Event Tracker] trackAgentClick called, agentModeActive:', agentModeActive);
+  if (!agentModeActive) return;
+
+  const target = event.target;
+  console.log('[Agent Event Tracker] Processing click on:', target.tagName);
+  const eventDetails = {
+    element: {
+      tag: target.tagName,
+      id: target.id || null,
+      className: target.className || null,
+      text: target.textContent?.substring(0, 50) || null
+    },
+    coordinates: {
+      x: event.clientX,
+      y: event.clientY
+    },
+    actionType: 'click'
+  };
+
+  captureAgentEventScreenshot('click', eventDetails);
+}
+
+/**
+ * Track input events during agent mode
+ */
+function trackAgentInput(event) {
+  if (!agentModeActive) return;
+
+  const target = event.target;
+  const eventDetails = {
+    element: {
+      tag: target.tagName,
+      id: target.id || null,
+      className: target.className || null,
+      name: target.name || null,
+      type: target.type || null
+    },
+    inputValue: target.value?.length || 0, // Don't store actual value for privacy
+    actionType: 'input'
+  };
+
+  captureAgentEventScreenshot('input', eventDetails);
+}
+
+/**
+ * Track change events (select, checkbox, radio) during agent mode
+ */
+function trackAgentChange(event) {
+  if (!agentModeActive) return;
+
+  const target = event.target;
+  const eventDetails = {
+    element: {
+      tag: target.tagName,
+      id: target.id || null,
+      className: target.className || null,
+      name: target.name || null,
+      type: target.type || null
+    },
+    inputValue: target.value?.substring(0, 50) || target.checked?.toString() || null,
+    actionType: 'change'
+  };
+
+  captureAgentEventScreenshot('change', eventDetails);
+}
+
+/**
+ * Track form submit events during agent mode
+ */
+function trackAgentSubmit(event) {
+  if (!agentModeActive) return;
+
+  const target = event.target;
+  const eventDetails = {
+    element: {
+      tag: target.tagName,
+      id: target.id || null,
+      className: target.className || null,
+      action: target.action || null
+    },
+    actionType: 'submit'
+  };
+
+  captureAgentEventScreenshot('submit', eventDetails);
+}
+
+/**
+ * Track keypress events during agent mode (for Enter key submissions)
+ */
+function trackAgentKeypress(event) {
+  if (!agentModeActive) return;
+
+  // Only capture significant keys
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    const target = event.target;
+    const eventDetails = {
+      element: {
+        tag: target.tagName,
+        id: target.id || null,
+        className: target.className || null,
+        type: target.type || null
+      },
+      actionType: 'keypress',
+      key: event.key
+    };
+
+    captureAgentEventScreenshot('keypress', eventDetails);
+  }
+}
+
+/**
+ * Track navigation events during agent mode
+ */
+let lastNavigationUrl = window.location.href;
+
+function trackAgentNavigation(navigationType, navigationDetails) {
+  if (!agentModeActive) return;
+
+  const eventDetails = {
+    element: {
+      tag: 'NAVIGATION',
+      navigationType: navigationType,
+      fromUrl: navigationDetails.fromUrl || lastNavigationUrl,
+      toUrl: navigationDetails.toUrl || window.location.href
+    },
+    actionType: 'navigation',
+    navigationDetails: navigationDetails
+  };
+
+  console.log('[Agent Event Tracker] Navigation detected:', navigationType, 'from', lastNavigationUrl, 'to', window.location.href);
+  lastNavigationUrl = window.location.href;
+
+  captureAgentEventScreenshot('navigation', eventDetails);
+}
+
+// Monitor History API for navigation
+const originalPushState = history.pushState;
+const originalReplaceState = history.replaceState;
+
+history.pushState = function(...args) {
+  const result = originalPushState.apply(this, args);
+  if (agentModeActive) {
+    setTimeout(() => {
+      trackAgentNavigation('pushState', {
+        fromUrl: lastNavigationUrl,
+        toUrl: window.location.href,
+        state: args[0]
+      });
+    }, 100);
+  }
+  return result;
+};
+
+history.replaceState = function(...args) {
+  const result = originalReplaceState.apply(this, args);
+  if (agentModeActive) {
+    setTimeout(() => {
+      trackAgentNavigation('replaceState', {
+        fromUrl: lastNavigationUrl,
+        toUrl: window.location.href,
+        state: args[0]
+      });
+    }, 100);
+  }
+  return result;
+};
+
+// Track popstate (back/forward button)
+window.addEventListener('popstate', (event) => {
+  if (agentModeActive) {
+    trackAgentNavigation('popstate', {
+      fromUrl: lastNavigationUrl,
+      toUrl: window.location.href,
+      state: event.state
+    });
+  }
+});
+
+// Track beforeunload (page leaving)
+window.addEventListener('beforeunload', () => {
+  if (agentModeActive) {
+    trackAgentNavigation('beforeunload', {
+      fromUrl: window.location.href,
+      toUrl: 'leaving page'
+    });
+  }
+});
+
+// Add event listeners for all interaction types
+console.log('[Agent Event Tracker] Attaching event listeners...');
+document.addEventListener('click', trackAgentClick, true);
+console.log('[Agent Event Tracker] - Click listener attached');
+document.addEventListener('input', trackAgentInput, true);
+console.log('[Agent Event Tracker] - Input listener attached');
+document.addEventListener('change', trackAgentChange, true);
+console.log('[Agent Event Tracker] - Change listener attached');
+document.addEventListener('submit', trackAgentSubmit, true);
+console.log('[Agent Event Tracker] - Submit listener attached');
+document.addEventListener('keypress', trackAgentKeypress, true);
+console.log('[Agent Event Tracker] - Keypress listener attached');
+
+console.log('[Agent Event Tracker] ✅ All event listeners attached - ready to track agent mode events');
+
+// ===== END AGENT MODE EVENT TRACKING FEATURE =====

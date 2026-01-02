@@ -1,17 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  assetPrefix: process.env.NODE_ENV === 'production' ? undefined : undefined,
+  trailingSlash: true,
   reactCompiler: true,
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    // Keep console.log for debugging in extension
+    removeConsole: false,
   },
-  async redirects() {
-    return [
-      {
-        source: "/dashboard",
-        destination: "/dashboard/default",
-        permanent: false,
-      },
-    ];
+  // Static export doesn't support redirects, handle in client-side code
+  images: {
+    unoptimized: true, // Required for static export
   },
 };
 

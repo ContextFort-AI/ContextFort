@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
 
-import { cookies } from "next/headers";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -8,20 +9,40 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { users } from "@/data/users";
 import { SIDEBAR_COLLAPSIBLE_VALUES, SIDEBAR_VARIANT_VALUES } from "@/lib/preferences/layout";
 import { cn } from "@/lib/utils";
-import { getPreference } from "@/server/server-actions";
 
 import { AccountSwitcher } from "./_components/sidebar/account-switcher";
 import { LayoutControls } from "./_components/sidebar/layout-controls";
 import { SearchDialog } from "./_components/sidebar/search-dialog";
 import { ThemeSwitcher } from "./_components/sidebar/theme-switcher";
 
-export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
-  const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
-  const [variant, collapsible] = await Promise.all([
-    getPreference("sidebar_variant", SIDEBAR_VARIANT_VALUES, "inset"),
-    getPreference("sidebar_collapsible", SIDEBAR_COLLAPSIBLE_VALUES, "icon"),
-  ]);
+function getCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+  return undefined;
+}
+
+export default function Layout({ children }: Readonly<{ children: ReactNode }>) {
+  const [defaultOpen, setDefaultOpen] = useState(true);
+  const [variant, setVariant] = useState<typeof SIDEBAR_VARIANT_VALUES[number]>("inset");
+  const [collapsible, setCollapsible] = useState<typeof SIDEBAR_COLLAPSIBLE_VALUES[number]>("icon");
+
+  useEffect(() => {
+    // Read preferences from cookies on client side
+    const sidebarState = getCookie("sidebar_state");
+    setDefaultOpen(sidebarState !== "false");
+
+    const variantCookie = getCookie("sidebar_variant");
+    if (variantCookie && SIDEBAR_VARIANT_VALUES.includes(variantCookie as any)) {
+      setVariant(variantCookie as typeof SIDEBAR_VARIANT_VALUES[number]);
+    }
+
+    const collapsibleCookie = getCookie("sidebar_collapsible");
+    if (collapsibleCookie && SIDEBAR_COLLAPSIBLE_VALUES.includes(collapsibleCookie as any)) {
+      setCollapsible(collapsibleCookie as typeof SIDEBAR_COLLAPSIBLE_VALUES[number]);
+    }
+  }, []);
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>

@@ -1,7 +1,5 @@
 "use client";
 
-import { setValueToCookie } from "@/server/server-actions";
-
 import { setClientCookie } from "../cookie.client";
 import { setLocalStorageValue } from "../local-storage.client";
 import { PREFERENCE_PERSISTENCE, type PreferenceKey } from "./preferences-config";
@@ -14,11 +12,9 @@ export async function persistPreference(key: PreferenceKey, value: string) {
       return;
 
     case "client-cookie":
-      setClientCookie(key, value);
-      return;
-
     case "server-cookie":
-      await setValueToCookie(key, value);
+      // Use client-side cookies for static export
+      setClientCookie(key, value);
       return;
 
     case "localStorage":

@@ -23,10 +23,10 @@ window.addEventListener('DOMContentLoaded', () => {
   loadDataAndInject();
 
   // Auto-refresh every 5 seconds (but keep the same page)
-  // Don't auto-refresh on React-managed pages
+  // Don't auto-refresh on React-managed pages or screenshots page (to avoid collapsing expanded sessions)
   setInterval(() => {
     const pageType = getPageType();
-    if (pageType !== 'whitelist' && pageType !== 'sensitive-words') {
+    if (pageType !== 'whitelist' && pageType !== 'sensitive-words' && pageType !== 'screenshots') {
       loadDataAndInject(false);
     }
   }, 5000);
@@ -85,18 +85,23 @@ async function loadDataAndInject(resetPage = true) {
       return;
     }
 
-    // Handle Screenshots separately (uses different storage key)
+    // Handle Screenshots separately (uses different storage keys)
     if (pageType === 'screenshots') {
-      const result = await chrome.storage.local.get(['screenshots']);
+      const result = await chrome.storage.local.get(['screenshots', 'sessions']);
       const screenshots = result.screenshots || [];
-      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots from storage');
+      const sessions = result.sessions || [];
+      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots and', sessions.length, 'sessions from storage');
 
       if (resetPage) {
         currentPage = 1;
       }
 
-      updateScreenshotsStats(screenshots);
-      injectScreenshots(screenshots);
+      updateScreenshotsStats(screenshots, sessions);
+      injectScreenshots(screenshots, sessions);
+
+      // Enable Clear All and Refresh buttons
+      addScreenshotButtonHandlers();
+
       return;
     }
 
@@ -1470,17 +1475,19 @@ async function removeFromWhitelist(type, index) {
 // SCREENSHOTS PAGE
 // ============================================================================
 
-function updateScreenshotsStats(screenshots) {
+function updateScreenshotsStats(screenshots, sessions) {
   try {
     // Calculate stats
     const totalScreenshots = screenshots.length;
-    const domChangeCount = screenshots.filter(s => s.reason && s.reason.includes('dom_change')).length;
-    const scrollCount = screenshots.filter(s => s.reason && s.reason.includes('scroll')).length;
+    const totalSessions = sessions.length;
+    const activeSessions = sessions.filter(s => s.status === 'active').length;
+    const withPostRequestCount = screenshots.filter(s => s.postRequest !== null && s.postRequest !== undefined).length;
 
     console.log('[Dashboard Override] Screenshots Stats:', {
-      total: totalScreenshots,
-      domChanges: domChangeCount,
-      scrolls: scrollCount
+      totalSessions,
+      activeSessions,
+      totalScreenshots,
+      withPostRequestCount
     });
 
     // Wait for DOM to be ready
@@ -1488,31 +1495,38 @@ function updateScreenshotsStats(screenshots) {
       // Find all card content containers
       const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
 
-      if (cardContainers.length < 3) {
+      if (cardContainers.length < 4) {
         console.error('[Dashboard Override] Not enough stat cards found for Screenshots');
         return;
       }
 
-      // Update stat cards (assuming order: Total, DOM Changes, Scroll Events)
-      // Total Screenshots (first card)
-      const totalCard = cardContainers[0];
-      const totalValueEl = totalCard.querySelector('div.text-2xl');
-      if (totalValueEl) {
-        totalValueEl.textContent = totalScreenshots.toLocaleString();
+      // Update stat cards (order: Total Sessions, Active Sessions, Total Screenshots, With POST Requests)
+      // Total Sessions (first card)
+      const totalSessionsCard = cardContainers[0];
+      const totalSessionsValueEl = totalSessionsCard.querySelector('div.text-2xl');
+      if (totalSessionsValueEl) {
+        totalSessionsValueEl.textContent = totalSessions.toLocaleString();
       }
 
-      // DOM Changes (second card)
-      const domCard = cardContainers[1];
-      const domValueEl = domCard.querySelector('div.text-2xl');
-      if (domValueEl) {
-        domValueEl.textContent = domChangeCount.toLocaleString();
+      // Active Sessions (second card)
+      const activeCard = cardContainers[1];
+      const activeValueEl = activeCard.querySelector('div.text-2xl');
+      if (activeValueEl) {
+        activeValueEl.textContent = activeSessions.toLocaleString();
       }
 
-      // Scroll Events (third card)
-      const scrollCard = cardContainers[2];
-      const scrollValueEl = scrollCard.querySelector('div.text-2xl');
-      if (scrollValueEl) {
-        scrollValueEl.textContent = scrollCount.toLocaleString();
+      // Total Screenshots (third card)
+      const screenshotsCard = cardContainers[2];
+      const screenshotsValueEl = screenshotsCard.querySelector('div.text-2xl');
+      if (screenshotsValueEl) {
+        screenshotsValueEl.textContent = totalScreenshots.toLocaleString();
+      }
+
+      // With POST Requests (fourth card)
+      const postCard = cardContainers[3];
+      const postValueEl = postCard.querySelector('div.text-2xl');
+      if (postValueEl) {
+        postValueEl.textContent = withPostRequestCount.toLocaleString();
       }
 
       console.log('[Dashboard Override] Screenshots stats updated!');
@@ -1523,9 +1537,10 @@ function updateScreenshotsStats(screenshots) {
   }
 }
 
-function injectScreenshots(screenshots) {
+function injectScreenshots(screenshots, sessions) {
   try {
     console.log('[Dashboard Override] Injecting Screenshots data...');
+    console.log('[Dashboard Override] Sessions:', sessions.length, 'Screenshots:', screenshots.length);
 
     // Wait for DOM to be ready
     setTimeout(() => {
@@ -1538,189 +1553,235 @@ function injectScreenshots(screenshots) {
         return;
       }
 
-      // Reverse to show newest first
-      const reversedScreenshots = [...screenshots].reverse();
+      // Group screenshots by session
+      const sessionMap = new Map();
+      sessions.forEach(session => {
+        sessionMap.set(session.id, {
+          session: session,
+          screenshots: screenshots.filter(s => s.sessionId === session.id)
+        });
+      });
 
-      // Calculate pagination
-      const itemsPerPage = 12;
-      const totalPages = Math.ceil(reversedScreenshots.length / itemsPerPage);
-      const startIdx = (currentPage - 1) * itemsPerPage;
-      const endIdx = startIdx + itemsPerPage;
-      const pageScreenshots = reversedScreenshots.slice(startIdx, endIdx);
+      console.log('[Dashboard Override] Grouped screenshots by session:', sessionMap.size);
 
-      console.log('[Dashboard Override] Showing page', currentPage, 'of', totalPages, '(', pageScreenshots.length, 'screenshots)');
-
-      // Helper function to get reason badge
-      const getReasonBadge = (reason) => {
-        if (reason && reason.includes('dom_change')) {
-          return {
-            color: 'background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid #a855f7',
-            icon: '📝',
-            label: 'DOM Change'
-          };
-        } else if (reason && reason.includes('scroll')) {
-          return {
-            color: 'background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid #3b82f6',
-            icon: '🖱️',
-            label: 'Scroll'
-          };
-        }
-        return {
-          color: 'background: rgba(107, 114, 128, 0.1); color: #6b7280; border: 1px solid #6b7280',
-          icon: '📸',
-          label: 'Other'
-        };
-      };
-
-      // Format time helper
+      // Helper functions
       const formatTime = (timestamp) => {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        });
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
       };
 
-      // Format date helper
       const formatDate = (timestamp) => {
         const date = new Date(timestamp);
-        return date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
-        });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       };
 
-      // Build gallery HTML
-      if (reversedScreenshots.length === 0) {
+      const formatDuration = (seconds) => {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        if (mins < 60) return `${mins}m ${seconds % 60}s`;
+        const hours = Math.floor(mins / 60);
+        return `${hours}h ${mins % 60}m`;
+      };
+
+      // Build session table HTML
+      if (sessions.length === 0) {
         targetContainer.innerHTML = `
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
-            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No screenshots yet</h3>
+            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No sessions yet</h3>
             <p style="font-size: 0.875rem; color: #6b7280;">
-              Screenshots will appear here when DOM changes or scrolling occurs
+              Sessions will appear here when agent mode (debugger) is detected
             </p>
           </div>
         `;
         return;
       }
-
-      // Build grid HTML
-      let gridHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+      // Build expandable session table
+      let tableHTML = `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f9fafb;">
+              <tr>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Session ID</th>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Status</th>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Tab URL</th>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Start Time</th>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Duration</th>
+                <th style="padding: 0.75rem 1rem; text-align: center; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Screenshots</th>
+              </tr>
+            </thead>
+            <tbody>
       `;
 
-      pageScreenshots.forEach(screenshot => {
-        const badge = getReasonBadge(screenshot.reason);
-        const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
+      // Sort sessions by start time (newest first)
+      const sortedSessions = [...sessions].sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
 
-        gridHTML += `
-          <div
-            data-screenshot-id="${screenshot.id}"
-            class="screenshot-card"
-            style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; cursor: pointer; transition: box-shadow 0.2s;"
-          >
-            <div style="position: relative; width: 100%; height: 12rem; background: #f3f4f6;">
-              <img
-                src="${screenshot.dataUrl}"
-                alt="Screenshot ${screenshot.id}"
-                style="width: 100%; height: 100%; object-fit: cover;"
-              />
-            </div>
-            <div style="padding: 0.75rem;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                <div style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; ${badge.color}">
-                  ${badge.icon} ${badge.label}
-                </div>
-                <span style="font-size: 0.75rem; color: #6b7280;">
-                  #${screenshot.id}
-                </span>
+      sortedSessions.forEach((session, index) => {
+        const sessionData = sessionMap.get(session.id);
+        const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+        const isActive = session.status === 'active';
+        const statusColor = isActive ? '#f97316' : '#22c55e';
+        const statusBg = isActive ? 'rgba(249, 115, 22, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+        
+        // Calculate duration
+        let duration = '';
+        if (session.duration) {
+          duration = formatDuration(session.duration);
+        } else if (isActive) {
+          const start = new Date(session.startTime);
+          const now = new Date();
+          const seconds = Math.floor((now - start) / 1000);
+          duration = formatDuration(seconds) + ' (active)';
+        }
+
+        tableHTML += `
+          <tr class="session-row" data-session-id="${session.id}" style="cursor: pointer; border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 1rem; font-family: monospace; font-size: 0.875rem;">#${session.id}</td>
+            <td style="padding: 1rem;">
+              <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background: ${statusBg};">
+                ${isActive ? '● Active' : '✓ Ended'}
+              </span>
+            </td>
+            <td style="padding: 1rem; font-size: 0.875rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${session.tabUrl || 'Unknown'}">${session.tabTitle || session.tabUrl || 'Unknown'}</td>
+            <td style="padding: 1rem; font-size: 0.875rem;">${formatDate(session.startTime)} ${formatTime(session.startTime)}</td>
+            <td style="padding: 1rem; font-size: 0.875rem;">${duration}</td>
+            <td style="padding: 1rem; text-align: center; font-weight: 600;">${sessionScreenshots.length}</td>
+          </tr>
+          <tr class="session-details" data-session-id="${session.id}" style="display: none; background: #f9fafb;">
+            <td colspan="6" style="padding: 0;">
+              <div id="session-content-${session.id}" style="padding: 1rem;">
+                <!-- Screenshots will be loaded here when expanded -->
               </div>
-              <div style="font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.25rem;" title="${screenshot.title || 'Unknown'}">
-                ${screenshot.title || 'Unknown'}
-              </div>
-              <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.5rem;" title="${screenshot.url || 'Unknown'}">
-                ${hostname}
-              </div>
-              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #6b7280;">
-                <span>${formatDate(screenshot.timestamp)}</span>
-                <span style="font-family: monospace;">${formatTime(screenshot.timestamp)}</span>
-              </div>
-            </div>
-          </div>
+            </td>
+          </tr>
         `;
       });
 
-      gridHTML += `</div>`;
+      tableHTML += `
+            </tbody>
+          </table>
+        </div>
+      `;
 
-      // Add pagination if needed
-      if (totalPages > 1) {
-        gridHTML += `
-          <div style="display: flex; align-items: center; justify-content: between; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid #e5e7eb;">
-            <div style="font-size: 0.875rem; color: #6b7280;">
-              Showing ${startIdx + 1} to ${Math.min(endIdx, reversedScreenshots.length)} of ${reversedScreenshots.length} screenshots
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <button id="prevPage" ${currentPage === 1 ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === 1 ? 0.5 : 1};">
-                ← Previous
-              </button>
-              <div style="font-size: 0.875rem; font-weight: 500;">
-                Page ${currentPage} of ${totalPages}
-              </div>
-              <button id="nextPage" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background: white; cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity: ${currentPage === totalPages ? 0.5 : 1};">
-                Next →
-              </button>
-            </div>
-          </div>
-        `;
-      }
+      targetContainer.innerHTML = tableHTML;
 
-      targetContainer.innerHTML = gridHTML;
+      // Add click handlers to expand/collapse sessions
+      document.querySelectorAll('.session-row').forEach(row => {
+        row.addEventListener('click', function() {
+          const sessionId = this.dataset.sessionId;
+          const detailsRow = document.querySelector(`.session-details[data-session-id="${sessionId}"]`);
+          const contentDiv = document.getElementById(`session-content-${sessionId}`);
+          
+          if (detailsRow.style.display === 'none') {
+            // Collapse all other sessions first
+            document.querySelectorAll('.session-details').forEach(r => r.style.display = 'none');
+            
+            // Expand this session
+            detailsRow.style.display = '';
+            
+            // Load screenshots if not already loaded
+            if (!contentDiv.dataset.loaded) {
+              const sessionData = sessionMap.get(parseInt(sessionId));
+              const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+              
+              if (sessionScreenshots.length === 0) {
+                contentDiv.innerHTML = `
+                  <div style="text-align: center; padding: 2rem; color: #6b7280;">
+                    <p>No screenshots captured in this session</p>
+                  </div>
+                `;
+              } else {
+                let screenshotsHTML = `
+                  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                `;
+                
+                sessionScreenshots.forEach(screenshot => {
+                  const hostname = screenshot.url ? new URL(screenshot.url).hostname : 'Unknown';
 
-      // Add click and hover handlers for screenshots
-      document.querySelectorAll('[data-screenshot-id]').forEach(card => {
-        card.addEventListener('click', function() {
-          const screenshotId = parseInt(this.dataset.screenshotId);
-          const screenshot = screenshots.find(s => s.id === screenshotId);
-          if (screenshot) {
-            openScreenshotModal(screenshot);
+                  // Format event type with badge color
+                  let eventBadge = '';
+                  if (screenshot.eventType) {
+                    const eventColors = {
+                      'click': '#3b82f6',
+                      'input': '#10b981',
+                      'change': '#8b5cf6',
+                      'submit': '#f59e0b',
+                      'keypress': '#ec4899',
+                      'navigation': '#06b6d4',
+                      'new_tab': '#f97316'
+                    };
+                    const color = eventColors[screenshot.eventType] || '#6b7280';
+                    const eventLabel = screenshot.eventType === 'new_tab' ? 'NEW TAB' : screenshot.eventType.toUpperCase();
+                    eventBadge = `<span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.65rem; font-weight: 600; color: white; background: ${color}; margin-bottom: 0.5rem;">${eventLabel}</span>`;
+                  }
+
+                  // Format element details
+                  let elementInfo = '';
+                  if (screenshot.eventDetails && screenshot.eventDetails.element) {
+                    const elem = screenshot.eventDetails.element;
+
+                    // Special handling for new tab events
+                    if (screenshot.eventType === 'new_tab') {
+                      const newTabUrl = elem.newTabUrl || screenshot.url || 'Unknown';
+                      const newTabTitle = elem.newTabTitle || screenshot.title || 'New Tab';
+                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">
+                        <div><strong>🗗 ${newTabTitle}</strong></div>
+                        <div style="opacity: 0.7; word-break: break-all;">${newTabUrl}</div>
+                      </div>`;
+                    }
+                    // Special handling for navigation events
+                    else if (screenshot.eventType === 'navigation') {
+                      const navType = elem.navigationType || 'unknown';
+                      const fromUrl = elem.fromUrl || 'Unknown';
+                      const toUrl = elem.toUrl || 'Unknown';
+                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">
+                        <div><strong>${navType}</strong></div>
+                        <div style="opacity: 0.7;">→ ${toUrl}</div>
+                      </div>`;
+                    } else {
+                      const elemText = elem.text ? `: "${elem.text}"` : '';
+                      const elemId = elem.id ? `#${elem.id}` : '';
+                      const elemClass = elem.className && !elem.className.includes(' ') ? `.${elem.className}` : '';
+                      elementInfo = `<div style="font-size: 0.65rem; color: #6b7280; margin-bottom: 0.25rem;">${elem.tag}${elemId}${elemClass}${elemText}</div>`;
+                    }
+                  }
+
+                  screenshotsHTML += `
+                    <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: white;">
+                      <div style="position: relative; width: 100%; height: 10rem; background: #f3f4f6;">
+                        <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: 100%; object-fit: cover;" />
+                      </div>
+                      <div style="padding: 0.75rem;">
+                        ${eventBadge}
+                        ${elementInfo}
+                        <div style="font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.25rem;" title="${screenshot.title || 'Unknown'}">
+                          ${screenshot.title || 'Unknown'}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 0.5rem;" title="${screenshot.url || 'Unknown'}">
+                          ${hostname}
+                        </div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">
+                          ${formatDate(screenshot.timestamp)} ${formatTime(screenshot.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                });
+                
+                screenshotsHTML += `</div>`;
+                contentDiv.innerHTML = screenshotsHTML;
+              }
+              
+              contentDiv.dataset.loaded = 'true';
+            }
+          } else {
+            // Collapse this session
+            detailsRow.style.display = 'none';
           }
         });
-
-        // Add hover effects
-        card.addEventListener('mouseover', function() {
-          this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-        });
-        card.addEventListener('mouseout', function() {
-          this.style.boxShadow = 'none';
-        });
       });
 
-      // Add pagination handlers
-      if (totalPages > 1) {
-        const prevBtn = document.getElementById('prevPage');
-        const nextBtn = document.getElementById('nextPage');
-
-        if (prevBtn && currentPage > 1) {
-          prevBtn.addEventListener('click', () => {
-            currentPage--;
-            loadDataAndInject(false);
-          });
-        }
-
-        if (nextBtn && currentPage < totalPages) {
-          nextBtn.addEventListener('click', () => {
-            currentPage++;
-            loadDataAndInject(false);
-          });
-        }
-      }
-
-      // Add handlers for Refresh and Clear All buttons
-      addScreenshotButtonHandlers();
-
-      console.log('[Dashboard Override] Screenshots injected!');
+      console.log('[Dashboard Override] Screenshots table injected!');
     }, 100);
 
   } catch (error) {
@@ -1783,15 +1844,15 @@ function addScreenshotButtonHandlers() {
         e.stopImmediatePropagation();
         console.log('[Dashboard Override] Clear All clicked!');
 
-        if (confirm('Are you sure you want to clear all screenshots?')) {
+        if (confirm('Are you sure you want to clear all screenshots and sessions?')) {
           try {
-            await chrome.storage.local.set({ screenshots: [] });
-            console.log('[Dashboard Override] All screenshots cleared');
+            await chrome.storage.local.set({ screenshots: [], sessions: [], recentScreenshots: [] });
+            console.log('[Dashboard Override] All screenshots and sessions cleared');
             currentPage = 1;
             loadDataAndInject(false);
           } catch (error) {
-            console.error('[Dashboard Override] Error clearing screenshots:', error);
-            alert('Error clearing screenshots');
+            console.error('[Dashboard Override] Error clearing data:', error);
+            alert('Error clearing data');
           }
         }
         return false;
@@ -1923,10 +1984,148 @@ function openScreenshotModal(screenshot) {
 
 const DEFAULT_SENSITIVE_WORDS = ['password', 'secret', 'token', 'api_key', 'credential', 'private'];
 
+// Test censoring function
+function injectTestCensorButton() {
+  // Avoid duplicate buttons
+  if (document.getElementById('test-censor-btn')) {
+    return;
+  }
+
+  // Find the page header
+  const headings = document.querySelectorAll('h1');
+  let pageHeader = null;
+
+  for (let h1 of headings) {
+    if (h1.textContent.includes('Sensitive Words Management')) {
+      pageHeader = h1;
+      break;
+    }
+  }
+
+  if (!pageHeader) {
+    console.log('[Dashboard Override] Could not find page header for test button');
+    return;
+  }
+
+  // Find the description paragraph (next sibling)
+  const description = pageHeader.nextElementSibling;
+  if (!description) return;
+
+  // Create test button
+  const testButton = document.createElement('button');
+  testButton.id = 'test-censor-btn';
+  testButton.className = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-blue-600 text-white shadow-sm hover:bg-blue-700 h-9 px-4 mt-4';
+  testButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-test-tube h-4 w-4">
+      <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"></path>
+      <path d="M8.5 2h7"></path>
+      <path d="M14.5 16h-5"></path>
+    </svg>
+    Test Censoring on Current Tab
+  `;
+
+  testButton.addEventListener('click', async function() {
+    console.log('[Test Censor] Starting test...');
+
+    try {
+      // Get all tabs
+      const tabs = await chrome.tabs.query({});
+
+      // Find a regular tab (not extension pages)
+      const regularTab = tabs.find(tab =>
+        tab.url &&
+        !tab.url.startsWith('chrome://') &&
+        !tab.url.startsWith('chrome-extension://')
+      );
+
+      if (!regularTab) {
+        alert('No regular tabs found. Please open a webpage (like Gmail) and try again.');
+        return;
+      }
+
+      console.log('[Test Censor] Sending CENSOR_CONTENT to tab:', regularTab.id, regularTab.url);
+
+      // Disable button during test
+      testButton.disabled = true;
+      testButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader h-4 w-4 animate-spin">
+          <path d="M12 2v4"></path>
+          <path d="m16.2 7.8 2.9-2.9"></path>
+          <path d="M18 12h4"></path>
+          <path d="m16.2 16.2 2.9 2.9"></path>
+          <path d="M12 18v4"></path>
+          <path d="m4.9 19.1 2.9-2.9"></path>
+          <path d="M2 12h4"></path>
+          <path d="m4.9 4.9 2.9 2.9"></path>
+        </svg>
+        Testing... (5 seconds)
+      `;
+
+      // Send CENSOR_CONTENT message
+      await chrome.tabs.sendMessage(regularTab.id, { type: 'CENSOR_CONTENT' });
+      console.log('[Test Censor] ✅ Censoring activated! Check tab:', regularTab.title);
+
+      // Show alert
+      alert(`✅ Censoring activated on:\n${regularTab.title}\n\nSensitive words should now be [REDACTED]. It will auto-restore in 5 seconds.`);
+
+      // Wait 5 seconds then uncensor
+      setTimeout(async () => {
+        try {
+          await chrome.tabs.sendMessage(regularTab.id, { type: 'UNCENSOR_CONTENT' });
+          console.log('[Test Censor] ✅ Content restored!');
+
+          // Re-enable button
+          testButton.disabled = false;
+          testButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-test-tube h-4 w-4">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"></path>
+              <path d="M8.5 2h7"></path>
+              <path d="M14.5 16h-5"></path>
+            </svg>
+            Test Censoring on Current Tab
+          `;
+        } catch (err) {
+          console.error('[Test Censor] Error restoring:', err);
+          testButton.disabled = false;
+          testButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-test-tube h-4 w-4">
+              <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"></path>
+              <path d="M8.5 2h7"></path>
+              <path d="M14.5 16h-5"></path>
+            </svg>
+            Test Censoring on Current Tab
+          `;
+        }
+      }, 5000);
+
+    } catch (error) {
+      console.error('[Test Censor] Error:', error);
+      alert(`Error: ${error.message}\n\nMake sure you have a webpage open (like Gmail) and the content script is loaded.`);
+
+      testButton.disabled = false;
+      testButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-test-tube h-4 w-4">
+          <path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"></path>
+          <path d="M8.5 2h7"></path>
+          <path d="M14.5 16h-5"></path>
+        </svg>
+        Test Censoring on Current Tab
+      `;
+    }
+  });
+
+  // Insert button after description
+  description.parentElement.insertBefore(testButton, description.nextSibling);
+  console.log('[Dashboard Override] Test Censoring button injected');
+}
+
 function injectSensitiveWords(words) {
   console.log('[Dashboard Override] Injecting sensitive words:', words);
 
   setTimeout(() => {
+    // Inject Test Censoring button in the header
+    injectTestCensorButton();
+
     // Find the "Add Word" button to locate the correct section
     const allButtons = document.querySelectorAll('button');
     let addWordButton = null;

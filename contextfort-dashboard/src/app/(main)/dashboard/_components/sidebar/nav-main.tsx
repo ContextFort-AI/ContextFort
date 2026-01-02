@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
@@ -35,6 +34,15 @@ const IsComingSoon = () => (
   <span className="ml-auto rounded-md bg-gray-200 px-2 py-1 text-xs dark:text-gray-800">Soon</span>
 );
 
+// Helper to convert Next.js route to static file path
+const toStaticPath = (url: string): string => {
+  // For Chrome extension static export, append /index.html to paths
+  if (url.endsWith('/')) {
+    return `${url}index.html`;
+  }
+  return `${url}/index.html`;
+};
+
 const NavItemExpanded = ({
   item,
   isActive,
@@ -66,11 +74,11 @@ const NavItemExpanded = ({
               isActive={isActive(item.url)}
               tooltip={item.title}
             >
-              <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
+              <a href={toStaticPath(item.url)} target={item.newTab ? "_blank" : undefined}>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
                 {item.comingSoon && <IsComingSoon />}
-              </Link>
+              </a>
             </SidebarMenuButton>
           )}
         </CollapsibleTrigger>
@@ -80,11 +88,11 @@ const NavItemExpanded = ({
               {item.subItems.map((subItem) => (
                 <SidebarMenuSubItem key={subItem.title}>
                   <SidebarMenuSubButton aria-disabled={subItem.comingSoon} isActive={isActive(subItem.url)} asChild>
-                    <Link prefetch={false} href={subItem.url} target={subItem.newTab ? "_blank" : undefined}>
+                    <a href={toStaticPath(subItem.url)} target={subItem.newTab ? "_blank" : undefined}>
                       {subItem.icon && <subItem.icon />}
                       <span>{subItem.title}</span>
                       {subItem.comingSoon && <IsComingSoon />}
-                    </Link>
+                    </a>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               ))}
@@ -127,11 +135,11 @@ const NavItemCollapsed = ({
                 aria-disabled={subItem.comingSoon}
                 isActive={isActive(subItem.url)}
               >
-                <Link prefetch={false} href={subItem.url} target={subItem.newTab ? "_blank" : undefined}>
+                <a href={toStaticPath(subItem.url)} target={subItem.newTab ? "_blank" : undefined}>
                   {subItem.icon && <subItem.icon className="[&>svg]:text-sidebar-foreground" />}
                   <span>{subItem.title}</span>
                   {subItem.comingSoon && <IsComingSoon />}
-                </Link>
+                </a>
               </SidebarMenuSubButton>
             </DropdownMenuItem>
           ))}
@@ -198,10 +206,10 @@ export function NavMain({ items }: NavMainProps) {
                           tooltip={item.title}
                           isActive={isItemActive(item.url)}
                         >
-                          <Link prefetch={false} href={item.url} target={item.newTab ? "_blank" : undefined}>
+                          <a href={toStaticPath(item.url)} target={item.newTab ? "_blank" : undefined}>
                             {item.icon && <item.icon />}
                             <span>{item.title}</span>
-                          </Link>
+                          </a>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     );
