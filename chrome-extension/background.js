@@ -105,7 +105,9 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
       // Check if this URL should be blocked before allowing agent mode to activate
       const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
       if (blockCheck.blocked) {
-        showBlockedPage(tab.id, blockCheck, tab.url);
+        // Stop agent mode, show notification, don't activate
+        sendStopAgentMessage(tab.id);
+        showBlockNotification(blockCheck, tab.url);
         return; // Don't activate agent mode on blocked URL
       }
 
@@ -265,11 +267,38 @@ async function addVisitedUrl(session, newUrl) {
   }
 }
 
-// Helper function to block navigation with visual feedback
-function showBlockedPage(tabId, blockCheck, newUrl) {
-  chrome.tabs.update(tabId, {
-    url: `data:text/html,<html><head><title>Navigation Blocked</title></head><body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;"><h1 style="color: #d97757;">⛔ Navigation Blocked</h1><p><strong>Reason:</strong> ${blockCheck.reason}</p><p><strong>Blocked URL:</strong> ${newUrl}</p><p><strong>Conflicting URL:</strong> ${blockCheck.conflictingUrl}</p><p>This navigation was blocked because the URL blocking rules prevent these two domains from being visited in the same agent session.</p></body></html>`
+// Helper function to show notification when navigation is blocked
+function showBlockNotification(blockCheck, newUrl) {
+  const newHostname = getHostname(newUrl);
+  const conflictingHostname = getHostname(blockCheck.conflictingUrl);
+
+  chrome.notifications.create({
+    type: 'basic',
+    title: '⛔ Agent Mode Denied',
+    message: `Cannot navigate to ${newHostname} because ${conflictingHostname} was already visited in this session.`,
+    priority: 2
   });
+}
+
+// Helper function to send STOP_AGENT message to Claude extension
+function sendStopAgentMessage(tabId) {
+  try {
+    chrome.runtime.sendMessage({
+      type: 'STOP_AGENT',
+      targetTabId: tabId
+    });
+  } catch (e) {
+    // Claude extension might not be available
+    console.log('[URL Blocking] Could not send STOP_AGENT to Claude:', e.message);
+  }
+}
+
+// Helper function to stop tracking agent on a tab
+function stopAgentTracking(tabId, groupId) {
+  activeAgentTabs.delete(tabId);
+  if (groupId) {
+    trackAgentActivation(groupId, tabId, 'stop');
+  }
 }
 
 // Get session for a tab (checks if tab is in an agent session)
@@ -285,7 +314,7 @@ async function getSessionForTab(tabId) {
 }
 
 // ============================================================================
-// 1. BLOCK SAME-TAB NAVIGATION (webNavigation.onBeforeNavigate)
+// 1. SAME-TAB NAVIGATION (webNavigation.onBeforeNavigate)
 // ============================================================================
 
 // Track URL navigation when agent mode is active
@@ -307,7 +336,10 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
 
   if (blockCheck.blocked) {
-    showBlockedPage(tabId, blockCheck, newUrl);
+    // Let navigation happen, stop agent mode, show notification
+    sendStopAgentMessage(tabId);
+    stopAgentTracking(tabId, activation.groupId);
+    showBlockNotification(blockCheck, newUrl);
     return;
   }
 
@@ -315,7 +347,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 });
 
 // ============================================================================
-// 2. BLOCK TAB UPDATES (chrome.tabs.update with URL or group changes)
+// 2. TAB UPDATES (chrome.tabs.update with URL or group changes)
 // ============================================================================
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -332,7 +364,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
 
     if (blockCheck.blocked) {
-      showBlockedPage(tabId, blockCheck, newUrl);
+      // Allow URL update, stop agent mode, show notification
+      sendStopAgentMessage(tabId);
+      stopAgentTracking(tabId, activation.groupId);
+      showBlockNotification(blockCheck, newUrl);
       return;
     }
 
@@ -353,9 +388,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
     // Check if agent mode is ACTIVELY running in ANY tab in this group
     let agentActive = false;
+    let activeTabInGroup = null;
     for (const [activeTabId, activation] of activeAgentTabs.entries()) {
       if (activation.groupId === newGroupId) {
         agentActive = true;
+        activeTabInGroup = activeTabId;
         break;
       }
     }
@@ -364,7 +401,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
 
     if (blockCheck.blocked) {
-      showBlockedPage(tabId, blockCheck, tab.url);
+      // Allow tab to join group, stop agent mode, show notification
+      if (activeTabInGroup) {
+        sendStopAgentMessage(activeTabInGroup);
+        stopAgentTracking(activeTabInGroup, newGroupId);
+      }
+      showBlockNotification(blockCheck, tab.url);
       return;
     }
 
@@ -374,7 +416,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 });
 
 // ============================================================================
-// 3. BLOCK NEW TAB CREATION (chrome.tabs.create with URL)
+// 3. NEW TAB CREATION (chrome.tabs.create with URL)
 // ============================================================================
 
 chrome.tabs.onCreated.addListener(async (tab) => {
@@ -393,9 +435,11 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
   // Check if agent mode is ACTIVELY running in ANY tab in this group
   let agentActive = false;
+  let activeTabInGroup = null;
   for (const [activeTabId, activation] of activeAgentTabs.entries()) {
     if (activation.groupId === groupId) {
       agentActive = true;
+      activeTabInGroup = activeTabId;
       break;
     }
   }
@@ -405,10 +449,12 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
 
   if (blockCheck.blocked) {
-    // For new tabs, we need to wait a moment before updating
-    setTimeout(() => {
-      showBlockedPage(tab.id, blockCheck, newUrl);
-    }, 100);
+    // Keep new tab, stop agent mode, show notification
+    if (activeTabInGroup) {
+      sendStopAgentMessage(activeTabInGroup);
+      stopAgentTracking(activeTabInGroup, groupId);
+    }
+    showBlockNotification(blockCheck, newUrl);
     return;
   }
 
@@ -417,7 +463,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 });
 
 // ============================================================================
-// 4. BLOCK TABS JOINING AGENT GROUP (onAttached - moved between windows)
+// 4. TABS JOINING AGENT GROUP (onAttached - moved between windows)
 // ============================================================================
 
 chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
@@ -433,9 +479,11 @@ chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
 
   // Check if agent mode is ACTIVELY running in ANY tab in this group
   let agentActive = false;
+  let activeTabInGroup = null;
   for (const [activeTabId, activation] of activeAgentTabs.entries()) {
     if (activation.groupId === groupId) {
       agentActive = true;
+      activeTabInGroup = activeTabId;
       break;
     }
   }
@@ -445,44 +493,15 @@ chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
   const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
 
   if (blockCheck.blocked) {
-    showBlockedPage(tabId, blockCheck, tab.url);
+    // Allow tab move, stop agent mode, show notification
+    if (activeTabInGroup) {
+      sendStopAgentMessage(activeTabInGroup);
+      stopAgentTracking(activeTabInGroup, groupId);
+    }
+    showBlockNotification(blockCheck, tab.url);
     return;
   }
 
   // Tab allowed - add to visited URLs
   await addVisitedUrl(session, tab.url);
-});
-
-// ============================================================================
-// DETECT CLEAR CHAT (DNR rule for Segment analytics from Claude)
-// ============================================================================
-
-const CLAUDE_EXT_ID = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
-const CLEAR_CHAT_RULE_ID = 1001;
-
-// Set up DNR rule on install
-chrome.runtime.onInstalled.addListener(async () => {
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [CLEAR_CHAT_RULE_ID],
-    addRules: [
-      {
-        id: CLEAR_CHAT_RULE_ID,
-        priority: 1,
-        action: { type: "allow" },
-        condition: {
-          requestDomains: ["api.segment.io"],
-          urlFilter: "||api.segment.io/v1/t",
-          requestMethods: ["post"],
-          resourceTypes: ["xmlhttprequest"],
-          initiatorDomains: [CLAUDE_EXT_ID]
-        }
-      }
-    ]
-  });
-});
-
-// Listen for when the DNR rule matches (clear chat detected)
-chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
-  if (info.rule.ruleId !== CLEAR_CHAT_RULE_ID) return;
-  console.log('[Clear Chat] DNR rule matched - tabId:', info.request?.tabId, 'url:', info.request?.url);
 });

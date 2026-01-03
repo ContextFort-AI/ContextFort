@@ -11,7 +11,8 @@
     "tabGroups",
     "webNavigation",
     "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequestFeedback",
+    "notifications"
   ],
 
   "host_permissions": [
