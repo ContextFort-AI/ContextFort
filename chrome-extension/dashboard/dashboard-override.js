@@ -1,7 +1,70 @@
 // Vanilla JS to override React and inject data dynamically from Chrome storage
 // This bypasses Next.js hydration issues
+// VERSION: 2026-01-03-00:20 - Increased event text size in URL logs screenshot table
 
-console.log('[Dashboard Override] Loading...');
+console.log('[Dashboard Override] Loading... VERSION: 2026-01-03-00:20 - Increased event text size in URL logs screenshot table');
+
+// Add CSS to hide dummy UI elements
+const hideDummyElementsStyle = document.createElement('style');
+hideDummyElementsStyle.textContent = `
+  /* Hide Quick Create button and mail button */
+  [data-sidebar="menu-item"]:has([data-slot="button"]) {
+    display: none !important;
+  }
+
+  /* Hide search bar */
+  button:has(kbd):has([class*="lucide-search"]) {
+    display: none !important;
+  }
+
+  /* Hide settings icon, theme button, and avatar in top right */
+  header [data-slot="popover-trigger"],
+  header button:has([class*="lucide-settings"]),
+  header button:has([class*="lucide-moon"]),
+  header button:has([class*="lucide-sun"]),
+  header [data-slot="dropdown-menu-trigger"]:has([data-slot="avatar"]) {
+    display: none !important;
+  }
+
+  /* Hide sidebar toggle icon/button */
+  [data-slot="sidebar-trigger"],
+  button[data-slot="sidebar-trigger"],
+  header button:has([class*="lucide-panel-left"]),
+  header button:has([class*="lucide-menu"]) {
+    display: none !important;
+  }
+
+  /* Hide all avatar elements */
+  [data-slot="avatar"],
+  .avatar,
+  [class*="avatar"] {
+    display: none !important;
+  }
+
+  /* Hide user info in bottom left sidebar */
+  [data-sidebar="footer"] {
+    display: none !important;
+  }
+
+  /* Hide Context page link in sidebar */
+  [data-sidebar="menu-item"]:has(a[href*="context"]) {
+    display: none !important;
+  }
+
+  /* Also hide any other unnecessary pages - keep only Screenshots and URL Logs */
+  [data-sidebar="menu-item"]:has(a[href*="bot-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="human-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="post-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="click-detection"]),
+  [data-sidebar="menu-item"]:has(a[href*="downloads"]),
+  [data-sidebar="menu-item"]:has(a[href*="whitelist"]),
+  [data-sidebar="menu-item"]:has(a[href*="sensitive-words"]),
+  [data-sidebar="menu-item"]:has(a[href*="overview"]),
+  [data-sidebar="menu-item"]:has(a[href*="default"]) {
+    display: none !important;
+  }
+`;
+document.head.appendChild(hideDummyElementsStyle);
 
 // Pagination state
 let currentPage = 1;
@@ -23,10 +86,10 @@ window.addEventListener('DOMContentLoaded', () => {
   loadDataAndInject();
 
   // Auto-refresh every 5 seconds (but keep the same page)
-  // Don't auto-refresh on React-managed pages (whitelist, sensitive-words, screenshots)
+  // Don't auto-refresh on React-managed pages (whitelist, sensitive-words, screenshots, context, urllogs)
   setInterval(() => {
     const pageType = getPageType();
-    if (pageType !== 'whitelist' && pageType !== 'sensitive-words' && pageType !== 'screenshots') {
+    if (pageType !== 'whitelist' && pageType !== 'sensitive-words' && pageType !== 'screenshots' && pageType !== 'context' && pageType !== 'urllogs') {
       loadDataAndInject(false);
     }
   }, 5000);
@@ -41,6 +104,8 @@ function getPageType() {
   if (path.includes('click-detection')) return 'click-detection';
   if (path.includes('downloads')) return 'downloads';
   if (path.includes('screenshots')) return 'screenshots';
+  if (path.includes('context')) return 'context';
+  if (path.includes('urllogs')) return 'urllogs';
   if (path.includes('whitelist')) return 'whitelist';
   if (path.includes('sensitive-words')) return 'sensitive-words';
   return null;
@@ -101,6 +166,40 @@ async function loadDataAndInject(resetPage = true) {
 
       // Enable Clear All and Refresh buttons
       addScreenshotButtonHandlers();
+
+      return;
+    }
+
+    // Handle Context page separately (uses different storage keys)
+    if (pageType === 'context') {
+      const result = await chrome.storage.local.get(['screenshots', 'sessions']);
+      const screenshots = result.screenshots || [];
+      const sessions = result.sessions || [];
+      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots and', sessions.length, 'sessions for context');
+
+      if (resetPage) {
+        currentPage = 1;
+      }
+
+      updateContextStats(screenshots, sessions);
+      injectContext(screenshots, sessions);
+
+      return;
+    }
+
+    // Handle URL Logs page separately (uses different storage keys)
+    if (pageType === 'urllogs') {
+      const result = await chrome.storage.local.get(['screenshots', 'sessions']);
+      const screenshots = result.screenshots || [];
+      const sessions = result.sessions || [];
+      console.log('[Dashboard Override] Loaded', screenshots.length, 'screenshots and', sessions.length, 'sessions for URL logs');
+
+      if (resetPage) {
+        currentPage = 1;
+      }
+
+      updateURLLogsStats(screenshots, sessions);
+      injectURLLogs(screenshots, sessions);
 
       return;
     }
@@ -1543,16 +1642,38 @@ function injectScreenshots(screenshots, sessions) {
     console.log('[Dashboard Override] Injecting Screenshots data...');
     console.log('[Dashboard Override] Sessions:', sessions.length, 'Screenshots:', screenshots.length);
 
-    // Wait for DOM to be ready
+    // Wait longer for React to fully render
     setTimeout(() => {
-      // Find all card content containers - the last one should be the gallery container
+      // Try multiple strategies to find the target container
+      let targetContainer = null;
+
+      // Strategy 1: Find by card-content (last one)
       const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
-      const targetContainer = cardContainers[cardContainers.length - 1];
+      if (cardContainers.length > 0) {
+        targetContainer = cardContainers[cardContainers.length - 1];
+        console.log('[Dashboard Override] Found container via card-content (last), total:', cardContainers.length);
+      }
+
+      // Strategy 2: Find by the main content div with flex flex-col gap-6
+      if (!targetContainer) {
+        targetContainer = document.querySelector('main > div > div.flex.flex-col.gap-6 > [data-slot="card"] [data-slot="card-content"]');
+        if (targetContainer) console.log('[Dashboard Override] Found container via main path');
+      }
+
+      // Strategy 3: Find any card content in main
+      if (!targetContainer) {
+        const mainCards = document.querySelectorAll('main [data-slot="card-content"]');
+        targetContainer = mainCards[mainCards.length - 1];
+        if (targetContainer) console.log('[Dashboard Override] Found container via main cards');
+      }
 
       if (!targetContainer) {
-        console.error('[Dashboard Override] Could not find gallery container for Screenshots');
+        console.error('[Dashboard Override] Could not find gallery container for Screenshots after trying all strategies');
+        console.log('[Dashboard Override] Available card containers:', cardContainers.length);
         return;
       }
+
+      console.log('[Dashboard Override] Found target container, injecting...', targetContainer);
 
       // Group screenshots by session
       const sessionMap = new Map();
@@ -1660,20 +1781,17 @@ function injectScreenshots(screenshots, sessions) {
         }
 
         html += `
-          <div style="border: 1px solid ${borderColor}; border-radius: 0.75rem; overflow: hidden; background: white;">
+          <div id="session-${session.id}" style="border: 1px solid ${borderColor}; border-radius: 0.75rem; overflow: hidden; background: white; scroll-margin-top: 80px;">
             <!-- Session Header -->
             <div style="padding: 1rem 1.5rem; background: #fafafa; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <div style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background: ${statusColor}; ${isActive ? 'animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;' : ''}"></div>
                 <div>
-                  <span style="font-size: 1.125rem; font-weight: 600;">Session #${session.id}</span>
+                  <span style="font-size: 1.125rem; font-weight: 600;">Session</span>
                   ${isActive ? `<span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background: ${statusBg}; margin-left: 0.5rem;">Active</span>` : ''}
                 </div>
               </div>
               <div style="display: flex; align-items: center; gap: 1rem;">
-                <div style="font-size: 0.875rem; color: #6b7280;">
-                  ${session.tabTitle || 'Unknown Page'} • ${duration} • ${sessionScreenshots.length} screenshots
-                </div>
                 <div style="font-size: 0.75rem; color: #6b7280; padding: 0.25rem 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.25rem; white-space: nowrap;">
                   ${formatDate(session.startTime)} ${formatTime(session.startTime)}
                 </div>
@@ -1686,31 +1804,37 @@ function injectScreenshots(screenshots, sessions) {
             <!-- Rolling Preview Table (Collapsed) -->
             ${sessionScreenshots.length > 0 ? `
             <div class="rolling-preview-table" data-session-id="${session.id}" style="border-bottom: 1px solid #e5e7eb;">
-              <table style="width: 100%; border-collapse: collapse;">
+              <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                <colgroup>
+                  <col style="width: 500px;">
+                  <col style="width: 250px;">
+                  <col>
+                  <col style="width: 180px;">
+                </colgroup>
                 <thead style="background: #f9fafb;">
                   <tr>
-                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 180px;">Screenshot</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 200px;">Event</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Screenshot</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Event</th>
                     <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">URL</th>
-                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 150px;">Date/Time</th>
+                    <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Date/Time</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr class="rolling-row" data-session-id="${session.id}" style="transition: opacity 0.3s;">
                     <td style="padding: 0.75rem 1rem;">
-                      <div style="position: relative; width: 8rem; height: 5rem; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
-                        <img class="rolling-screenshot" src="${sessionScreenshots[0].dataUrl}" alt="Screenshot" style="width: 100%; height: 100%; object-fit: cover;" />
+                      <div style="position: relative; max-width: 470px; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
+                        <img class="rolling-screenshot" src="${sessionScreenshots[0].dataUrl}" alt="Screenshot" style="max-width: 470px; height: auto; display: block;" />
                       </div>
                     </td>
                     <td style="padding: 0.75rem 1rem;">
                       <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
-                          <span class="rolling-event-badge" style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.625rem; font-weight: 600; color: ${getEventBadge(sessionScreenshots[0]).color}; background: ${getEventBadge(sessionScreenshots[0]).bg};">
+                          <span class="rolling-event-badge" style="display: inline-block; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 1.125rem; font-weight: 600; color: ${getEventBadge(sessionScreenshots[0]).color}; background: ${getEventBadge(sessionScreenshots[0]).bg};">
                             ${getEventBadge(sessionScreenshots[0]).label}
                           </span>
                         </div>
-                        ${sessionScreenshots[0].clickedElement ? `<div class="rolling-clicked" style="font-size: 0.75rem; color: #f97316;">🖱️ &lt;${sessionScreenshots[0].clickedElement.tag ? sessionScreenshots[0].clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : '<div class="rolling-clicked"></div>'}
-                        ${sessionScreenshots[0].postRequest ? `<div class="rolling-post" style="font-size: 0.75rem; color: #3b82f6;">📡 ${sessionScreenshots[0].postRequest.method}</div>` : '<div class="rolling-post"></div>'}
+                        ${sessionScreenshots[0].clickedElement ? `<div class="rolling-clicked" style="font-size: 1rem; color: #f97316;">🖱️ &lt;${sessionScreenshots[0].clickedElement.tag ? sessionScreenshots[0].clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : '<div class="rolling-clicked"></div>'}
+                        ${sessionScreenshots[0].postRequest ? `<div class="rolling-post" style="font-size: 1rem; color: #3b82f6;">📡 ${sessionScreenshots[0].postRequest.method}</div>` : '<div class="rolling-post"></div>'}
                       </div>
                     </td>
                     <td style="padding: 0.75rem 1rem;">
@@ -1777,8 +1901,10 @@ function injectScreenshots(screenshots, sessions) {
 
             // Load table if not already loaded
             if (!contentDiv.dataset.loaded) {
-              const sessionData = sessionMap.get(parseInt(sessionId));
+              const sessionData = sessionMap.get(sessionId);
               const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+
+              console.log('[Screenshots] Expanding session:', sessionId, 'Screenshots:', sessionScreenshots.length);
 
               if (sessionScreenshots.length === 0) {
                 contentDiv.innerHTML = `
@@ -1789,13 +1915,19 @@ function injectScreenshots(screenshots, sessions) {
               } else {
                 // Build full table HTML
                 let tableHTML = `
-                  <table style="width: 100%; border-collapse: collapse;">
+                  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                    <colgroup>
+                      <col style="width: 500px;">
+                      <col style="width: 250px;">
+                      <col>
+                      <col style="width: 180px;">
+                    </colgroup>
                     <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
                       <tr>
-                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 180px;">Screenshot</th>
-                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 200px;">Event</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Screenshot</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Event</th>
                         <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">URL</th>
-                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 150px;">Date/Time</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Date/Time</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1809,19 +1941,19 @@ function injectScreenshots(screenshots, sessions) {
                   tableHTML += `
                     <tr style="cursor: pointer; background: ${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}; transition: background 0.2s; ${idx < sessionScreenshots.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}'">
                       <td style="padding: 0.75rem 1rem;">
-                        <div style="position: relative; width: 8rem; height: 5rem; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
-                          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="width: 100%; height: 100%; object-fit: cover;" />
+                        <div style="position: relative; max-width: 470px; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
+                          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="max-width: 470px; height: auto; display: block;" />
                         </div>
                       </td>
                       <td style="padding: 0.75rem 1rem;">
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                           <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.625rem; font-weight: 600; color: ${eventBadge.color}; background: ${eventBadge.bg};">
+                            <span style="display: inline-block; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 1.125rem; font-weight: 600; color: ${eventBadge.color}; background: ${eventBadge.bg};">
                               ${eventBadge.label}
                             </span>
                           </div>
-                          ${screenshot.clickedElement ? `<div style="font-size: 0.75rem; color: #f97316;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
-                          ${screenshot.postRequest ? `<div style="font-size: 0.75rem; color: #3b82f6;">📡 ${screenshot.postRequest.method}</div>` : ''}
+                          ${screenshot.clickedElement ? `<div style="font-size: 1rem; color: #f97316;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
+                          ${screenshot.postRequest ? `<div style="font-size: 1rem; color: #3b82f6;">📡 ${screenshot.postRequest.method}</div>` : ''}
                         </div>
                       </td>
                       <td style="padding: 0.75rem 1rem;">
@@ -1947,8 +2079,67 @@ function injectScreenshots(screenshots, sessions) {
         });
       }, 2000);
 
+      // Handle hash navigation (e.g., #session-1767399993419) and query parameters (e.g., ?session=1767399993419)
+      setTimeout(() => {
+        let sessionId = null;
+
+        // Check for hash first
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#session-')) {
+          sessionId = hash.replace('#session-', '');
+        }
+
+        // Check for query parameter
+        if (!sessionId) {
+          const urlParams = new URLSearchParams(window.location.search);
+          sessionId = urlParams.get('session');
+        }
+
+        if (sessionId) {
+          const sessionElement = document.getElementById(`session-${sessionId}`);
+
+          if (sessionElement) {
+            // Find and click the expand icon to show the session details
+            const expandIcon = sessionElement.querySelector('.expand-icon');
+            if (expandIcon) {
+              // Check if session is collapsed
+              const expandedTable = sessionElement.querySelector('.expanded-table');
+              if (expandedTable && expandedTable.style.display === 'none') {
+                expandIcon.click();
+                console.log('[Dashboard Override] Expanded session:', sessionId);
+              }
+            }
+
+            // Wait a bit for expansion animation, then scroll and highlight
+            setTimeout(() => {
+              // Add highlight animation
+              sessionElement.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+              sessionElement.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.3)';
+              sessionElement.style.borderColor = '#3b82f6';
+
+              // Scroll to the session
+              sessionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+              // Remove highlight after 3 seconds
+              setTimeout(() => {
+                sessionElement.style.boxShadow = '';
+                sessionElement.style.borderColor = '';
+              }, 3000);
+
+              console.log('[Dashboard Override] Scrolled to session:', sessionId);
+            }, 200);
+          }
+        }
+      }, 500);
+
+      // Prevent React from re-rendering by removing React's event listeners
+      const reactRoot = document.querySelector('#__next_error__ #__next__');
+      if (reactRoot) {
+        console.log('[Dashboard Override] Preventing React re-renders...');
+      }
+
       console.log('[Dashboard Override] Screenshots with rolling table UI injected!');
-    }, 100);
+    }, 1000); // Increased timeout to 1s to give React more time to render
 
   } catch (error) {
     console.error('[Dashboard Override] Error injecting Screenshots:', error);
@@ -2067,6 +2258,1071 @@ function addScreenshotButtonHandlers() {
   }, 500);
 
   console.log('[Dashboard Override] Button hijacking enabled');
+}
+
+// ============================================================================
+// CONTEXT PAGE - Data injection
+// ============================================================================
+
+// Update context page stats
+function updateContextStats(screenshots, sessions) {
+  try {
+    // Find stat cards
+    const statCards = document.querySelectorAll('[data-slot="card"]');
+    if (statCards.length >= 4) {
+      // Total Sessions
+      const totalSessions = sessions.length;
+      const activeSessions = sessions.filter(s => s.status === 'active').length;
+
+      // Calculate unique URLs
+      const urlSet = new Set(screenshots.map(s => s.url));
+      const uniqueURLs = urlSet.size;
+      const totalVisits = screenshots.length;
+
+      // Update stat values
+      const statValues = document.querySelectorAll('[data-slot="card"] .text-2xl');
+      if (statValues[0]) statValues[0].textContent = totalSessions;
+      if (statValues[1]) statValues[1].textContent = activeSessions;
+      if (statValues[2]) statValues[2].textContent = uniqueURLs;
+      if (statValues[3]) statValues[3].textContent = totalVisits;
+    }
+  } catch (error) {
+    console.error('[Dashboard Override] Error updating context stats:', error);
+  }
+}
+
+// Inject context data (URLs → Sessions table)
+function injectContext(screenshots, sessions) {
+  try {
+    console.log('[Dashboard Override] Injecting Context data...');
+
+    setTimeout(() => {
+      // Find the target container
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+      const targetContainer = cardContainers[cardContainers.length - 1];
+
+      if (!targetContainer) {
+        console.error('[Dashboard Override] Could not find container for Context');
+        return;
+      }
+
+      // Helper functions
+      const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      };
+
+      const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      };
+
+      const formatDateTime = (timestamp) => {
+        return `${formatDate(timestamp)} ${formatTime(timestamp)}`;
+      };
+
+      if (sessions.length === 0) {
+        targetContainer.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🌐</div>
+            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No context data yet</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">
+              URLs will appear here when agent mode (debugger) is attached
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group by Session → URLs
+      const sessionMap = new Map();
+
+      screenshots.forEach(screenshot => {
+        try {
+          const sessionId = screenshot.sessionId;
+          if (!sessionId) return;
+
+          const session = sessions.find(s => s.id === sessionId);
+          if (!session) return;
+
+          const hostname = new URL(screenshot.url).hostname;
+
+          // Get or create session entry
+          if (!sessionMap.has(sessionId)) {
+            sessionMap.set(sessionId, {
+              sessionId: sessionId,
+              sessionTitle: session.tabTitle || 'Unknown Page',
+              sessionStatus: session.status,
+              sessionStartTime: session.startTime,
+              totalVisits: 0,
+              urls: new Map()
+            });
+          }
+          const sessionData = sessionMap.get(sessionId);
+
+          // Get or create URL entry for this session
+          if (!sessionData.urls.has(screenshot.url)) {
+            sessionData.urls.set(screenshot.url, {
+              url: screenshot.url,
+              hostname: hostname,
+              visitCount: 0,
+              titles: []
+            });
+          }
+          const urlData = sessionData.urls.get(screenshot.url);
+
+          // Update counts
+          sessionData.totalVisits++;
+          urlData.visitCount++;
+          if (!urlData.titles.includes(screenshot.title)) {
+            urlData.titles.push(screenshot.title);
+          }
+        } catch (error) {
+          console.error('[Context] Error processing screenshot:', error);
+        }
+      });
+
+      // Sort sessions by start time (most recent first)
+      const sortedSessions = Array.from(sessionMap.values()).sort((a, b) => new Date(b.sessionStartTime) - new Date(a.sessionStartTime));
+
+      // Build table HTML
+      let html = `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: white;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+              <tr>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; width: 40%;">Session</th>
+                <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; width: 60%;">Unique URLs</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      sortedSessions.forEach((sessionData) => {
+        const isActive = sessionData.sessionStatus === 'active';
+        const statusColor = isActive ? '#f97316' : '#22c55e';
+        const urlsArray = Array.from(sessionData.urls.values()).sort((a, b) => b.visitCount - a.visitCount);
+
+        html += `
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 1rem; vertical-align: top; border-right: 1px solid #e5e7eb;">
+              <div style="display: flex; align-items: start; gap: 0.5rem;">
+                <div style="width: 0.375rem; height: 0.375rem; border-radius: 50%; background: ${statusColor}; margin-top: 0.375rem; flex-shrink: 0; ${isActive ? 'animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;' : ''}"></div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.875rem; font-weight: 600; color: #111827;">Session</span>
+                    ${isActive ? `<span style="padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.625rem; font-weight: 600; color: ${statusColor}; background: rgba(249, 115, 22, 0.1);">Active</span>` : ''}
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                    <div style="padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; background: #dbeafe; color: #1e40af;">
+                      ${sessionData.totalVisits} visit${sessionData.totalVisits > 1 ? 's' : ''}
+                    </div>
+                    <div style="padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; background: #f3e8ff; color: #6b21a8;">
+                      ${urlsArray.length} URL${urlsArray.length > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <div style="font-size: 0.75rem; color: #9ca3af;">
+                      Started: ${formatDateTime(sessionData.sessionStartTime)}
+                    </div>
+                  </div>
+                  <button class="view-screenshots-btn" data-session-id="${sessionData.sessionId}" style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; background: #3b82f6; color: white; text-decoration: none; transition: all 0.2s; border: none; cursor: pointer;" onmouseover="this.style.background='#2563eb';" onmouseout="this.style.background='#3b82f6';">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                      <circle cx="12" cy="13" r="3"></circle>
+                    </svg>
+                    View Screenshots
+                  </button>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 1rem; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                ${urlsArray.map((urlData) => `
+                  <div style="padding: 0.75rem; background: #f9fafb; border-radius: 0.375rem; border: 1px solid #e5e7eb;">
+                    <div style="display: flex; align-items: start; gap: 0.75rem;">
+                      <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                          <span style="font-size: 0.75rem; font-weight: 600; color: #6b7280;">🌐 ${urlData.hostname}</span>
+                          <div style="padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; background: #d1fae5; color: #065f46;">
+                            ${urlData.visitCount} visit${urlData.visitCount > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                        <div style="font-size: 0.8125rem; color: #111827; word-break: break-all; margin-bottom: 0.5rem;">
+                          ${urlData.url}
+                        </div>
+                        ${urlData.titles.length > 0 ? `
+                          <div style="font-size: 0.75rem; color: #9ca3af;">
+                            📄 ${urlData.titles[0]}
+                          </div>
+                        ` : ''}
+                      </div>
+                      <a href="${urlData.url}" target="_blank" style="padding: 0.375rem; border-radius: 0.375rem; background: white; border: 1px solid #e5e7eb; color: #6b7280; text-decoration: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db';" onmouseout="this.style.background='white'; this.style.borderColor='#e5e7eb';">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                          <polyline points="15 3 21 3 21 9"></polyline>
+                          <line x1="10" x2="21" y1="14" y2="3"></line>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      targetContainer.innerHTML = html;
+
+      // Add event listeners for "View Screenshots" buttons
+      document.querySelectorAll('.view-screenshots-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const sessionId = this.dataset.sessionId;
+          // Get the base path (everything before /urllogs/)
+          const currentPath = window.location.pathname;
+          const basePathMatch = currentPath.match(/^(.+\/dashboard\/dashboard\/)/);
+          if (basePathMatch) {
+            const basePath = basePathMatch[1];
+            const screenshotsUrl = `${window.location.origin}${basePath}screenshots/index.html?session=${encodeURIComponent(sessionId)}`;
+            console.log('[Dashboard Override] Navigating to:', screenshotsUrl);
+            window.location.href = screenshotsUrl;
+          }
+        });
+      });
+
+      console.log('[Dashboard Override] Context data injected (URL → Sessions table)!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting Context:', error);
+  }
+}
+
+// ============================================================================
+// URL LOGS - Stats and Data Injection
+// ============================================================================
+
+function updateURLLogsStats(screenshots, sessions) {
+  try {
+    // Find stat cards
+    const statCards = document.querySelectorAll('[data-slot="card"]');
+    if (statCards.length >= 4) {
+      // Group URLs
+      const urlMap = new Map();
+      screenshots.forEach(screenshot => {
+        if (!screenshot.sessionId) return;
+        const session = sessions.find(s => s.id === screenshot.sessionId);
+        if (!session) return;
+
+        let urlData = urlMap.get(screenshot.url);
+        if (!urlData) {
+          urlData = { sessionIds: new Set(), totalVisits: 0 };
+          urlMap.set(screenshot.url, urlData);
+        }
+        urlData.sessionIds.add(screenshot.sessionId);
+        urlData.totalVisits++;
+      });
+
+      const totalURLs = urlMap.size;
+      const urlsWithMultipleSessions = Array.from(urlMap.values()).filter(u => u.sessionIds.size > 1).length;
+      const totalSessions = sessions.length;
+      const totalVisits = screenshots.length;
+
+      // Update stat values
+      const statValues = document.querySelectorAll('[data-slot="card"] .text-2xl');
+      if (statValues[0]) statValues[0].textContent = totalURLs;
+      if (statValues[1]) statValues[1].textContent = urlsWithMultipleSessions;
+      if (statValues[2]) statValues[2].textContent = totalSessions;
+      if (statValues[3]) statValues[3].textContent = totalVisits;
+    }
+  } catch (error) {
+    console.error('[Dashboard Override] Error updating URL logs stats:', error);
+  }
+}
+
+// Inject URL logs data (URLs → Sessions)
+function injectURLLogs(screenshots, sessions) {
+  try {
+    console.log('[Dashboard Override] Injecting URL Logs data...');
+
+    setTimeout(() => {
+      // Find the target container
+      const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
+      const targetContainer = cardContainers[cardContainers.length - 1];
+
+      if (!targetContainer) {
+        console.error('[Dashboard Override] Could not find container for URL Logs');
+        return;
+      }
+
+      // Helper functions
+      const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      };
+
+      const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      };
+
+      const formatDateTime = (timestamp) => {
+        return `${formatDate(timestamp)} ${formatTime(timestamp)}`;
+      };
+
+      if (sessions.length === 0) {
+        targetContainer.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔗</div>
+            <h3 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">No URL logs yet</h3>
+            <p style="font-size: 0.875rem; color: #6b7280;">
+              URL logs will appear here when agent mode (debugger) is attached
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group screenshots by session first
+      const sessionScreenshots = new Map();
+      screenshots.forEach(screenshot => {
+        const sessionId = screenshot.sessionId;
+        if (!sessionId) return;
+
+        if (!sessionScreenshots.has(sessionId)) {
+          sessionScreenshots.set(sessionId, []);
+        }
+        sessionScreenshots.get(sessionId).push(screenshot);
+      });
+
+      // Create URL transitions (url1 → url2) for each session
+      const transitionMap = new Map();
+
+      sessionScreenshots.forEach((sessionShots, sessionId) => {
+        const session = sessions.find(s => s.id === sessionId);
+        if (!session) return;
+
+        // Sort screenshots by timestamp to get navigation sequence
+        const sortedShots = sessionShots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Create transitions between consecutive URLs
+        for (let i = 0; i < sortedShots.length - 1; i++) {
+          const fromUrl = sortedShots[i].url;
+          const toUrl = sortedShots[i + 1].url;
+
+          // Skip if same URL (no transition)
+          if (fromUrl === toUrl) continue;
+
+          const transitionKey = `${fromUrl}|||${toUrl}`;
+
+          try {
+            const fromHostname = new URL(fromUrl).hostname;
+            const toHostname = new URL(toUrl).hostname;
+
+            // Get or create transition entry
+            if (!transitionMap.has(transitionKey)) {
+              transitionMap.set(transitionKey, {
+                fromUrl: fromUrl,
+                toUrl: toUrl,
+                fromHostname: fromHostname,
+                toHostname: toHostname,
+                transitionCount: 0,
+                sessions: new Map()
+              });
+            }
+            const transitionData = transitionMap.get(transitionKey);
+
+            // Get or create session entry for this transition
+            if (!transitionData.sessions.has(sessionId)) {
+              transitionData.sessions.set(sessionId, {
+                sessionId: sessionId,
+                sessionTitle: session.tabTitle || 'Unknown Page',
+                sessionStatus: session.status,
+                sessionStartTime: session.startTime,
+                transitionCount: 0,
+                firstTransition: sortedShots[i].timestamp,
+                lastTransition: sortedShots[i + 1].timestamp
+              });
+            }
+            const sessionData = transitionData.sessions.get(sessionId);
+
+            // Update counts
+            transitionData.transitionCount++;
+            sessionData.transitionCount++;
+            sessionData.lastTransition = sortedShots[i + 1].timestamp;
+          } catch (error) {
+            console.error('[URL Logs] Error processing transition:', error);
+          }
+        }
+      });
+
+      // Sort transitions by transition count (most common transitions first)
+      const sortedTransitions = Array.from(transitionMap.values()).sort((a, b) => b.transitionCount - a.transitionCount);
+
+      // Collect unique filter options
+      const uniqueFromUrls = new Set();
+      const uniqueToUrls = new Set();
+      const uniqueSessions = new Set();
+
+      sortedTransitions.forEach(transitionData => {
+        uniqueFromUrls.add(transitionData.fromHostname);
+        uniqueToUrls.add(transitionData.toHostname);
+
+        transitionData.sessions.forEach(sessionData => {
+          uniqueSessions.add(formatDateTime(sessionData.sessionStartTime));
+        });
+      });
+
+      const fromUrlOptions = Array.from(uniqueFromUrls).sort();
+      const toUrlOptions = Array.from(uniqueToUrls).sort();
+      const sessionOptions = Array.from(uniqueSessions).sort();
+
+      // Build HTML table with improved styling
+      let html = `
+        <div style="border: 1px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; background: white;">
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 18%;">
+              <col style="width: 18%;">
+              <col style="width: 13%;">
+              <col style="width: 38%;">
+              <col style="width: 13%;">
+            </colgroup>
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 1rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">From URL</th>
+                <th style="padding: 1rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">To URL</th>
+                <th style="padding: 1rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Navigation Type</th>
+                <th style="padding: 1rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Sessions</th>
+                <th style="padding: 1rem 1.5rem; text-align: center; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
+              </tr>
+              <tr style="background: white; border-bottom: 1px solid #e5e7eb;">
+                <th style="padding: 0.75rem 1.5rem;">
+                  <input type="text" id="filter-from-url" list="from-url-options" placeholder="All URLs or type to search..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-weight: normal;" />
+                  <datalist id="from-url-options">
+                    ${fromUrlOptions.map(url => `<option value="${url}">`).join('')}
+                  </datalist>
+                </th>
+                <th style="padding: 0.75rem 1.5rem;">
+                  <input type="text" id="filter-to-url" list="to-url-options" placeholder="All URLs or type to search..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-weight: normal;" />
+                  <datalist id="to-url-options">
+                    ${toUrlOptions.map(url => `<option value="${url}">`).join('')}
+                  </datalist>
+                </th>
+                <th style="padding: 0.75rem 1.5rem;">
+                  <select id="filter-nav-type" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-weight: normal; background: white;">
+                    <option value="">All Types</option>
+                    <option value="cross-domain">Cross-domain</option>
+                    <option value="same-domain">Same-domain</option>
+                  </select>
+                </th>
+                <th style="padding: 0.75rem 1.5rem;">
+                  <input type="text" id="filter-session" list="session-options" placeholder="All Sessions or type to search..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-weight: normal;" />
+                  <datalist id="session-options">
+                    ${sessionOptions.map(session => `<option value="${session}">`).join('')}
+                  </datalist>
+                </th>
+                <th style="padding: 0.75rem 1.5rem;"></th>
+              </tr>
+            </thead>
+            <tbody id="url-logs-tbody">
+      `;
+
+      if (sortedTransitions.length === 0) {
+        html += `
+          <tr>
+            <td colspan="4" style="padding: 3rem; text-align: center;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">🔗</div>
+              <div style="font-size: 1.125rem; font-weight: 500; color: #111827; margin-bottom: 0.5rem;">No URL transitions yet</div>
+              <div style="font-size: 0.875rem; color: #6b7280;">
+                Navigation patterns will appear when multiple URLs are visited in a session
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      sortedTransitions.forEach((transitionData, index) => {
+        const sessionsArray = Array.from(transitionData.sessions.values()).sort((a, b) =>
+          new Date(b.sessionStartTime) - new Date(a.sessionStartTime)
+        );
+        const isCrossDomain = transitionData.fromHostname !== transitionData.toHostname;
+
+        // Filter screenshots by TO URL
+        const urlScreenshots = screenshots.filter(s => s.url === transitionData.toUrl);
+
+        // Group screenshots by session
+        const sessionScreenshotMap = new Map();
+        urlScreenshots.forEach(screenshot => {
+          const sessionId = screenshot.sessionId;
+          if (!sessionId) return;
+
+          if (!sessionScreenshotMap.has(sessionId)) {
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
+
+            sessionScreenshotMap.set(sessionId, {
+              session: session,
+              screenshots: []
+            });
+          }
+
+          sessionScreenshotMap.get(sessionId).screenshots.push(screenshot);
+        });
+
+        // Sort sessions by start time (newest first)
+        const sortedSessionScreenshots = Array.from(sessionScreenshotMap.values()).sort((a, b) =>
+          new Date(b.session.startTime) - new Date(a.session.startTime)
+        );
+
+        // Build expandable content HTML
+        let expandedContentHtml = '';
+        if (sortedSessionScreenshots.length > 0) {
+          // Collect all screenshots from all sessions and sort them
+          const allScreenshots = [];
+          sortedSessionScreenshots.forEach(sessionGroup => {
+            sessionGroup.screenshots.forEach(screenshot => {
+              allScreenshots.push(screenshot);
+            });
+          });
+
+          const sortedAllScreenshots = allScreenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+          expandedContentHtml = `
+            <div style="padding: 1.5rem 0; background: white;">
+              <!-- Screenshots Table -->
+              <div style="overflow-x: auto; border-top: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                  <colgroup>
+                    <col style="width: 35%;">
+                    <col style="width: 15%;">
+                    <col style="width: 30%;">
+                    <col style="width: 20%;">
+                  </colgroup>
+                  <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <tr>
+                      <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Screenshot</th>
+                      <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Event</th>
+                      <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">URL</th>
+                      <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Session</th>
+                    </tr>
+                  </thead>
+                  <tbody class="all-screenshots-tbody-${index}">
+                    ${sortedAllScreenshots.map((screenshot, screenshotIdx) => {
+                      const screenshotSession = sessions.find(s => s.id === screenshot.sessionId);
+
+                      return `
+                        <tr class="screenshot-row-${index}-${screenshotIdx}" style="border-bottom: 1px solid #e5e7eb; ${screenshotIdx % 2 === 0 ? 'background: white;' : 'background: #fafafa;'};">
+                          <td style="padding: 0.75rem 1rem;">
+                            <img src="${screenshot.dataUrl}" alt="Screenshot" style="width: 350px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="window.open('${screenshot.dataUrl}', '_blank')">
+                          </td>
+                          <td style="padding: 0.75rem 1rem;">
+                            <span style="font-size: 1.125rem; font-weight: 600; color: #111827;">${screenshot.eventType || 'N/A'}</span>
+                          </td>
+                          <td style="padding: 0.75rem 1rem; word-break: break-word; overflow-wrap: break-word;">
+                            <a href="${screenshot.url}" target="_blank" style="font-size: 0.875rem; color: #3b82f6; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                              ${screenshot.url}
+                            </a>
+                          </td>
+                          <td style="padding: 0.75rem 1rem; word-break: break-word; overflow-wrap: break-word;">
+                            <span style="font-size: 0.875rem; color: #111827;">${screenshotSession ? `Session | Started: ${formatDateTime(screenshotSession.startTime)}` : 'N/A'}</span>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+
+        html += `
+          <tr class="url-transition-row" data-transition-index="${index}" data-has-screenshots="${sortedSessionScreenshots.length > 0}" style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: white;' : 'background: #fafafa;'};" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='${index % 2 === 0 ? 'white' : '#fafafa'}'">
+            <td style="padding: 1.25rem 1.5rem; vertical-align: top;">
+              <span style="font-size: 0.875rem; font-weight: 500; color: #111827; cursor: help;" title="${transitionData.fromUrl}">
+                ${transitionData.fromHostname}
+              </span>
+            </td>
+            <td style="padding: 1.25rem 1.5rem; vertical-align: top;">
+              <span style="font-size: 0.875rem; font-weight: 500; color: #111827; cursor: help;" title="${transitionData.toUrl}">
+                ${transitionData.toHostname}
+              </span>
+            </td>
+            <td style="padding: 1.25rem 1.5rem; vertical-align: top;">
+              <span style="font-size: 0.875rem; font-weight: 500; color: #111827;">
+                ${isCrossDomain ? 'Cross-domain' : 'Same-domain'}
+              </span>
+            </td>
+            <td style="padding: 1.25rem 1.5rem; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                ${(() => {
+                  // Show latest session by default
+                  const latestSession = sessionsArray[0];
+                  const isActive = latestSession.sessionStatus === 'active';
+                  const hasScreenshots = sortedSessionScreenshots.length > 0;
+
+                  const sessionHtml = `
+                    <div class="session-toggle-${index}" data-transition-index="${index}" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; cursor: ${hasScreenshots ? 'pointer' : 'default'}; transition: all 0.2s;">
+                      <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.875rem; font-weight: 500; color: #111827;">
+                          Session | Started: ${formatDateTime(latestSession.sessionStartTime)}
+                          ${isActive ? '<span style="margin-left: 0.5rem; font-size: 0.75rem; color: #111827;">(Active)</span>' : ''}
+                        </div>
+                      </div>
+                      ${hasScreenshots ? `
+                        <svg class="session-chevron-${index}" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;">
+                          <path d="m6 9 6 6 6-6"></path>
+                        </svg>
+                      ` : ''}
+                    </div>
+                  `;
+
+                  return sessionHtml;
+                })()}
+              </div>
+            </td>
+            <td style="padding: 1.25rem 1.5rem; vertical-align: top; text-align: center;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <label class="toggle-switch" data-transition-index="${index}" data-from-url="${transitionData.fromUrl}" data-to-url="${transitionData.toUrl}" style="position: relative; display: inline-block; width: 54px; height: 28px; cursor: pointer;">
+                  <input type="checkbox" class="toggle-checkbox" checked style="opacity: 0; width: 0; height: 0;">
+                  <span class="toggle-slider" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #10b981; border-radius: 28px; transition: all 0.3s; box-shadow: inset 0 0 0 2px #10b981;"></span>
+                  <span class="toggle-knob" style="position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; background-color: white; border-radius: 50%; transition: all 0.3s; transform: translateX(26px); box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+                </label>
+                <span class="toggle-label" style="font-size: 0.75rem; font-weight: 500; color: #10b981;">Allowed</span>
+              </div>
+            </td>
+          </tr>
+          ${sortedSessionScreenshots.length > 0 ? `
+          <tr class="url-screenshots-expanded-row" data-transition-index="${index}" style="display: none; border-bottom: 1px solid #e5e7eb;">
+            <td colspan="5" style="padding: 0;">
+              ${expandedContentHtml}
+            </td>
+          </tr>
+          ` : ''}
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Modal for URL Screenshots -->
+        <div id="url-screenshots-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 9999; padding: 2rem; overflow: auto;">
+          <div style="max-width: 90rem; margin: 0 auto; background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <!-- Modal Header -->
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; background: #fafafa;">
+              <div>
+                <h2 id="modal-url-title" style="font-size: 1.5rem; font-weight: 600; color: #111827; margin-bottom: 0.25rem;">Screenshots</h2>
+                <p id="modal-url-subtitle" style="font-size: 0.875rem; color: #6b7280;"></p>
+              </div>
+              <button id="close-modal-btn" style="padding: 0.5rem; background: transparent; border: none; cursor: pointer; border-radius: 0.375rem; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18"></path>
+                  <path d="m6 6 12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div id="modal-screenshots-content" style="padding: 2rem; max-height: 70vh; overflow-y: auto;">
+              <!-- Screenshots will be inserted here -->
+            </div>
+          </div>
+        </div>
+      `;
+
+      targetContainer.innerHTML = html;
+
+      console.log('[URL Logs] HTML injected, setting up event listeners in 50ms...');
+
+      // Wait for DOM to be ready
+      setTimeout(() => {
+        console.log('[URL Logs] Checking for elements...');
+        console.log('[URL Logs] session-card elements:', document.querySelectorAll('[class^="session-card-"]').length);
+        console.log('[URL Logs] session-nav-link elements:', document.querySelectorAll('.session-nav-link').length);
+
+        // Add event listeners for expandable session cards (only for expand/collapse)
+        document.querySelectorAll('[class^="session-card-"]').forEach(card => {
+        card.addEventListener('click', function(e) {
+          // Check if clicking on the expand button area - handle expand/collapse
+          if (e.target.closest('.expand-icon-' + this.getAttribute('data-index') + ', [style*="background: rgba(0, 0, 0, 0.05)"]')) {
+            e.stopPropagation(); // Prevent navigation
+            // Toggle expand/collapse
+            const index = this.getAttribute('data-index');
+            const hiddenSessions = document.querySelector(`.hidden-sessions-${index}`);
+            const expandIcon = document.querySelector(`.expand-icon-${index}`);
+
+            if (hiddenSessions && expandIcon) {
+              if (hiddenSessions.style.display === 'none') {
+                // Expand
+                hiddenSessions.style.display = 'flex';
+                expandIcon.style.transform = 'rotate(180deg)';
+              } else {
+                // Collapse
+                hiddenSessions.style.display = 'none';
+                expandIcon.style.transform = 'rotate(0deg)';
+              }
+            }
+          }
+          // Navigation is now handled by .session-nav-link event listener below
+        });
+
+        // Add hover effect
+        card.addEventListener('mouseenter', function() {
+          this.style.borderColor = '#9ca3af';
+        });
+
+        card.addEventListener('mouseleave', function() {
+          this.style.borderColor = '#e5e7eb';
+        });
+      });
+
+      // Add event listeners for session toggle to show/hide screenshot table
+      setTimeout(() => {
+        document.querySelectorAll('[class^="session-toggle-"]').forEach(toggleElement => {
+          toggleElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            const transitionIndex = this.getAttribute('data-transition-index');
+            const screenshotRow = document.querySelector(`.url-screenshots-expanded-row[data-transition-index="${transitionIndex}"]`);
+            const chevron = document.querySelector(`.session-chevron-${transitionIndex}`);
+
+            if (screenshotRow) {
+              const isHidden = screenshotRow.style.display === 'none';
+
+              if (isHidden) {
+                // Show screenshot table
+                screenshotRow.style.display = 'table-row';
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+              } else {
+                // Hide screenshot table
+                screenshotRow.style.display = 'none';
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+              }
+            }
+          });
+
+          // Add hover effect
+          toggleElement.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#9ca3af';
+          });
+
+          toggleElement.addEventListener('mouseleave', function() {
+            this.style.borderColor = '#e5e7eb';
+          });
+        });
+
+        // Add toggle switch functionality
+        document.querySelectorAll('.toggle-switch').forEach(toggleSwitch => {
+          const checkbox = toggleSwitch.querySelector('.toggle-checkbox');
+          const slider = toggleSwitch.querySelector('.toggle-slider');
+          const knob = toggleSwitch.querySelector('.toggle-knob');
+          const label = toggleSwitch.parentElement.querySelector('.toggle-label');
+
+          checkbox.addEventListener('change', function(e) {
+            e.stopPropagation();
+
+            if (this.checked) {
+              // Allowed state (ON)
+              slider.style.backgroundColor = '#10b981';
+              slider.style.boxShadow = 'inset 0 0 0 2px #10b981';
+              knob.style.transform = 'translateX(26px)';
+              label.textContent = 'Allowed';
+              label.style.color = '#10b981';
+            } else {
+              // Blocked state (OFF)
+              slider.style.backgroundColor = '#ef4444';
+              slider.style.boxShadow = 'inset 0 0 0 2px #ef4444';
+              knob.style.transform = 'translateX(0)';
+              label.textContent = 'Blocked';
+              label.style.color = '#ef4444';
+            }
+          });
+
+          // Add hover effect to label (container)
+          toggleSwitch.addEventListener('mouseenter', function() {
+            slider.style.opacity = '0.9';
+          });
+
+          toggleSwitch.addEventListener('mouseleave', function() {
+            slider.style.opacity = '1';
+          });
+        });
+      }, 100);
+
+
+      // Add filter functionality
+      const filterFromUrl = document.getElementById('filter-from-url');
+      const filterToUrl = document.getElementById('filter-to-url');
+      const filterNavType = document.getElementById('filter-nav-type');
+      const filterSession = document.getElementById('filter-session');
+      const tbody = document.getElementById('url-logs-tbody');
+
+      function applyFilters() {
+        const fromUrlValue = filterFromUrl.value.toLowerCase().trim();
+        const toUrlValue = filterToUrl.value.toLowerCase().trim();
+        const navTypeValue = filterNavType.value.toLowerCase().trim();
+        const sessionValue = filterSession.value.toLowerCase().trim();
+
+        const rows = tbody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+          // Skip empty state row
+          if (row.querySelector('td[colspan="4"]')) {
+            return;
+          }
+
+          const cells = row.querySelectorAll('td');
+          if (cells.length !== 4) return;
+
+          // Get text content from each column
+          const fromUrlText = cells[0].textContent.toLowerCase().trim();
+          const toUrlText = cells[1].textContent.toLowerCase().trim();
+          const navTypeText = cells[2].textContent.toLowerCase().trim();
+          const sessionText = cells[3].textContent.toLowerCase().trim();
+
+          // Check if row matches all filters
+          const matchesFromUrl = !fromUrlValue || fromUrlText.includes(fromUrlValue);
+          const matchesToUrl = !toUrlValue || toUrlText.includes(toUrlValue);
+          const matchesNavType = !navTypeValue || navTypeText.includes(navTypeValue);
+          const matchesSession = !sessionValue || sessionText.includes(sessionValue);
+
+          // Show row only if all filters match
+          if (matchesFromUrl && matchesToUrl && matchesNavType && matchesSession) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      }
+
+      // Add event listeners to all filters
+      if (filterFromUrl) {
+        filterFromUrl.addEventListener('input', applyFilters);
+      }
+      if (filterToUrl) {
+        filterToUrl.addEventListener('input', applyFilters);
+      }
+      if (filterNavType) {
+        filterNavType.addEventListener('change', applyFilters);
+      }
+      if (filterSession) {
+        filterSession.addEventListener('input', applyFilters);
+      }
+
+      // Add event listeners for URL Screenshots modal
+      const modal = document.getElementById('url-screenshots-modal');
+      const closeModalBtn = document.getElementById('close-modal-btn');
+      const modalContent = document.getElementById('modal-screenshots-content');
+      const modalTitle = document.getElementById('modal-url-title');
+      const modalSubtitle = document.getElementById('modal-url-subtitle');
+
+      // Close modal function
+      const closeModal = () => {
+        if (modal) modal.style.display = 'none';
+      };
+
+      // Close button
+      if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+      }
+
+      // Click outside to close
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeModal();
+          }
+        });
+      }
+
+      // Open modal for URL screenshots
+      document.querySelectorAll('.view-url-screenshots-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const url = this.getAttribute('data-url');
+          const hostname = this.getAttribute('data-hostname');
+
+          // Filter screenshots by URL
+          const urlScreenshots = screenshots.filter(s => s.url === url).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+          // Update modal title
+          if (modalTitle) modalTitle.textContent = `Screenshots for ${hostname}`;
+          if (modalSubtitle) modalSubtitle.textContent = `${urlScreenshots.length} screenshot${urlScreenshots.length !== 1 ? 's' : ''} • ${url}`;
+
+          // Group screenshots by session
+          const sessionMap = new Map();
+          urlScreenshots.forEach(screenshot => {
+            const sessionId = screenshot.sessionId;
+            if (!sessionId) return;
+
+            if (!sessionMap.has(sessionId)) {
+              const session = sessions.find(s => s.id === sessionId);
+              if (!session) return;
+
+              sessionMap.set(sessionId, {
+                session: session,
+                screenshots: []
+              });
+            }
+
+            sessionMap.get(sessionId).screenshots.push(screenshot);
+          });
+
+          // Sort sessions by start time (newest first)
+          const sortedSessions = Array.from(sessionMap.values()).sort((a, b) =>
+            new Date(b.session.startTime) - new Date(a.session.startTime)
+          );
+
+          // Build session-based HTML
+          let contentHTML = '';
+          if (sortedSessions.length === 0) {
+            contentHTML = `
+              <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 1rem; color: #d1d5db;">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                  <circle cx="12" cy="13" r="3"></circle>
+                </svg>
+                <p style="font-size: 1rem; font-weight: 500;">No screenshots found for this URL</p>
+              </div>
+            `;
+          } else {
+            contentHTML = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+
+            sortedSessions.forEach((sessionData, idx) => {
+              const session = sessionData.session;
+              const sessionScreenshots = sessionData.screenshots;
+              const isActive = session.status === 'active';
+              const statusColor = isActive ? '#f97316' : '#22c55e';
+              const borderColor = isActive ? 'rgba(249, 115, 22, 0.5)' : '#e5e7eb';
+
+              // Calculate duration
+              let duration = '';
+              if (session.duration) {
+                const mins = Math.floor(session.duration / 60);
+                const secs = session.duration % 60;
+                duration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+              }
+
+              contentHTML += `
+                <div style="border: 1px solid ${borderColor}; border-radius: 0.75rem; overflow: hidden; background: white;">
+                  <!-- Session Header -->
+                  <div class="modal-session-header" data-modal-session-id="${session.id}" style="padding: 1rem 1.5rem; background: #fafafa; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#fafafa'">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background: ${statusColor}; ${isActive ? 'animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;' : ''}"></div>
+                      <div>
+                        <span style="font-size: 1.125rem; font-weight: 600;">Session</span>
+                        ${isActive ? `<span style="margin-left: 0.5rem; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600; color: ${statusColor}; background: rgba(249, 115, 22, 0.1);">Active</span>` : ''}
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                      <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                          <circle cx="12" cy="13" r="3"></circle>
+                        </svg>
+                        <span>${sessionScreenshots.length} screenshot${sessionScreenshots.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      ${duration ? `<div style="font-size: 0.875rem; color: #6b7280;">${duration}</div>` : ''}
+                      <svg class="modal-expand-icon" data-modal-session-id="${session.id}" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;">
+                        <path d="m6 9 6 6 6-6"></path>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- Session Content (Screenshots Table) -->
+                  <div class="modal-session-content" data-modal-session-id="${session.id}" style="display: none;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                        <tr>
+                          <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Screenshot</th>
+                          <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 350px;">Event</th>
+                          <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600;">Page Title</th>
+                          <th style="padding: 0.75rem 1rem; text-align: left; font-size: 0.875rem; font-weight: 600; width: 200px;">Date/Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${sessionScreenshots.map((screenshot) => {
+                          const isSuspicious = screenshot.reason === 'suspicious_click';
+                          const eventBadge = screenshot.eventType ? screenshot.eventType : (screenshot.reason || 'Other');
+                          const eventColor = isSuspicious ? '#ef4444' : '#3b82f6';
+
+                          return `
+                            <tr style="border-bottom: 1px solid #e5e7eb; ${isSuspicious ? 'background: rgba(239, 68, 68, 0.05);' : ''}">
+                              <td style="padding: 0.75rem 1rem;">
+                                <img src="${screenshot.dataUrl}" alt="Screenshot" style="max-width: 1000px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer;" onclick="window.open('${screenshot.dataUrl}', '_blank')" onmouseover="this.style.transform='scale(1.02)'; this.style.transition='transform 0.2s'" onmouseout="this.style.transform='scale(1)'" />
+                              </td>
+                              <td style="padding: 0.75rem 1rem;">
+                                <span style="display: inline-block; padding: 0.5rem 1.25rem; border-radius: 0.375rem; font-size: 1.25rem; font-weight: 600; background: rgba(59, 130, 246, 0.1); color: ${eventColor};">
+                                  ${eventBadge}
+                                </span>
+                                ${screenshot.clickedElement ? `<div style="font-size: 1rem; color: #f97316; margin-top: 0.5rem;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
+                                ${screenshot.postRequest ? `<div style="font-size: 1rem; color: #3b82f6; margin-top: 0.5rem;">📡 ${screenshot.postRequest.method}</div>` : ''}
+                              </td>
+                              <td style="padding: 0.75rem 1rem; max-width: 20rem;">
+                                <div style="font-size: 0.875rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${screenshot.title}">
+                                  ${screenshot.title || 'Untitled'}
+                                </div>
+                              </td>
+                              <td style="padding: 0.75rem 1rem; white-space: nowrap;">
+                                <div style="font-size: 0.875rem;">${formatDate(screenshot.timestamp)}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280; font-family: monospace;">${formatTime(screenshot.timestamp)}</div>
+                              </td>
+                            </tr>
+                          `;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              `;
+            });
+
+            contentHTML += '</div>';
+          }
+
+          // Insert content and show modal
+          if (modalContent) modalContent.innerHTML = contentHTML;
+
+          // Add expand/collapse handlers for modal sessions
+          document.querySelectorAll('.modal-session-header').forEach(header => {
+            header.addEventListener('click', function() {
+              const sessionId = this.getAttribute('data-modal-session-id');
+              const content = document.querySelector(`.modal-session-content[data-modal-session-id="${sessionId}"]`);
+              const icon = document.querySelector(`.modal-expand-icon[data-modal-session-id="${sessionId}"]`);
+
+              if (content && icon) {
+                if (content.style.display === 'none') {
+                  content.style.display = 'block';
+                  icon.style.transform = 'rotate(180deg)';
+                } else {
+                  content.style.display = 'none';
+                  icon.style.transform = 'rotate(0deg)';
+                }
+              }
+            });
+          });
+
+          if (modal) modal.style.display = 'block';
+        });
+      });
+
+      }, 50); // End of setTimeout
+
+      console.log('[Dashboard Override] URL Logs data injected (URL Transitions → Sessions)!');
+    }, 100);
+
+  } catch (error) {
+    console.error('[Dashboard Override] Error injecting URL Logs:', error);
+  }
 }
 
 // ============================================================================
