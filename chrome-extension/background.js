@@ -452,3 +452,37 @@ chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
   // Tab allowed - add to visited URLs
   await addVisitedUrl(session, tab.url);
 });
+
+// ============================================================================
+// DETECT CLEAR CHAT (DNR rule for Segment analytics from Claude)
+// ============================================================================
+
+const CLAUDE_EXT_ID = "fcoeoabgfenejglbffodgkkbkcdhcgfn";
+const CLEAR_CHAT_RULE_ID = 1001;
+
+// Set up DNR rule on install
+chrome.runtime.onInstalled.addListener(async () => {
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [CLEAR_CHAT_RULE_ID],
+    addRules: [
+      {
+        id: CLEAR_CHAT_RULE_ID,
+        priority: 1,
+        action: { type: "allow" },
+        condition: {
+          requestDomains: ["api.segment.io"],
+          urlFilter: "||api.segment.io/v1/t",
+          requestMethods: ["post"],
+          resourceTypes: ["xmlhttprequest"],
+          initiatorDomains: [CLAUDE_EXT_ID]
+        }
+      }
+    ]
+  });
+});
+
+// Listen for when the DNR rule matches (clear chat detected)
+chrome.declarativeNetRequest.onRuleMatchedDebug.addListener((info) => {
+  if (info.rule.ruleId !== CLEAR_CHAT_RULE_ID) return;
+  console.log('[Clear Chat] DNR rule matched - tabId:', info.request?.tabId, 'url:', info.request?.url);
+});

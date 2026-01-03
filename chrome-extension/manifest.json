@@ -9,7 +9,9 @@
     "activeTab",
     "tabs",
     "tabGroups",
-    "webNavigation"
+    "webNavigation",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
   ],
 
   "host_permissions": [
