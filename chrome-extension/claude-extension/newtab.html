@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme="claude">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon-128.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Tab</title>
+    <script>
+      // Set initial theme mode based on system preference
+      (function () {
+        const isDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+        document.documentElement.setAttribute(
+          "data-mode",
+          isDark ? "dark" : "light",
+        );
+        // Listen for system theme changes
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", (e) => {
+            document.documentElement.setAttribute(
+              "data-mode",
+              e.matches ? "dark" : "light",
+            );
+          });
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/newtab-BCMWenNN.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/permissions-DQjjgS8V.js">
+    <link rel="modulepreload" crossorigin href="/assets/Main-iyJ1wi9k.js">
+    <link rel="modulepreload" crossorigin href="/assets/client-BsbSyIlx.js">
+    <link rel="modulepreload" crossorigin href="/assets/ModelSelector-B-fXYzGj.js">
+    <link rel="modulepreload" crossorigin href="/assets/TasksTab-Be_gFnwg.js">
+    <link rel="stylesheet" crossorigin href="/assets/Main-PFH1wzVy.css">
+    <link rel="stylesheet" crossorigin href="/assets/ModelSelector-CD1qrI1T.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
