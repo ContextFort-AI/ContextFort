@@ -45,24 +45,6 @@ hideDummyElementsStyle.textContent = `
   [data-sidebar="footer"] {
     display: none !important;
   }
-
-  /* Hide Context page link in sidebar */
-  [data-sidebar="menu-item"]:has(a[href*="context"]) {
-    display: none !important;
-  }
-
-  /* Also hide any other unnecessary pages - keep only Screenshots and URL Logs */
-  [data-sidebar="menu-item"]:has(a[href*="bot-requests"]),
-  [data-sidebar="menu-item"]:has(a[href*="human-requests"]),
-  [data-sidebar="menu-item"]:has(a[href*="post-requests"]),
-  [data-sidebar="menu-item"]:has(a[href*="click-detection"]),
-  [data-sidebar="menu-item"]:has(a[href*="downloads"]),
-  [data-sidebar="menu-item"]:has(a[href*="whitelist"]),
-  [data-sidebar="menu-item"]:has(a[href*="sensitive-words"]),
-  [data-sidebar="menu-item"]:has(a[href*="overview"]),
-  [data-sidebar="menu-item"]:has(a[href*="default"]) {
-    display: none !important;
-  }
 `;
 document.head.appendChild(hideDummyElementsStyle);
 
@@ -1580,13 +1562,13 @@ function updateScreenshotsStats(screenshots, sessions) {
     const totalScreenshots = screenshots.length;
     const totalSessions = sessions.length;
     const activeSessions = sessions.filter(s => s.status === 'active').length;
-    const withPostRequestCount = screenshots.filter(s => s.postRequest !== null && s.postRequest !== undefined).length;
+    const withEventDetailsCount = screenshots.filter(s => s.eventDetails && s.eventDetails.element).length;
 
     console.log('[Dashboard Override] Screenshots Stats:', {
       totalSessions,
       activeSessions,
       totalScreenshots,
-      withPostRequestCount
+      withEventDetailsCount
     });
 
     // Wait for DOM to be ready
@@ -1621,11 +1603,11 @@ function updateScreenshotsStats(screenshots, sessions) {
         screenshotsValueEl.textContent = totalScreenshots.toLocaleString();
       }
 
-      // With POST Requests (fourth card)
+      // With Event Details (fourth card)
       const postCard = cardContainers[3];
       const postValueEl = postCard.querySelector('div.text-2xl');
       if (postValueEl) {
-        postValueEl.textContent = withPostRequestCount.toLocaleString();
+        postValueEl.textContent = withEventDetailsCount.toLocaleString();
       }
 
       console.log('[Dashboard Override] Screenshots stats updated!');
@@ -1636,51 +1618,66 @@ function updateScreenshotsStats(screenshots, sessions) {
   }
 }
 
+// Helper to inspect Chrome storage
+window.inspectScreenshotStorage = async function() {
+  const result = await chrome.storage.local.get(['screenshots', 'sessions']);
+  console.log('=== CHROME STORAGE INSPECTION ===');
+  console.log('Sessions:', result.sessions);
+  console.log('Screenshots:', result.screenshots);
+  console.log('Screenshots with images:', result.screenshots?.filter(s => s.dataUrl && s.dataUrl.length > 0));
+  console.log('Screenshots without images (page_read):', result.screenshots?.filter(s => !s.dataUrl || s.dataUrl.length === 0));
+  return result;
+};
+
 // Updated injectScreenshots function with table-based rolling UI
 function injectScreenshots(screenshots, sessions) {
   try {
     console.log('[Dashboard Override] Injecting Screenshots data...');
     console.log('[Dashboard Override] Sessions:', sessions.length, 'Screenshots:', screenshots.length);
+    console.log('[Dashboard] TIP: Run window.inspectScreenshotStorage() to inspect Chrome storage');
 
-    // Wait longer for React to fully render
+    // Wait for DOM to be ready
     setTimeout(() => {
-      // Try multiple strategies to find the target container
-      let targetContainer = null;
-
-      // Strategy 1: Find by card-content (last one)
+      // Find all card content containers - the last one should be the gallery container
       const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
-      if (cardContainers.length > 0) {
-        targetContainer = cardContainers[cardContainers.length - 1];
-        console.log('[Dashboard Override] Found container via card-content (last), total:', cardContainers.length);
-      }
-
-      // Strategy 2: Find by the main content div with flex flex-col gap-6
-      if (!targetContainer) {
-        targetContainer = document.querySelector('main > div > div.flex.flex-col.gap-6 > [data-slot="card"] [data-slot="card-content"]');
-        if (targetContainer) console.log('[Dashboard Override] Found container via main path');
-      }
-
-      // Strategy 3: Find any card content in main
-      if (!targetContainer) {
-        const mainCards = document.querySelectorAll('main [data-slot="card-content"]');
-        targetContainer = mainCards[mainCards.length - 1];
-        if (targetContainer) console.log('[Dashboard Override] Found container via main cards');
-      }
+      const targetContainer = cardContainers[cardContainers.length - 1];
 
       if (!targetContainer) {
-        console.error('[Dashboard Override] Could not find gallery container for Screenshots after trying all strategies');
-        console.log('[Dashboard Override] Available card containers:', cardContainers.length);
+        console.error('[Dashboard Override] Could not find gallery container for Screenshots');
         return;
       }
 
-      console.log('[Dashboard Override] Found target container, injecting...', targetContainer);
+      // Log all screenshots with their eventTypes
+      console.log('[Dashboard] All screenshots:', screenshots.map(s => ({
+        id: s.id,
+        sessionId: s.sessionId,
+        eventType: s.eventType,
+        reason: s.reason,
+        hasDataUrl: !!s.dataUrl,
+        dataUrlLength: s.dataUrl ? s.dataUrl.length : 0,
+        dataUrlPreview: s.dataUrl ? s.dataUrl.substring(0, 50) + '...' : null,
+        actionType: s.eventDetails?.actionType,
+        element: s.eventDetails?.element,
+        coordinates: s.eventDetails?.coordinates
+      })));
+
+      // Log raw first screenshot
+      if (screenshots.length > 0) {
+        console.log('[Dashboard] First screenshot FULL DATA:', screenshots[0]);
+      }
 
       // Group screenshots by session
       const sessionMap = new Map();
       sessions.forEach(session => {
+        const filtered = screenshots.filter(s => s.sessionId === session.id);
+        console.log(`[Dashboard] Session ${session.id}:`, {
+          screenshotCount: filtered.length,
+          eventTypes: filtered.map(s => s.eventType),
+          hasImages: filtered.filter(s => s.dataUrl).length
+        });
         sessionMap.set(session.id, {
           session: session,
-          screenshots: screenshots.filter(s => s.sessionId === session.id)
+          screenshots: filtered
         });
       });
 
@@ -1710,6 +1707,7 @@ function injectScreenshots(screenshots, sessions) {
         if (screenshot.eventType) {
           const eventType = screenshot.eventType.toLowerCase();
           const eventColors = {
+            'page_read': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', label: 'Page Read' },
             'click': { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', label: 'Click' },
             'input': { color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', label: 'Input' },
             'change': { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', label: 'Change' },
@@ -1739,6 +1737,32 @@ function injectScreenshots(screenshots, sessions) {
 
         // Default
         return { color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)', label: 'Other' };
+      };
+
+      const getScreenshotImageHtml = (screenshot, maxWidth = '470px') => {
+        console.log('[getScreenshotImageHtml] Rendering screenshot:', {
+          id: screenshot.id,
+          hasDataUrl: !!screenshot.dataUrl,
+          dataUrlLength: screenshot.dataUrl ? screenshot.dataUrl.length : 0,
+          dataUrlStart: screenshot.dataUrl ? screenshot.dataUrl.substring(0, 30) : null,
+          eventType: screenshot.eventType
+        });
+
+        if (screenshot.dataUrl && screenshot.dataUrl !== null && screenshot.dataUrl.length > 0) {
+          console.log('[getScreenshotImageHtml] Showing actual image for screenshot', screenshot.id);
+          return `<img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="max-width: ${maxWidth}; height: auto; display: block;" onerror="console.error('Image failed to load for screenshot ${screenshot.id}')" />`;
+        } else {
+          // Show placeholder for page_read or null dataUrl
+          console.log('[getScreenshotImageHtml] Showing placeholder for screenshot', screenshot.id);
+          const eventBadge = getEventBadge(screenshot);
+          return `
+            <div style="max-width: ${maxWidth}; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: ${eventBadge.bg}; border: 2px dashed ${eventBadge.color}; border-radius: 0.375rem;">
+              <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+              <div style="font-size: 0.875rem; font-weight: 600; color: ${eventBadge.color};">${eventBadge.label}</div>
+              <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">No screenshot captured</div>
+            </div>
+          `;
+        }
       };
 
       // Build session containers HTML
@@ -1822,8 +1846,8 @@ function injectScreenshots(screenshots, sessions) {
                 <tbody>
                   <tr class="rolling-row" data-session-id="${session.id}" style="transition: opacity 0.3s;">
                     <td style="padding: 0.75rem 1rem;">
-                      <div style="position: relative; max-width: 470px; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
-                        <img class="rolling-screenshot" src="${sessionScreenshots[0].dataUrl}" alt="Screenshot" style="max-width: 470px; height: auto; display: block;" />
+                      <div class="rolling-screenshot-container" style="position: relative; max-width: 470px; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
+                        ${getScreenshotImageHtml(sessionScreenshots[0], '470px')}
                       </div>
                     </td>
                     <td style="padding: 0.75rem 1rem;">
@@ -1833,8 +1857,8 @@ function injectScreenshots(screenshots, sessions) {
                             ${getEventBadge(sessionScreenshots[0]).label}
                           </span>
                         </div>
-                        ${sessionScreenshots[0].clickedElement ? `<div class="rolling-clicked" style="font-size: 1rem; color: #f97316;">🖱️ &lt;${sessionScreenshots[0].clickedElement.tag ? sessionScreenshots[0].clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : '<div class="rolling-clicked"></div>'}
-                        ${sessionScreenshots[0].postRequest ? `<div class="rolling-post" style="font-size: 1rem; color: #3b82f6;">📡 ${sessionScreenshots[0].postRequest.method}</div>` : '<div class="rolling-post"></div>'}
+                        ${sessionScreenshots[0].eventDetails?.element ? `<div class="rolling-clicked" style="font-size: 1rem; color: #f97316;">🖱️ &lt;${sessionScreenshots[0].eventDetails.element.tag ? sessionScreenshots[0].eventDetails.element.tag.toLowerCase() : 'unknown'}&gt;</div>` : '<div class="rolling-clicked"></div>'}
+                        ${sessionScreenshots[0].eventDetails?.coordinates ? `<div class="rolling-post" style="font-size: 1rem; color: #3b82f6;">📍 ${sessionScreenshots[0].eventDetails.actionType || 'action'}</div>` : '<div class="rolling-post"></div>'}
                       </div>
                     </td>
                     <td style="padding: 0.75rem 1rem;">
@@ -1862,7 +1886,7 @@ function injectScreenshots(screenshots, sessions) {
             ` : ''}
 
             <!-- Expanded Table (All Screenshots) -->
-            <div class="expanded-table" data-session-id="${session.id}" style="display: none;">
+            <div class="expanded-table" data-session-id="${session.id}" data-screenshot-count="${sessionScreenshots.length}" style="display: none;">
               <div id="session-content-${session.id}"></div>
             </div>
           </div>
@@ -1871,6 +1895,15 @@ function injectScreenshots(screenshots, sessions) {
 
       html += '</div>';
       targetContainer.innerHTML = html;
+
+      // Store sessionMap and helper functions in window for access by click handlers
+      window._screenshotSessionMap = sessionMap;
+      window._screenshotHelpers = {
+        getEventBadge,
+        getScreenshotImageHtml,
+        formatTime,
+        formatDate
+      };
 
       // Add click handlers for expand/collapse
       document.querySelectorAll('.expand-icon').forEach(icon => {
@@ -1901,10 +1934,10 @@ function injectScreenshots(screenshots, sessions) {
 
             // Load table if not already loaded
             if (!contentDiv.dataset.loaded) {
-              const sessionData = sessionMap.get(sessionId);
+              const numericSessionId = Number(sessionId);
+              const sessionData = window._screenshotSessionMap.get(numericSessionId);
               const sessionScreenshots = sessionData ? sessionData.screenshots : [];
-
-              console.log('[Screenshots] Expanding session:', sessionId, 'Screenshots:', sessionScreenshots.length);
+              console.log('[Expand] Session', numericSessionId, 'has', sessionScreenshots.length, 'screenshots');
 
               if (sessionScreenshots.length === 0) {
                 contentDiv.innerHTML = `
@@ -1913,6 +1946,9 @@ function injectScreenshots(screenshots, sessions) {
                   </div>
                 `;
               } else {
+                // Get helper functions from window
+                const { getEventBadge, getScreenshotImageHtml, formatTime, formatDate } = window._screenshotHelpers;
+
                 // Build full table HTML
                 let tableHTML = `
                   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
@@ -1942,7 +1978,7 @@ function injectScreenshots(screenshots, sessions) {
                     <tr style="cursor: pointer; background: ${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}; transition: background 0.2s; ${idx < sessionScreenshots.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='${isSuspicious ? 'rgba(239, 68, 68, 0.05)' : 'white'}'">
                       <td style="padding: 0.75rem 1rem;">
                         <div style="position: relative; max-width: 470px; background: #f3f4f6; border-radius: 0.375rem; overflow: hidden; border: 1px solid #e5e7eb;">
-                          <img src="${screenshot.dataUrl}" alt="Screenshot ${screenshot.id}" style="max-width: 470px; height: auto; display: block;" />
+                          ${getScreenshotImageHtml(screenshot, '470px')}
                         </div>
                       </td>
                       <td style="padding: 0.75rem 1rem;">
@@ -1952,8 +1988,8 @@ function injectScreenshots(screenshots, sessions) {
                               ${eventBadge.label}
                             </span>
                           </div>
-                          ${screenshot.clickedElement ? `<div style="font-size: 1rem; color: #f97316;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
-                          ${screenshot.postRequest ? `<div style="font-size: 1rem; color: #3b82f6;">📡 ${screenshot.postRequest.method}</div>` : ''}
+                          ${screenshot.eventDetails?.element ? `<div style="font-size: 1rem; color: #f97316;">🖱️ &lt;${screenshot.eventDetails.element.tag ? screenshot.eventDetails.element.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
+                          ${screenshot.eventDetails?.coordinates ? `<div style="font-size: 1rem; color: #3b82f6;">📍 ${screenshot.eventDetails.actionType || 'action'}</div>` : ''}
                         </div>
                       </td>
                       <td style="padding: 0.75rem 1rem;">
@@ -2022,7 +2058,7 @@ function injectScreenshots(screenshots, sessions) {
 
               setTimeout(() => {
                 // Update content
-                const img = rollingRow.querySelector('.rolling-screenshot');
+                const screenshotContainer = rollingRow.querySelector('.rolling-screenshot-container');
                 const badge = rollingRow.querySelector('.rolling-event-badge');
                 const clickedDiv = rollingRow.querySelector('.rolling-clicked');
                 const postDiv = rollingRow.querySelector('.rolling-post');
@@ -2031,17 +2067,17 @@ function injectScreenshots(screenshots, sessions) {
                 const dateDiv = rollingRow.querySelector('.rolling-date');
                 const timeDiv = rollingRow.querySelector('.rolling-time');
 
-                if (img) img.src = screenshot.dataUrl;
+                if (screenshotContainer) screenshotContainer.innerHTML = getScreenshotImageHtml(screenshot, '470px');
                 if (badge) {
                   badge.textContent = eventBadge.label;
                   badge.style.color = eventBadge.color;
                   badge.style.background = eventBadge.bg;
                 }
                 if (clickedDiv) {
-                  if (screenshot.clickedElement) {
+                  if (screenshot.eventDetails?.element) {
                     clickedDiv.style.fontSize = '0.75rem';
                     clickedDiv.style.color = '#f97316';
-                    clickedDiv.textContent = `🖱️ <${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}>`;
+                    clickedDiv.textContent = `🖱️ <${screenshot.eventDetails.element.tag ? screenshot.eventDetails.element.tag.toLowerCase() : 'unknown'}>`;
                   } else {
                     clickedDiv.textContent = '';
                     clickedDiv.style.fontSize = '';
@@ -2049,10 +2085,10 @@ function injectScreenshots(screenshots, sessions) {
                   }
                 }
                 if (postDiv) {
-                  if (screenshot.postRequest) {
+                  if (screenshot.eventDetails?.coordinates) {
                     postDiv.style.fontSize = '0.75rem';
                     postDiv.style.color = '#3b82f6';
-                    postDiv.textContent = `📡 ${screenshot.postRequest.method}`;
+                    postDiv.textContent = `📍 ${screenshot.eventDetails.actionType || 'action'}`;
                   } else {
                     postDiv.textContent = '';
                     postDiv.style.fontSize = '';
@@ -2132,14 +2168,8 @@ function injectScreenshots(screenshots, sessions) {
         }
       }, 500);
 
-      // Prevent React from re-rendering by removing React's event listeners
-      const reactRoot = document.querySelector('#__next_error__ #__next__');
-      if (reactRoot) {
-        console.log('[Dashboard Override] Preventing React re-renders...');
-      }
-
       console.log('[Dashboard Override] Screenshots with rolling table UI injected!');
-    }, 1000); // Increased timeout to 1s to give React more time to render
+    }, 100);
 
   } catch (error) {
     console.error('[Dashboard Override] Error injecting Screenshots:', error);
@@ -2821,7 +2851,14 @@ function injectURLLogs(screenshots, sessions) {
                       return `
                         <tr class="screenshot-row-${index}-${screenshotIdx}" style="border-bottom: 1px solid #e5e7eb; ${screenshotIdx % 2 === 0 ? 'background: white;' : 'background: #fafafa;'};">
                           <td style="padding: 0.75rem 1rem;">
-                            <img src="${screenshot.dataUrl}" alt="Screenshot" style="width: 350px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="window.open('${screenshot.dataUrl}', '_blank')">
+                            ${screenshot.dataUrl ?
+                              `<img src="${screenshot.dataUrl}" alt="Screenshot" style="width: 350px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="window.open('${screenshot.dataUrl}', '_blank')">` :
+                              `<div style="width: 350px; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 0.375rem;">
+                                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📄</div>
+                                <div style="font-size: 0.875rem; font-weight: 600; color: #6b7280;">Page Read</div>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">No screenshot</div>
+                              </div>`
+                            }
                           </td>
                           <td style="padding: 0.75rem 1rem;">
                             <span style="font-size: 1.125rem; font-weight: 600; color: #111827;">${screenshot.eventType || 'N/A'}</span>
@@ -3258,14 +3295,21 @@ function injectURLLogs(screenshots, sessions) {
                           return `
                             <tr style="border-bottom: 1px solid #e5e7eb; ${isSuspicious ? 'background: rgba(239, 68, 68, 0.05);' : ''}">
                               <td style="padding: 0.75rem 1rem;">
-                                <img src="${screenshot.dataUrl}" alt="Screenshot" style="max-width: 1000px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer;" onclick="window.open('${screenshot.dataUrl}', '_blank')" onmouseover="this.style.transform='scale(1.02)'; this.style.transition='transform 0.2s'" onmouseout="this.style.transform='scale(1)'" />
+                                ${screenshot.dataUrl ?
+                                  `<img src="${screenshot.dataUrl}" alt="Screenshot" style="max-width: 1000px; height: auto; border-radius: 0.375rem; border: 1px solid #e5e7eb; cursor: pointer;" onclick="window.open('${screenshot.dataUrl}', '_blank')" onmouseover="this.style.transform='scale(1.02)'; this.style.transition='transform 0.2s'" onmouseout="this.style.transform='scale(1)'" />` :
+                                  `<div style="max-width: 1000px; height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 0.375rem;">
+                                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📄</div>
+                                    <div style="font-size: 1rem; font-weight: 600; color: #6b7280;">Page Read Event</div>
+                                    <div style="font-size: 0.875rem; color: #9ca3af; margin-top: 0.25rem;">No screenshot captured</div>
+                                  </div>`
+                                }
                               </td>
                               <td style="padding: 0.75rem 1rem;">
                                 <span style="display: inline-block; padding: 0.5rem 1.25rem; border-radius: 0.375rem; font-size: 1.25rem; font-weight: 600; background: rgba(59, 130, 246, 0.1); color: ${eventColor};">
                                   ${eventBadge}
                                 </span>
-                                ${screenshot.clickedElement ? `<div style="font-size: 1rem; color: #f97316; margin-top: 0.5rem;">🖱️ &lt;${screenshot.clickedElement.tag ? screenshot.clickedElement.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
-                                ${screenshot.postRequest ? `<div style="font-size: 1rem; color: #3b82f6; margin-top: 0.5rem;">📡 ${screenshot.postRequest.method}</div>` : ''}
+                                ${screenshot.eventDetails?.element ? `<div style="font-size: 1rem; color: #f97316; margin-top: 0.5rem;">🖱️ &lt;${screenshot.eventDetails.element.tag ? screenshot.eventDetails.element.tag.toLowerCase() : 'unknown'}&gt;</div>` : ''}
+                                ${screenshot.eventDetails?.coordinates ? `<div style="font-size: 1rem; color: #3b82f6; margin-top: 0.5rem;">📍 ${screenshot.eventDetails.actionType || 'action'}</div>` : ''}
                               </td>
                               <td style="padding: 0.75rem 1rem; max-width: 20rem;">
                                 <div style="font-size: 0.875rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${screenshot.title}">

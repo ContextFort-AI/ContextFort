@@ -29,10 +29,6 @@ function captureElement(target) {
 
 function onClickCapture(e) {
   if (agentModeActive) {
-    if (e.isTrusted) {
-      return;
-    }
-
     safeSendMessage({
       type: 'SCREENSHOT_TRIGGER',                       // Signal background.js to capture screenshot
       action: 'click',                                  // Type of action
@@ -47,10 +43,6 @@ function onClickCapture(e) {
 
 function onDblClickCapture(e) {
   if (agentModeActive) {
-    if (e.isTrusted) {
-      return;
-    }
-
     safeSendMessage({
       type: 'SCREENSHOT_TRIGGER',
       action: 'dblclick',
@@ -65,10 +57,6 @@ function onDblClickCapture(e) {
 
 function onContextMenuCapture(e) {
   if (agentModeActive) {
-    if (e.isTrusted) {
-      return;
-    }
-
     safeSendMessage({
       type: 'SCREENSHOT_TRIGGER',
       action: 'rightclick',
@@ -81,24 +69,6 @@ function onContextMenuCapture(e) {
   }
 }
 
-// Capture scroll events (navigation type)
-function onScrollCapture(e) {
-  if (agentModeActive) {
-    if (e.isTrusted) {
-      return;
-    }
-
-    safeSendMessage({
-      type: 'SCREENSHOT_TRIGGER',
-      action: 'scroll',
-      eventType: 'navigation',                          // Scroll is navigation, not click
-      element: null,                                    // No specific element for scroll
-      coordinates: null,                                // No coordinates for scroll
-      url: window.location.href,
-      title: document.title
-    });
-  }
-}
 
 function startListening() {
   if (agentModeActive) {
@@ -108,7 +78,6 @@ function startListening() {
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
   document.addEventListener('contextmenu', onContextMenuCapture, true);
-  document.addEventListener('scroll', onScrollCapture, true);
 }
 
 function stopListening() {
@@ -117,7 +86,6 @@ function stopListening() {
   document.removeEventListener('click', onClickCapture, true);
   document.removeEventListener('dblclick', onDblClickCapture, true);
   document.removeEventListener('contextmenu', onContextMenuCapture, true);
-  document.removeEventListener('scroll', onScrollCapture, true);
 }
 
 const observer = new MutationObserver((mutations) => {
