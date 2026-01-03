@@ -1,37 +1,20 @@
-console.log('[Claude Agent Detector] Content script loaded');
-
-// ============================================================================
-// CHROME API SAFETY
-// ============================================================================
-
 // Safely send message to background script, handling invalid extension context
 function safeSendMessage(message) {
   try {
-    if (typeof chrome !== 'undefined' && chrome?.runtime?.id) {
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.sendMessage) {
       chrome.runtime.sendMessage(message);
+    } else {
+      console.log('[ContextFort] Error sending message: chrome.runtime.sendMessage is unavailable');
     }
   } catch (e) {
-    // Extension context invalidated (reload/iframe) - silently ignore
+    console.log('[ContextFort] Error sending message:', e);
   }
 }
 
-// ============================================================================
-// STATE TRACKING
-// ============================================================================
-
-// Tracks whether agent mode is currently active on this page
 let agentModeActive = false;
-
-// Debounce flags to prevent duplicate detection when multiple elements inject/remove simultaneously
 let detectionPending = false;
 let stopPending = false;
 
-// ============================================================================
-// ELEMENT METADATA CAPTURE
-// ============================================================================
-
-// Extract metadata from a clicked/interacted element for screenshot context
-// Returns object with tag, id, className, text, type, and name
 function captureElement(target) {
   if (!target) return null;
   return {
@@ -44,70 +27,83 @@ function captureElement(target) {
   };
 }
 
-// ============================================================================
-// EVENT HANDLERS (capture user interactions when agent mode is active)
-// ============================================================================
-
-// Capture left-click events
 function onClickCapture(e) {
-  safeSendMessage({
-    type: 'SCREENSHOT_TRIGGER',                       // Signal background.js to capture screenshot
-    action: 'click',                                  // Type of action
-    eventType: 'click',                               // Category: click
-    element: captureElement(e.target),                // Clicked element metadata
-    coordinates: { x: e.clientX, y: e.clientY },      // Click position on screen
-    url: window.location.href,                        // Current page URL
-    title: document.title                             // Current page title
-  });
+  if (agentModeActive) {
+    if (e.isTrusted) {
+      return;
+    }
+
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',                       // Signal background.js to capture screenshot
+      action: 'click',                                  // Type of action
+      eventType: 'click',                               // Category: click
+      element: captureElement(e.target),                // Clicked element metadata
+      coordinates: { x: e.clientX, y: e.clientY },      // Click position on screen
+      url: window.location.href,                        // Current page URL
+      title: document.title                             // Current page title
+    });
+  }
 }
 
-// Capture double-click events
 function onDblClickCapture(e) {
-  safeSendMessage({
-    type: 'SCREENSHOT_TRIGGER',
-    action: 'dblclick',
-    eventType: 'click',
-    element: captureElement(e.target),
-    coordinates: { x: e.clientX, y: e.clientY },
-    url: window.location.href,
-    title: document.title
-  });
+  if (agentModeActive) {
+    if (e.isTrusted) {
+      return;
+    }
+
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',
+      action: 'dblclick',
+      eventType: 'click',
+      element: captureElement(e.target),
+      coordinates: { x: e.clientX, y: e.clientY },
+      url: window.location.href,
+      title: document.title
+    });
+  }
 }
 
-// Capture right-click (context menu) events
 function onContextMenuCapture(e) {
-  safeSendMessage({
-    type: 'SCREENSHOT_TRIGGER',
-    action: 'rightclick',
-    eventType: 'click',
-    element: captureElement(e.target),
-    coordinates: { x: e.clientX, y: e.clientY },
-    url: window.location.href,
-    title: document.title
-  });
+  if (agentModeActive) {
+    if (e.isTrusted) {
+      return;
+    }
+
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',
+      action: 'rightclick',
+      eventType: 'click',
+      element: captureElement(e.target),
+      coordinates: { x: e.clientX, y: e.clientY },
+      url: window.location.href,
+      title: document.title
+    });
+  }
 }
 
 // Capture scroll events (navigation type)
-function onScrollCapture() {
-  safeSendMessage({
-    type: 'SCREENSHOT_TRIGGER',
-    action: 'scroll',
-    eventType: 'navigation',                          // Scroll is navigation, not click
-    element: null,                                    // No specific element for scroll
-    coordinates: null,                                // No coordinates for scroll
-    url: window.location.href,
-    title: document.title
-  });
+function onScrollCapture(e) {
+  if (agentModeActive) {
+    if (e.isTrusted) {
+      return;
+    }
+
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',
+      action: 'scroll',
+      eventType: 'navigation',                          // Scroll is navigation, not click
+      element: null,                                    // No specific element for scroll
+      coordinates: null,                                // No coordinates for scroll
+      url: window.location.href,
+      title: document.title
+    });
+  }
 }
 
-// ============================================================================
-// EVENT LISTENER MANAGEMENT
-// ============================================================================
-
-// Start capturing events when agent mode becomes active
-// Uses capture phase (true) to catch events before page handlers
 function startListening() {
-  if (agentModeActive) return;                        // Already listening, skip
+  if (agentModeActive) {
+    return;
+  }
   agentModeActive = true;
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
@@ -115,9 +111,8 @@ function startListening() {
   document.addEventListener('scroll', onScrollCapture, true);
 }
 
-// Stop capturing events when agent mode ends
 function stopListening() {
-  if (!agentModeActive) return;                       // Not listening, skip
+  if (!agentModeActive) return;
   agentModeActive = false;
   document.removeEventListener('click', onClickCapture, true);
   document.removeEventListener('dblclick', onDblClickCapture, true);
@@ -125,25 +120,14 @@ function stopListening() {
   document.removeEventListener('scroll', onScrollCapture, true);
 }
 
-// ============================================================================
-// CLAUDE AGENT MODE DOM DETECTION
-// ============================================================================
-
-// MutationObserver watches for DOM changes (elements added/removed)
-// Detects when Claude injects its agent mode UI elements
 const observer = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
-    // Check for newly added nodes
     for (const node of mutation.addedNodes) {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        // Claude agent mode injects these specific IDs when active:
-        // - claude-agent-glow-border: Orange glow around viewport
-        // - claude-agent-stop-button: Stop button overlay
-        // - claude-agent-animation-styles: CSS for animations
         if (node.id === 'claude-agent-glow-border' ||
             node.id === 'claude-agent-stop-button' ||
             node.id === 'claude-agent-animation-styles') {
-          // Only notify once, even if multiple elements inject simultaneously
+
           if (!detectionPending && !agentModeActive) {
             detectionPending = true;
             setTimeout(() => { detectionPending = false; }, 100);
@@ -159,13 +143,10 @@ const observer = new MutationObserver((mutations) => {
       }
     }
 
-    // Check for removed nodes
     for (const node of mutation.removedNodes) {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        // When glow border or stop button is removed, agent mode ended
         if (node.id === 'claude-agent-glow-border' ||
             node.id === 'claude-agent-stop-button') {
-          // Only notify once, even if multiple elements remove simultaneously
           if (!stopPending && agentModeActive) {
             stopPending = true;
             setTimeout(() => { stopPending = false; }, 100);
@@ -174,7 +155,7 @@ const observer = new MutationObserver((mutations) => {
               type: 'AGENT_STOPPED',
               elementId: node.id
             });
-            stopListening();                              // Stop capturing events
+            stopListening();                              // Mark agent mode as stopped
           }
         }
       }
@@ -182,19 +163,11 @@ const observer = new MutationObserver((mutations) => {
   }
 });
 
-// Start observing entire document for changes
-// childList: Watch for nodes being added/removed
-// subtree: Watch entire tree, not just direct children
 observer.observe(document.documentElement, {
   childList: true,
   subtree: true
 });
 
-// ============================================================================
-// INITIAL CHECK (for when page loads with agent mode already active)
-// ============================================================================
-
-// If agent mode was already active when this script loaded, detect it
 if (document.getElementById('claude-agent-glow-border')) {
   safeSendMessage({ type: 'AGENT_DETECTED', source: 'existing' });
   startListening();

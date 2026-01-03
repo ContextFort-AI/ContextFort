@@ -1,27 +1,22 @@
-console.log('[Claude Agent Detector] Extension loaded');
-
-// ============================================================================
-// IN-MEMORY STATE
-// ============================================================================
-
-// Track active sessions by groupId (orange Claude tab groups)
 const sessions = new Map(); // groupId -> session object
-
-// Track which tabs currently have agent mode active
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
+const urlBlockingRules = [
+  // Add your rules here as arrays: ['domain1.com', 'domain2.com']
+];
+
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('dashboard/dashboard/screenshots/index.html')
+  });
+});
 
 // ============================================================================
-// SESSION MANAGEMENT
-// ============================================================================
-
-// Create or retrieve session for a Claude tab group
+// ALL ABOUT SESSIONS
 async function getOrCreateSession(groupId, firstTabId, firstTabUrl, firstTabTitle) {
-  // Return existing session if already created
   if (sessions.has(groupId)) {
     return sessions.get(groupId);
   }
 
-  // Create new session with timestamp-based ID
   const sessionId = Date.now();
   const session = {
     id: sessionId,                              // Unique session identifier
@@ -33,54 +28,28 @@ async function getOrCreateSession(groupId, firstTabId, firstTabUrl, firstTabTitl
     tabTitle: firstTabTitle || 'Unknown',       // Page title
     tabUrl: firstTabUrl || 'Unknown',           // Page URL
     screenshotCount: 0,                         // Incremented on each screenshot
-    status: 'active'                            // 'active' or 'ended'
+    status: 'active',                           // 'active' or 'ended'
+    visitedUrls: [firstTabUrl]                  // Track all URLs visited in this session
   };
 
-  // Store in memory
   sessions.set(groupId, session);
-
-  console.log('');
-  console.log('📝 ═══════════════════════════════════════════════════════');
-  console.log('📝 NEW SESSION CREATED');
-  console.log('📝 ═══════════════════════════════════════════════════════');
-  console.log(`Session ID: ${sessionId}`);
-  console.log(`Group ID: ${groupId}`);
-  console.log(`Time: ${new Date().toLocaleTimeString()}`);
-  console.log('📝 ═══════════════════════════════════════════════════════');
-  console.log('');
-
-  // Save to chrome.storage.local (persistent across restarts)
   const result = await chrome.storage.local.get(['sessions']);
   const allSessions = result.sessions || [];
   allSessions.unshift(session); // Add to beginning of array
   await chrome.storage.local.set({ sessions: allSessions });
-
   return session;
 }
 
-// End session when tab group closes
 async function endSession(groupId) {
   const session = sessions.get(groupId);
   if (!session) return;
 
-  // Update session with end time and duration
   session.endTime = new Date().toISOString();
   session.status = 'ended';
   const start = new Date(session.startTime);
   const end = new Date(session.endTime);
   session.duration = Math.round((end - start) / 1000); // Convert to seconds
 
-  console.log('');
-  console.log('📋 ═══════════════════════════════════════════════════════');
-  console.log('📋 SESSION ENDED');
-  console.log('📋 ═══════════════════════════════════════════════════════');
-  console.log(`Session ID: ${session.id}`);
-  console.log(`Duration: ${session.duration}s`);
-  console.log(`Screenshots: ${session.screenshotCount}`);
-  console.log('📋 ═══════════════════════════════════════════════════════');
-  console.log('');
-
-  // Update in chrome.storage.local
   const result = await chrome.storage.local.get(['sessions']);
   const allSessions = result.sessions || [];
   const index = allSessions.findIndex(s => s.id === session.id);
@@ -88,118 +57,113 @@ async function endSession(groupId) {
     allSessions[index] = session;
     await chrome.storage.local.set({ sessions: allSessions });
   }
-
-  // Clean up memory
   sessions.delete(groupId);
 }
 
-// Track when agent mode starts/stops on a specific tab
+chrome.tabGroups.onRemoved.addListener(async (groupId) => {
+  await endSession(groupId);
+});
+// ============================================================================
+
+
+
+
+// ============================================================================
+// ALL ABOUT ACTIVE AGENT TABS
 function trackAgentActivation(groupId, tabId, action) {
   const session = sessions.get(groupId);
   if (!session) return;
 
   if (action === 'start') {
-    // Agent mode started - link tab to session
     activeAgentTabs.set(tabId, {
       sessionId: session.id,
       groupId: groupId
     });
   } else if (action === 'stop') {
-    // Agent mode stopped - remove tab tracking
     activeAgentTabs.delete(tabId);
   }
 }
 
-// ============================================================================
-// TAB CLEANUP
-// ============================================================================
-
-// Clean up when tab closes
 chrome.tabs.onRemoved.addListener((tabId) => {
   activeAgentTabs.delete(tabId);
 });
-
-// End session when tab group closes
-chrome.tabGroups.onRemoved.addListener(async (groupId) => {
-  await endSession(groupId);
-});
-
-// ============================================================================
-// MESSAGE HANDLERS (from content.js)
 // ============================================================================
 
+
+
+
+// ============================================================================
+// MESSAGE LISTENERS
 chrome.runtime.onMessage.addListener(async (message, sender) => {
   const tab = sender.tab;
   const groupId = tab?.groupId;
 
-  // Content script detected Claude agent mode started
   if (message.type === 'AGENT_DETECTED') {
-    console.log('');
-    console.log('🔴 ═══════════════════════════════════════════════════════');
-    console.log('🔴 CLAUDE AGENT MODE DETECTED - DOM ELEMENTS');
-    console.log('🔴 ═══════════════════════════════════════════════════════');
-    console.log(`Tab ID: ${tab?.id}`);
-    console.log(`Tab Title: ${tab?.title?.substring(0, 60)}`);
-    console.log(`Tab URL: ${tab?.url?.substring(0, 80)}`);
-    console.log(`Element: ${message.elementId || 'existing'}`);
-    console.log(`Time: ${new Date().toLocaleTimeString()}`);
-    if (groupId) console.log(`Group ID: ${groupId}`);
-    console.log('🔴 ═══════════════════════════════════════════════════════');
-    console.log('');
-
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      await getOrCreateSession(groupId, tab.id, tab.url, tab.title);
+      const session = await getOrCreateSession(groupId, tab.id, tab.url, tab.title);
+
+      // Check if this URL should be blocked before allowing agent mode to activate
+      const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
+      if (blockCheck.blocked) {
+        showBlockedPage(tab.id, blockCheck, tab.url);
+        return; // Don't activate agent mode on blocked URL
+      }
+
       trackAgentActivation(groupId, tab.id, 'start');
+
+      // Track page read event (agent mode activated on this URL)
+      const result = await chrome.storage.local.get(['screenshots']);
+      const screenshots = result.screenshots || [];
+
+      const pageReadData = {
+        id: Date.now() + Math.random(),           // Unique identifier
+        sessionId: session.id,                     // Links to session
+        tabId: tab.id,                            // Tab where agent activated
+        url: tab.url,                             // Page URL
+        title: tab.title,                         // Page title
+        reason: 'page_read',                      // Why this entry exists
+        timestamp: new Date().toISOString(),      // ISO 8601 timestamp
+        dataUrl: null,                            // No screenshot for page reads
+        eventType: 'page_read',                   // Special type for reads
+        eventDetails: {
+          element: null,                          // No element for page reads
+          coordinates: null,                      // No coordinates for page reads
+          inputValue: null,                       // Not applicable
+          actionType: 'page_read'                 // Agent started reading this page
+        }
+      };
+
+      screenshots.push(pageReadData);
+
+      if (screenshots.length > 100) {
+        screenshots.shift(); // Remove oldest
+      }
+
+      await chrome.storage.local.set({ screenshots: screenshots });
+
+      // Add this URL to visited URLs (allowed)
+      await addVisitedUrl(session, tab.url);
     }
   }
 
-  // Content script detected Claude agent mode stopped
   else if (message.type === 'AGENT_STOPPED') {
-    console.log('');
-    console.log('🟢 ═══════════════════════════════════════════════════════');
-    console.log('🟢 CLAUDE AGENT MODE STOPPED - DOM ELEMENTS REMOVED');
-    console.log('🟢 ═══════════════════════════════════════════════════════');
-    console.log(`Tab ID: ${tab?.id}`);
-    console.log(`Tab Title: ${tab?.title?.substring(0, 60)}`);
-    console.log(`Time: ${new Date().toLocaleTimeString()}`);
-    if (groupId) console.log(`Group ID: ${groupId}`);
-    console.log('🟢 ═══════════════════════════════════════════════════════');
-    console.log('');
-
     if (groupId) {
       trackAgentActivation(groupId, tab.id, 'stop');
     }
   }
 
   // Content script triggered screenshot capture
-  else if (message.type === 'SCREENSHOT_TRIGGER') {
-    // Only capture if this tab has active agent mode
+  if (message.type === 'SCREENSHOT_TRIGGER') {
     const activation = activeAgentTabs.get(tab.id);
-    if (!activation) return;
-
-    // Capture visible tab as PNG
+    if (!activation) {
+      return;
+    }
     chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
       if (chrome.runtime.lastError) {
-        console.log(`[Screenshot] Error: ${chrome.runtime.lastError.message}`);
         return;
       }
 
-      // Create unique screenshot ID
       const screenshotId = Date.now() + Math.random();
-
-      console.log('');
-      console.log('📸 ═══════════════════════════════════════════════════════');
-      console.log('📸 SCREENSHOT CAPTURED');
-      console.log('📸 ═══════════════════════════════════════════════════════');
-      console.log(`Tab ID: ${tab?.id}`);
-      console.log(`Action: ${message.action}`);
-      console.log(`Time: ${new Date().toLocaleTimeString()}`);
-      console.log(`Size: ${Math.round(dataUrl.length / 1024)} KB`);
-      if (groupId) console.log(`Group ID: ${groupId}`);
-      console.log('📸 ═══════════════════════════════════════════════════════');
-      console.log('');
-
-      // Create screenshot object matching ContextFort schema
       const screenshotData = {
         id: screenshotId,                       // Unique identifier
         sessionId: activation.sessionId,         // Links to session
@@ -218,20 +182,16 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
         }
       };
 
-      // Read current data from storage
       const result = await chrome.storage.local.get(['screenshots', 'sessions']);
       const screenshots = result.screenshots || [];
       const allSessions = result.sessions || [];
 
-      // Add new screenshot
       screenshots.push(screenshotData);
 
-      // Keep only last 100 screenshots (FIFO cleanup)
       if (screenshots.length > 100) {
         screenshots.shift(); // Remove oldest
       }
 
-      // Increment screenshot count in session
       const sessionIndex = allSessions.findIndex(s => s.id === activation.sessionId);
       if (sessionIndex !== -1) {
         allSessions[sessionIndex].screenshotCount = (allSessions[sessionIndex].screenshotCount || 0) + 1;
@@ -244,20 +204,251 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
     });
   }
 });
-
-// ============================================================================
-// EXTENSION ICON CLICK HANDLER
 // ============================================================================
 
-// When user clicks extension icon, open dashboard
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({
-    url: chrome.runtime.getURL('dashboard/dashboard/screenshots/index.html')
+
+
+
+
+
+// ============================================================================
+// URL BLOCKING LOGIC
+function getHostname(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+// Check if navigation should be blocked based on rules
+function shouldBlockNavigation(newUrl, visitedUrls) {
+  const newHostname = getHostname(newUrl);
+  if (!newHostname) return { blocked: false };
+
+  // Check each visited URL against blocking rules
+  for (const visitedUrl of visitedUrls) {
+    const visitedHostname = getHostname(visitedUrl);
+    if (!visitedHostname) continue;
+
+    // Check if these two domains are in blocking rules
+    for (const [domain1, domain2] of urlBlockingRules) {
+      const match1 = (visitedHostname.includes(domain1) && newHostname.includes(domain2));
+      const match2 = (visitedHostname.includes(domain2) && newHostname.includes(domain1));
+
+      if (match1 || match2) {
+        return {
+          blocked: true,
+          reason: `Cannot navigate to ${newHostname} because ${visitedHostname} was already visited in this session`,
+          conflictingUrl: visitedUrl
+        };
+      }
+    }
+  }
+
+  return { blocked: false };
+}
+
+// Helper function to update visitedUrls in session
+async function addVisitedUrl(session, newUrl) {
+  if (!session.visitedUrls.includes(newUrl)) {
+    session.visitedUrls.push(newUrl);
+
+    // Update in storage
+    const result = await chrome.storage.local.get(['sessions']);
+    const allSessions = result.sessions || [];
+    const index = allSessions.findIndex(s => s.id === session.id);
+    if (index !== -1) {
+      allSessions[index].visitedUrls = session.visitedUrls;
+      await chrome.storage.local.set({ sessions: allSessions });
+    }
+  }
+}
+
+// Helper function to block navigation with visual feedback
+function showBlockedPage(tabId, blockCheck, newUrl) {
+  chrome.tabs.update(tabId, {
+    url: `data:text/html,<html><head><title>Navigation Blocked</title></head><body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;"><h1 style="color: #d97757;">⛔ Navigation Blocked</h1><p><strong>Reason:</strong> ${blockCheck.reason}</p><p><strong>Blocked URL:</strong> ${newUrl}</p><p><strong>Conflicting URL:</strong> ${blockCheck.conflictingUrl}</p><p>This navigation was blocked because the URL blocking rules prevent these two domains from being visited in the same agent session.</p></body></html>`
   });
+}
+
+// Get session for a tab (checks if tab is in an agent session)
+async function getSessionForTab(tabId) {
+  const tab = await chrome.tabs.get(tabId);
+  const groupId = tab.groupId;
+
+  if (!groupId || groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+    return null;
+  }
+
+  return sessions.get(groupId);
+}
+
+// ============================================================================
+// 1. BLOCK SAME-TAB NAVIGATION (webNavigation.onBeforeNavigate)
+// ============================================================================
+
+// Track URL navigation when agent mode is active
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  // Only track main frame navigations (not iframes)
+  if (details.frameId !== 0) return;
+
+  const tabId = details.tabId;
+  const newUrl = details.url;
+
+  // Check if this tab has active agent mode
+  const activation = activeAgentTabs.get(tabId);
+  if (!activation) return;
+
+  // Get the session for this tab
+  const session = sessions.get(activation.groupId);
+  if (!session) return;
+
+  const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
+
+  if (blockCheck.blocked) {
+    showBlockedPage(tabId, blockCheck, newUrl);
+    return;
+  }
+
+  await addVisitedUrl(session, newUrl);
 });
 
 // ============================================================================
-// INITIALIZATION
+// 2. BLOCK TAB UPDATES (chrome.tabs.update with URL or group changes)
 // ============================================================================
 
-console.log('[Claude Agent Detector] Event-driven monitoring - NO POLLING');
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Handle URL changes
+  if (changeInfo.url) {
+    const newUrl = changeInfo.url;
+
+    // Check if agent mode is ACTIVELY running on this tab
+    const activation = activeAgentTabs.get(tabId);
+    if (!activation) return;
+
+    const session = sessions.get(activation.groupId);
+    if (!session) return;
+    const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
+
+    if (blockCheck.blocked) {
+      showBlockedPage(tabId, blockCheck, newUrl);
+      return;
+    }
+
+    // Navigation allowed - add to visited URLs
+    await addVisitedUrl(session, newUrl);
+  }
+
+  // Handle group changes (tab moved to agent group)
+  if (changeInfo.groupId) {
+    const newGroupId = changeInfo.groupId;
+
+    // Skip if tab left a group (became ungrouped)
+    if (newGroupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return;
+
+    // Check if there's an active agent session in this group
+    const session = sessions.get(newGroupId);
+    if (!session || !tab.url) return;
+
+    // Check if agent mode is ACTIVELY running in ANY tab in this group
+    let agentActive = false;
+    for (const [activeTabId, activation] of activeAgentTabs.entries()) {
+      if (activation.groupId === newGroupId) {
+        agentActive = true;
+        break;
+      }
+    }
+    if (!agentActive) return;
+    // Check if this tab's URL conflicts with session rules
+    const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
+
+    if (blockCheck.blocked) {
+      showBlockedPage(tabId, blockCheck, tab.url);
+      return;
+    }
+
+    // Tab allowed - add to visited URLs
+    await addVisitedUrl(session, tab.url);
+  }
+});
+
+// ============================================================================
+// 3. BLOCK NEW TAB CREATION (chrome.tabs.create with URL)
+// ============================================================================
+
+chrome.tabs.onCreated.addListener(async (tab) => {
+  // Only check tabs created with a URL
+  if (!tab.url || tab.url === 'chrome://newtab/' || tab.url === 'about:blank') return;
+
+  const newUrl = tab.url;
+  const groupId = tab.groupId;
+
+  // Skip if not in a group
+  if (!groupId || groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return;
+
+  // Check if there's an active agent session in this group
+  const session = sessions.get(groupId);
+  if (!session) return;
+
+  // Check if agent mode is ACTIVELY running in ANY tab in this group
+  let agentActive = false;
+  for (const [activeTabId, activation] of activeAgentTabs.entries()) {
+    if (activation.groupId === groupId) {
+      agentActive = true;
+      break;
+    }
+  }
+  if (!agentActive) return;
+
+  // Check if this navigation should be blocked
+  const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
+
+  if (blockCheck.blocked) {
+    // For new tabs, we need to wait a moment before updating
+    setTimeout(() => {
+      showBlockedPage(tab.id, blockCheck, newUrl);
+    }, 100);
+    return;
+  }
+
+  // Navigation allowed - add to visited URLs
+  await addVisitedUrl(session, newUrl);
+});
+
+// ============================================================================
+// 4. BLOCK TABS JOINING AGENT GROUP (onAttached - moved between windows)
+// ============================================================================
+
+chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
+  const tab = await chrome.tabs.get(tabId);
+  const groupId = tab.groupId;
+
+  // Skip if not in a group
+  if (!groupId || groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return;
+
+  // Check if there's an active agent session in this group
+  const session = sessions.get(groupId);
+  if (!session || !tab.url) return;
+
+  // Check if agent mode is ACTIVELY running in ANY tab in this group
+  let agentActive = false;
+  for (const [activeTabId, activation] of activeAgentTabs.entries()) {
+    if (activation.groupId === groupId) {
+      agentActive = true;
+      break;
+    }
+  }
+  if (!agentActive) return;
+
+  // Check if this tab's URL conflicts with session rules
+  const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
+
+  if (blockCheck.blocked) {
+    showBlockedPage(tabId, blockCheck, tab.url);
+    return;
+  }
+
+  // Tab allowed - add to visited URLs
+  await addVisitedUrl(session, tab.url);
+});
