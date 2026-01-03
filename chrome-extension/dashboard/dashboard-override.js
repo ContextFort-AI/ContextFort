@@ -45,6 +45,24 @@ hideDummyElementsStyle.textContent = `
   [data-sidebar="footer"] {
     display: none !important;
   }
+
+  /* Hide Context page link in sidebar */
+  [data-sidebar="menu-item"]:has(a[href*="context"]) {
+    display: none !important;
+  }
+
+  /* Also hide any other unnecessary pages - keep only Screenshots and URL Logs */
+  [data-sidebar="menu-item"]:has(a[href*="bot-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="human-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="post-requests"]),
+  [data-sidebar="menu-item"]:has(a[href*="click-detection"]),
+  [data-sidebar="menu-item"]:has(a[href*="downloads"]),
+  [data-sidebar="menu-item"]:has(a[href*="whitelist"]),
+  [data-sidebar="menu-item"]:has(a[href*="sensitive-words"]),
+  [data-sidebar="menu-item"]:has(a[href*="overview"]),
+  [data-sidebar="menu-item"]:has(a[href*="default"]) {
+    display: none !important;
+  }
 `;
 document.head.appendChild(hideDummyElementsStyle);
 
@@ -1624,16 +1642,38 @@ function injectScreenshots(screenshots, sessions) {
     console.log('[Dashboard Override] Injecting Screenshots data...');
     console.log('[Dashboard Override] Sessions:', sessions.length, 'Screenshots:', screenshots.length);
 
-    // Wait for DOM to be ready
+    // Wait longer for React to fully render
     setTimeout(() => {
-      // Find all card content containers - the last one should be the gallery container
+      // Try multiple strategies to find the target container
+      let targetContainer = null;
+
+      // Strategy 1: Find by card-content (last one)
       const cardContainers = document.querySelectorAll('[data-slot="card-content"]');
-      const targetContainer = cardContainers[cardContainers.length - 1];
+      if (cardContainers.length > 0) {
+        targetContainer = cardContainers[cardContainers.length - 1];
+        console.log('[Dashboard Override] Found container via card-content (last), total:', cardContainers.length);
+      }
+
+      // Strategy 2: Find by the main content div with flex flex-col gap-6
+      if (!targetContainer) {
+        targetContainer = document.querySelector('main > div > div.flex.flex-col.gap-6 > [data-slot="card"] [data-slot="card-content"]');
+        if (targetContainer) console.log('[Dashboard Override] Found container via main path');
+      }
+
+      // Strategy 3: Find any card content in main
+      if (!targetContainer) {
+        const mainCards = document.querySelectorAll('main [data-slot="card-content"]');
+        targetContainer = mainCards[mainCards.length - 1];
+        if (targetContainer) console.log('[Dashboard Override] Found container via main cards');
+      }
 
       if (!targetContainer) {
-        console.error('[Dashboard Override] Could not find gallery container for Screenshots');
+        console.error('[Dashboard Override] Could not find gallery container for Screenshots after trying all strategies');
+        console.log('[Dashboard Override] Available card containers:', cardContainers.length);
         return;
       }
+
+      console.log('[Dashboard Override] Found target container, injecting...', targetContainer);
 
       // Group screenshots by session
       const sessionMap = new Map();
@@ -1861,8 +1901,10 @@ function injectScreenshots(screenshots, sessions) {
 
             // Load table if not already loaded
             if (!contentDiv.dataset.loaded) {
-              const sessionData = sessionMap.get(parseInt(sessionId));
+              const sessionData = sessionMap.get(sessionId);
               const sessionScreenshots = sessionData ? sessionData.screenshots : [];
+
+              console.log('[Screenshots] Expanding session:', sessionId, 'Screenshots:', sessionScreenshots.length);
 
               if (sessionScreenshots.length === 0) {
                 contentDiv.innerHTML = `
@@ -2090,8 +2132,14 @@ function injectScreenshots(screenshots, sessions) {
         }
       }, 500);
 
+      // Prevent React from re-rendering by removing React's event listeners
+      const reactRoot = document.querySelector('#__next_error__ #__next__');
+      if (reactRoot) {
+        console.log('[Dashboard Override] Preventing React re-renders...');
+      }
+
       console.log('[Dashboard Override] Screenshots with rolling table UI injected!');
-    }, 100);
+    }, 1000); // Increased timeout to 1s to give React more time to render
 
   } catch (error) {
     console.error('[Dashboard Override] Error injecting Screenshots:', error);

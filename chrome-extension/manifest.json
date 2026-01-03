@@ -30,12 +30,20 @@
     }
   ],
 
-  "action": {},
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon128.png"
+    }
+  },
 
   "web_accessible_resources": [
     {
-      "resources": ["dashboard/**"],
+      "resources": ["dashboard/**", "dummy-data.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+   "icons": {
+    "128": "icon128.png"
+  }
 }

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Load Dummy Data - ContextFort Security</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #718096;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: #4a5568;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-item {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .button {
+      width: 100%;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .button.danger {
+      background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+      box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
+    }
+
+    .button.danger:hover {
+      box-shadow: 0 6px 20px rgba(245, 101, 101, 0.6);
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .status.success {
+      background: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+      display: block;
+    }
+
+    .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+      display: block;
+    }
+
+    .status.info {
+      background: #bee3f8;
+      color: #2c5282;
+      border: 1px solid #90cdf4;
+      display: block;
+    }
+
+    .code {
+      background: #2d3748;
+      color: #68d391;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 ContextFort Security</h1>
+    <div class="subtitle">Dummy Data Loader</div>
+
+    <div class="card">
+      <h2>📊 Available Test Data</h2>
+      <p>This will load sample data into Chrome storage for testing the dashboard features.</p>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div class="stat-label">Sessions</div>
+          <div class="stat-value" id="session-count">5</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Screenshots</div>
+          <div class="stat-value" id="screenshot-count">9</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Requests</div>
+          <div class="stat-value" id="request-count">6</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Click Events</div>
+          <div class="stat-value" id="click-count">4</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Actions</h2>
+      <p>Load or clear test data from Chrome storage.</p>
+
+      <button id="load-btn" class="button">
+        📥 Load Dummy Data
+      </button>
+
+      <div class="button-group">
+        <button id="clear-btn" class="button danger">
+          🗑️ Clear All Data
+        </button>
+        <button id="view-btn" class="button">
+          👁️ View Storage
+        </button>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script type="module">
+    import dummyData, {
+      loadDummyDataToStorage,
+      clearAllData
+    } from './dummy-data.js';
+
+    const loadBtn = document.getElementById('load-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const viewBtn = document.getElementById('view-btn');
+    const statusEl = document.getElementById('status');
+
+    // Update counts from dummy data
+    document.getElementById('session-count').textContent = dummyData.sessions.length;
+    document.getElementById('screenshot-count').textContent = dummyData.screenshots.length;
+    document.getElementById('request-count').textContent = dummyData.blockedRequests.length;
+    document.getElementById('click-count').textContent = dummyData.clickEvents.length;
+
+    function showStatus(message, type = 'info') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+      setTimeout(() => {
+        statusEl.className = 'status';
+      }, 5000);
+    }
+
+    loadBtn.addEventListener('click', async () => {
+      try {
+        loadBtn.disabled = true;
+        loadBtn.textContent = '⏳ Loading...';
+
+        await loadDummyDataToStorage();
+
+        showStatus('✅ Dummy data loaded successfully! Refresh the dashboard to see it.', 'success');
+        loadBtn.textContent = '✓ Data Loaded';
+
+        setTimeout(() => {
+          loadBtn.disabled = false;
+          loadBtn.textContent = '📥 Load Dummy Data';
+        }, 2000);
+      } catch (error) {
+        console.error('Error loading dummy data:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+        loadBtn.disabled = false;
+        loadBtn.textContent = '📥 Load Dummy Data';
+      }
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+        return;
+      }
+
+      try {
+        clearBtn.disabled = true;
+        clearBtn.textContent = '⏳ Clearing...';
+
+        await clearAllData();
+
+        showStatus('✅ All data cleared successfully!', 'success');
+        clearBtn.textContent = '✓ Data Cleared';
+
+        setTimeout(() => {
+          clearBtn.disabled = false;
+          clearBtn.textContent = '🗑️ Clear All Data';
+        }, 2000);
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+        clearBtn.disabled = false;
+        clearBtn.textContent = '🗑️ Clear All Data';
+      }
+    });
+
+    viewBtn.addEventListener('click', async () => {
+      try {
+        const result = await chrome.storage.local.get(null);
+        console.log('=== Chrome Storage Contents ===');
+        console.log('Sessions:', result.sessions || []);
+        console.log('Screenshots:', result.screenshots || []);
+        console.log('Blocked Requests:', result.blockedRequests || []);
+        console.log('Click Events:', result.clickEvents || []);
+        console.log('Download Requests:', result.downloadRequests || []);
+        console.log('Whitelist:', result.whitelist || {});
+        console.log('Sensitive Words:', result.sensitiveWords || []);
+        console.log('===============================');
+
+        showStatus('✅ Storage contents logged to console (F12)', 'info');
+      } catch (error) {
+        console.error('Error viewing storage:', error);
+        showStatus(`❌ Error: ${error.message}`, 'error');
+      }
+    });
+
+    // Show initial info
+    showStatus('ℹ️ Ready to load test data. Click "Load Dummy Data" to begin.', 'info');
+  </script>
+</body>
+</html>
