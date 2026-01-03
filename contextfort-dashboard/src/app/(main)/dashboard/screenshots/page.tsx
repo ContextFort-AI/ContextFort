@@ -1,10 +1,9 @@
 'use client';
 
-import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon, MousePointerIcon, FileTextIcon, Trash2Icon, BugIcon, ChevronDownIcon } from 'lucide-react';
+import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon, MousePointerIcon, FileTextIcon, Trash2Icon, ChevronDownIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -66,19 +65,13 @@ export default function ScreenshotsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
-  const [showDebugPanel, setShowDebugPanel] = useState(true);
-  const [rawSessionData, setRawSessionData] = useState<Session[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadAttempts, setLoadAttempts] = useState(0);
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<Record<number, number>>({});
   const itemsPerPage = 12;
 
   // Load screenshots and sessions from Chrome storage
   const loadScreenshots = async () => {
     console.log('📸 [Screenshots Page] loadScreenshots() called');
-    setLoadAttempts(prev => prev + 1);
     setIsLoading(true);
-    setLoadError(null);
     try {
       // @ts-ignore - Chrome extension API
       if (typeof chrome !== 'undefined' && chrome?.storage) {
@@ -86,10 +79,6 @@ export default function ScreenshotsPage() {
         const result = await chrome.storage.local.get(['screenshots', 'sessions']);
         const screenshotsList = result.screenshots || [];
         const sessionsList = result.sessions || [];
-
-        // Store raw session data for debug panel
-        setRawSessionData(sessionsList);
-        setLoadError(null); // Clear error on success
 
         // Deduplicate sessions by ID (keep the first occurrence)
         const uniqueSessions = sessionsList.reduce((acc: Session[], session: Session) => {
@@ -113,12 +102,9 @@ export default function ScreenshotsPage() {
         if (uniqueSessions.length > 0) {
           setExpandedSessions(new Set([uniqueSessions[0].id]));
         }
-      } else {
-        setLoadError('Chrome storage API not available');
       }
     } catch (error) {
       console.error('Error loading screenshots:', error);
-      setLoadError(error instanceof Error ? error.message : 'Unknown error');
     }
     setIsLoading(false);
   };
@@ -147,13 +133,6 @@ export default function ScreenshotsPage() {
     }, 2000);
     return () => clearInterval(interval);
   }, [sessions, screenshots]);
-
-  // Calculate stats
-  const totalScreenshots = screenshots.length;
-  const suspiciousClickCount = screenshots.filter(s => s.reason === 'suspicious_click').length;
-  const withPostRequestCount = screenshots.filter(s => s.postRequest !== null && s.postRequest !== undefined).length;
-  const totalSessions = sessions.length;
-  const activeSessions = sessions.filter(s => s.status === 'active').length;
 
   // Group screenshots by session
   const groupedScreenshots = sessions.map(session => ({
@@ -273,19 +252,8 @@ export default function ScreenshotsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Screenshots</h1>
-          <p className="text-muted-foreground">
-            Screenshots grouped by agent mode sessions (debugger attached → detached), showing suspicious clicks and POST API calls
-          </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant={showDebugPanel ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowDebugPanel(!showDebugPanel)}
-          >
-            <BugIcon className="mr-2 h-4 w-4" />
-            Debug Panel
-          </Button>
           <Button variant="outline" size="sm" onClick={handleRefetch}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
             Refresh
@@ -295,194 +263,6 @@ export default function ScreenshotsPage() {
             Clear All
           </Button>
         </div>
-      </div>
-
-      {/* Debug Panel */}
-      {showDebugPanel && (
-        <Card className="bg-yellow-500/5 border-yellow-500/30">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BugIcon className="h-5 w-5 text-yellow-600" />
-              Debug Panel - Session Storage Analysis v4.0
-            </CardTitle>
-            <CardDescription>
-              Real-time view of session storage data |
-              Chrome API: {typeof window !== 'undefined' && (window as any).chrome?.storage ? 'Available ✓' : 'Not Available'} |
-              Loading: {isLoading ? 'Yes' : 'No'} |
-              Load attempts: {loadAttempts}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Error Display */}
-            {loadError && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
-                <h4 className="font-semibold text-red-600 text-sm mb-2">❌ Load Error:</h4>
-                <p className="text-sm text-red-700">{loadError}</p>
-              </div>
-            )}
-            {/* Storage Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-background p-3 rounded border">
-                <div className="text-2xl font-bold text-red-600">{rawSessionData.length}</div>
-                <div className="text-xs text-muted-foreground">Sessions in Storage (RAW)</div>
-              </div>
-              <div className="bg-background p-3 rounded border">
-                <div className="text-2xl font-bold text-green-600">{sessions.length}</div>
-                <div className="text-xs text-muted-foreground">Unique Sessions (Deduplicated)</div>
-              </div>
-              <div className="bg-background p-3 rounded border">
-                <div className="text-2xl font-bold text-orange-600">{rawSessionData.length - sessions.length}</div>
-                <div className="text-xs text-muted-foreground">Duplicate Sessions Found</div>
-              </div>
-              <div className="bg-background p-3 rounded border">
-                <div className="text-2xl font-bold text-blue-600">{screenshots.length}</div>
-                <div className="text-xs text-muted-foreground">Total Screenshots</div>
-              </div>
-            </div>
-
-            {/* Session Details Table */}
-            <div>
-              <h4 className="font-semibold mb-2 text-sm">All Sessions in Storage (Raw Data):</h4>
-              <div className="bg-background rounded border overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-3 py-2 text-left">#</th>
-                      <th className="px-3 py-2 text-left">Session ID</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left">Tab ID</th>
-                      <th className="px-3 py-2 text-left">Start Time</th>
-                      <th className="px-3 py-2 text-left">Screenshots</th>
-                      <th className="px-3 py-2 text-left">Duplicate?</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rawSessionData.map((session, index) => {
-                      const isDuplicate = rawSessionData.filter(s => s.id === session.id).length > 1;
-                      const screenshotsInSession = screenshots.filter(s => s.sessionId === session.id).length;
-                      return (
-                        <tr key={`${session.id}-${index}`} className={isDuplicate ? 'bg-red-500/10' : ''}>
-                          <td className="px-3 py-2 border-t">{index + 1}</td>
-                          <td className="px-3 py-2 border-t font-mono">{session.id}</td>
-                          <td className="px-3 py-2 border-t">
-                            <Badge className={session.status === 'active' ? 'bg-orange-500 text-xs' : 'bg-green-500 text-xs'}>
-                              {session.status}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 border-t">{session.tabId}</td>
-                          <td className="px-3 py-2 border-t">{formatTime(session.startTime)}</td>
-                          <td className="px-3 py-2 border-t">{screenshotsInSession}</td>
-                          <td className="px-3 py-2 border-t">
-                            {isDuplicate ? (
-                              <Badge variant="destructive" className="text-xs">YES ⚠️</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">No</Badge>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Duplicate Session IDs */}
-            {(() => {
-              const duplicateIds = rawSessionData
-                .filter((session, index, self) =>
-                  self.filter(s => s.id === session.id).length > 1
-                )
-                .map(s => s.id)
-                .filter((id, index, self) => self.indexOf(id) === index);
-
-              if (duplicateIds.length > 0) {
-                return (
-                  <div className="bg-red-500/10 border border-red-500/30 rounded p-3">
-                    <h4 className="font-semibold text-red-600 text-sm mb-2">⚠️ Duplicate Session IDs Detected:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {duplicateIds.map(id => (
-                        <Badge key={id} variant="destructive">
-                          {id} (appears {rawSessionData.filter(s => s.id === id).length}x)
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div className="bg-green-500/10 border border-green-500/30 rounded p-3">
-                  <h4 className="font-semibold text-green-600 text-sm">✅ No duplicate session IDs found!</h4>
-                </div>
-              );
-            })()}
-
-            {/* Raw Session Data JSON */}
-            <div>
-              <h4 className="font-semibold mb-2 text-sm">Raw Session Data (JSON):</h4>
-              <div className="bg-background rounded border p-3 overflow-x-auto">
-                <pre className="text-xs font-mono whitespace-pre-wrap">
-                  {rawSessionData.length === 0
-                    ? 'No raw session data'
-                    : JSON.stringify(rawSessionData, null, 2)}
-                </pre>
-              </div>
-            </div>
-
-            {/* Screenshot Session IDs */}
-            <div>
-              <h4 className="font-semibold mb-2 text-sm">Screenshots by Session:</h4>
-              <div className="bg-background rounded border p-3">
-                {sessions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No sessions found (after deduplication)</p>
-                ) : (
-                  <div className="space-y-2">
-                    {sessions.map(session => {
-                      const sessionScreenshots = screenshots.filter(s => s.sessionId === session.id);
-                      return (
-                        <div key={session.id} className="flex items-center justify-between text-xs">
-                          <span className="font-mono">Session #{session.id}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {sessionScreenshots.length} screenshot{sessionScreenshots.length !== 1 ? 's' : ''}
-                          </Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          title="Total Sessions"
-          value={totalSessions}
-          icon={<CameraIcon className="h-4 w-4" />}
-          description="Agent mode sessions"
-        />
-        <StatCard
-          title="Active Sessions"
-          value={activeSessions}
-          variant={activeSessions > 0 ? "error" : "default"}
-          icon={<MousePointerIcon className="h-4 w-4" />}
-          description="Currently running"
-        />
-        <StatCard
-          title="Total Screenshots"
-          value={totalScreenshots}
-          icon={<CameraIcon className="h-4 w-4" />}
-          description="All captured"
-        />
-        <StatCard
-          title="With POST Requests"
-          value={withPostRequestCount}
-          icon={<FileTextIcon className="h-4 w-4" />}
-          description="API calls detected"
-        />
       </div>
 
       {/* Sessions Grid */}
@@ -526,12 +306,9 @@ export default function ScreenshotsPage() {
                       <div className={`w-3 h-3 rounded-full mt-1 ${session.status === 'active' ? 'bg-orange-500 animate-pulse' : 'bg-green-500'}`} />
                       <div className="flex-1">
                         <CardTitle className="text-lg mb-2">
-                          Session #{session.id}
+                          Session
                           {session.status === 'active' && <Badge className="ml-2 bg-orange-500">Active</Badge>}
                         </CardTitle>
-                        <CardDescription className="mb-3">
-                          {session.tabTitle || 'Unknown Page'} • {getSessionDuration(session)} • {sessionScreenshots.length} screenshots
-                        </CardDescription>
 
                         {/* Rotating Screenshot Preview */}
                         {currentScreenshot && !expandedSessions.has(session.id) && (

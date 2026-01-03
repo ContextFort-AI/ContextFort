@@ -11,6 +11,8 @@ import {
   Camera,
   List,
   ShieldAlert,
+  Globe,
+  LinkIcon,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -68,6 +70,18 @@ export const sidebarItems: NavGroup[] = [
         title: "Screenshots",
         url: "/dashboard/screenshots",
         icon: Camera,
+        isNew: true,
+      },
+      {
+        title: "Context",
+        url: "/dashboard/context",
+        icon: Globe,
+        isNew: true,
+      },
+      {
+        title: "URL Logs",
+        url: "/dashboard/urllogs",
+        icon: LinkIcon,
         isNew: true,
       },
       // {
