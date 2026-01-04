@@ -1,3 +1,28 @@
+// background.js
+import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
+
+// Initialize PostHog when extension starts
+initPostHog();
+
+// Track extension installation
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'install') {
+    trackEvent('extension_installed', {
+      version: chrome.runtime.getManifest().version
+    });
+  } else if (details.reason === 'update') {
+    trackEvent('extension_updated', {
+      version: chrome.runtime.getManifest().version,
+      previousVersion: details.previousVersion
+    });
+  }
+});
+
+// Track extension startup
+trackEvent('extension_started', {
+  version: chrome.runtime.getManifest().version
+});
+
 const sessions = new Map(); // groupId -> session object
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
 let urlBlockingRules = []; // Loaded from storage, managed via dashboard
