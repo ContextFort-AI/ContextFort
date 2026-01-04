@@ -61,16 +61,18 @@ interface URLData {
 }
 
 export default function URLLogsPage() {
-  console.log('🔗 [URL Logs Page] Component loaded!');
-
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedURLs, setExpandedURLs] = useState<Set<string>>(new Set());
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'Controls - ContextFort';
+  }, []);
+
   // Load data from Chrome storage
   const loadData = async () => {
-    console.log('🔗 [URL Logs Page] loadData() called');
     setIsLoading(true);
     try {
       // @ts-ignore - Chrome extension API
@@ -88,7 +90,6 @@ export default function URLLogsPage() {
           return acc;
         }, []);
 
-        console.log('[URL Logs Page] Loaded sessions:', uniqueSessions.length, 'Screenshots:', screenshotsList.length);
         setScreenshots(screenshotsList);
         setSessions(uniqueSessions);
       }
@@ -227,7 +228,7 @@ export default function URLLogsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">URL Logs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Controls</h1>
           <p className="text-muted-foreground">
             Track URL navigation patterns and transitions across sessions
           </p>
@@ -236,15 +237,6 @@ export default function URLLogsPage() {
           <Button variant="outline" size="sm" onClick={loadData}>
             <RefreshCwIcon className="mr-2 h-4 w-4" />
             Refresh
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={clearAllData}
-            disabled={urlDataList.length === 0}
-          >
-            <Trash2Icon className="mr-2 h-4 w-4" />
-            Clear All
           </Button>
         </div>
       </div>
@@ -273,16 +265,68 @@ export default function URLLogsPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          {/* This will be overridden by dashboard-override.js */}
-          <Card>
-            <CardContent className="py-12">
-              <div className="flex items-center justify-center">
-                <span className="text-sm text-muted-foreground">
-                  Loading URL logs data...
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+          {urlDataList.map((urlData) => (
+            <Card key={urlData.url}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base truncate">{urlData.hostname}</CardTitle>
+                    <CardDescription className="truncate">{urlData.url}</CardDescription>
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{urlData.totalVisits} visits</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <LayersIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>{urlData.sessionCount} sessions</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {urlData.sessions.map((sessionVisit) => (
+                    <div
+                      key={sessionVisit.sessionId}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{formatDateTime(sessionVisit.sessionStartTime)}</span>
+                        </div>
+                        <Badge variant="outline" className="bg-background">
+                          Session {sessionVisit.sessionId}
+                        </Badge>
+                        <Badge variant="outline" className="bg-background">
+                          {sessionVisit.visitCount} visits
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={sessionVisit.sessionStatus === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-background'}
+                        >
+                          {sessionVisit.sessionStatus}
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleURL(urlData.url)}
+                      >
+                        <ChevronDownIcon
+                          className={`h-4 w-4 transition-transform ${
+                            expandedURLs.has(urlData.url) ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

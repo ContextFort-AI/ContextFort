@@ -2,11 +2,21 @@ const sessions = new Map(); // groupId -> session object
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
 let urlBlockingRules = []; // Loaded from storage, managed via dashboard
 
-// Load URL blocking rules from storage on startup
+// Load URL blocking rules and restore active sessions on startup
 (async () => {
-  const result = await chrome.storage.local.get(['urlBlockingRules']);
+  const result = await chrome.storage.local.get(['urlBlockingRules', 'sessions']);
+
+  // Restore URL blocking rules
   if (result.urlBlockingRules) {
     urlBlockingRules = result.urlBlockingRules;
+  }
+
+  // Restore active sessions to in-memory Map
+  const allSessions = result.sessions || [];
+  for (const session of allSessions) {
+    if (session.status === 'active') {
+      sessions.set(session.groupId, session);
+    }
   }
 })();
 
@@ -119,38 +129,8 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
 
       trackAgentActivation(groupId, tab.id, 'start');
 
-      // Track page read event (agent mode activated on this URL)
-      const result = await chrome.storage.local.get(['screenshots']);
-      const screenshots = result.screenshots || [];
-
-      const pageReadData = {
-        id: Date.now() + Math.random(),           // Unique identifier
-        sessionId: session.id,                     // Links to session
-        tabId: tab.id,                            // Tab where agent activated
-        url: tab.url,                             // Page URL
-        title: tab.title,                         // Page title
-        reason: 'page_read',                      // Why this entry exists
-        timestamp: new Date().toISOString(),      // ISO 8601 timestamp
-        dataUrl: null,                            // No screenshot for page reads
-        eventType: 'page_read',                   // Special type for reads
-        eventDetails: {
-          element: null,                          // No element for page reads
-          coordinates: null,                      // No coordinates for page reads
-          inputValue: null,                       // Not applicable
-          actionType: 'page_read'                 // Agent started reading this page
-        }
-      };
-
-      screenshots.push(pageReadData);
-
-      if (screenshots.length > 100) {
-        screenshots.shift(); // Remove oldest
-      }
-
-      await chrome.storage.local.set({ screenshots: screenshots });
-
-      // Add this URL to visited URLs (allowed)
-      await addVisitedUrl(session, tab.url);
+      // Add page_read entry and update visitedUrls
+      await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
     }
   }
 
@@ -162,10 +142,27 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
 
   // Content script triggered screenshot capture
   if (message.type === 'SCREENSHOT_TRIGGER') {
-    const activation = activeAgentTabs.get(tab.id);
+    let activation = activeAgentTabs.get(tab.id);
+
+    // If not in activeAgentTabs (service worker restarted), reconstruct from session
+    if (!activation && tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+      const session = sessions.get(tab.groupId);
+      if (session && session.status === 'active') {
+        // Reconstruct activeAgentTabs entry
+        activation = { sessionId: session.id, groupId: tab.groupId };
+        activeAgentTabs.set(tab.id, activation);
+      }
+    }
+
     if (!activation) {
       return;
     }
+
+    // Skip screenshot if agent's tab is not currently visible
+    if (!tab.active) {
+      return;
+    }
+
     chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
       if (chrome.runtime.lastError) {
         return;
@@ -181,12 +178,12 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
         reason: 'agent_event',                  // Why screenshot was taken
         timestamp: new Date().toISOString(),    // ISO 8601 timestamp
         dataUrl: dataUrl,                       // Base64 PNG image data
-        eventType: message.eventType || 'unknown', // 'click' or 'navigation'
+        eventType: message.eventType || 'unknown', // 'click', 'input', or 'navigation'
         eventDetails: {
           element: message.element || null,     // Element info (tag, id, class, text)
           coordinates: message.coordinates || null, // Click coordinates {x, y}
-          inputValue: null,                     // Not used for agent events
-          actionType: message.action            // 'click', 'dblclick', 'scroll', etc.
+          inputValue: message.inputValue || null, // Input value for text events
+          actionType: message.action            // 'click', 'dblclick', 'input', 'change', etc.
         }
       };
 
@@ -278,6 +275,62 @@ async function addVisitedUrl(session, newUrl) {
   }
 }
 
+// Helper function to add page_read entry and update visitedUrls
+async function addPageReadAndVisitedUrl(session, tabId, url, title) {
+  // Only add if URL is not already visited
+  if (session.visitedUrls.includes(url)) {
+    return;
+  }
+
+  // Add to visitedUrls
+  await addVisitedUrl(session, url);
+
+  // Get tab info for window ID
+  const tab = await chrome.tabs.get(tabId);
+
+  // Skip screenshot if tab is not currently visible
+  if (!tab.active) {
+    return;
+  }
+
+  // Capture screenshot
+  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
+    if (chrome.runtime.lastError) {
+      console.log('[Page Read] Screenshot failed:', chrome.runtime.lastError.message);
+      return;
+    }
+
+    const result = await chrome.storage.local.get(['screenshots']);
+    const screenshots = result.screenshots || [];
+
+    const pageReadData = {
+      id: Date.now() + Math.random(),
+      sessionId: session.id,
+      tabId: tabId,
+      url: url,
+      title: title,
+      reason: 'page_read',
+      timestamp: new Date().toISOString(),
+      dataUrl: dataUrl,  // Now with screenshot
+      eventType: 'page_read',
+      eventDetails: {
+        element: null,
+        coordinates: null,
+        inputValue: null,
+        actionType: 'page_read'
+      }
+    };
+
+    screenshots.push(pageReadData);
+
+    if (screenshots.length > 100) {
+      screenshots.shift();
+    }
+
+    await chrome.storage.local.set({ screenshots: screenshots });
+  });
+}
+
 // Helper function to show notification when navigation is blocked
 function showBlockNotification(blockCheck, newUrl) {
   const newHostname = getHostname(newUrl);
@@ -354,7 +407,9 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     return;
   }
 
-  await addVisitedUrl(session, newUrl);
+  // Get tab to retrieve title
+  const tab = await chrome.tabs.get(tabId);
+  await addPageReadAndVisitedUrl(session, tabId, newUrl, tab.title);
 });
 
 // ============================================================================
@@ -382,8 +437,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       return;
     }
 
-    // Navigation allowed - add to visited URLs
-    await addVisitedUrl(session, newUrl);
+    // Navigation allowed - add page_read and visited URLs
+    await addPageReadAndVisitedUrl(session, tabId, newUrl, tab.title);
   }
 
   // Handle group changes (tab moved to agent group)
@@ -421,8 +476,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       return;
     }
 
-    // Tab allowed - add to visited URLs
-    await addVisitedUrl(session, tab.url);
+    // Tab allowed - add page_read and visited URLs
+    await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
   }
 });
 
@@ -469,8 +524,8 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     return;
   }
 
-  // Navigation allowed - add to visited URLs
-  await addVisitedUrl(session, newUrl);
+  // Navigation allowed - add page_read and visited URLs
+  await addPageReadAndVisitedUrl(session, tab.id, newUrl, tab.title);
 });
 
 // ============================================================================
@@ -513,6 +568,6 @@ chrome.tabs.onAttached.addListener(async (tabId, attachInfo) => {
     return;
   }
 
-  // Tab allowed - add to visited URLs
-  await addVisitedUrl(session, tab.url);
+  // Tab allowed - add page_read and visited URLs
+  await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
 });

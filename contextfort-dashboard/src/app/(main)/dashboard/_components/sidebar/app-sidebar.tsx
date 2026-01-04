@@ -6,19 +6,16 @@ import { useShallow } from "zustand/react/shallow";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { rootUser } from "@/data/users";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 import { NavMain } from "./nav-main";
-import { NavUser } from "./nav-user";
 
 const _data = {
   navSecondary: [
@@ -74,10 +71,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild className="h-10">
               <a href="/dashboard/default/index.html">
-                <Command />
-                <span className="font-semibold text-base">{APP_CONFIG.name}</span>
+                <Command className="h-6 w-6" />
+                <span className="font-bold text-xl">{APP_CONFIG.name}</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -88,9 +85,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavDocuments items={data.documents} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={rootUser} />
-      </SidebarFooter>
     </Sidebar>
   );
 }

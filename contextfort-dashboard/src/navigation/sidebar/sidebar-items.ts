@@ -8,11 +8,11 @@ import {
   User,
   Bot,
   Download,
-  Camera,
+  Eye,
   List,
   ShieldAlert,
   Globe,
-  LinkIcon,
+  Sliders,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -43,7 +43,6 @@ export interface NavGroup {
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
-    label: "Security Dashboard",
     items: [
       // {
       //   title: "Overview",
@@ -67,21 +66,15 @@ export const sidebarItems: NavGroup[] = [
       //   isNew: true,
       // },
       {
-        title: "Screenshots",
-        url: "/dashboard/screenshots",
-        icon: Camera,
+        title: "Visibility",
+        url: "/dashboard/visibility",
+        icon: Eye,
         isNew: true,
       },
       {
-        title: "Context",
-        url: "/dashboard/context",
-        icon: Globe,
-        isNew: true,
-      },
-      {
-        title: "URL Logs",
-        url: "/dashboard/urllogs",
-        icon: LinkIcon,
+        title: "Controls",
+        url: "/dashboard/controls",
+        icon: Sliders,
         isNew: true,
       },
       // {

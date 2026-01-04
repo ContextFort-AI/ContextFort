@@ -69,6 +69,33 @@ function onContextMenuCapture(e) {
   }
 }
 
+function onInputCapture(e) {
+  if (agentModeActive) {
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',
+      action: e.type,                                   // 'input' or 'change'
+      eventType: 'input',
+      element: captureElement(e.target),
+      inputValue: e.target.value || null,               // Captured input value
+      url: window.location.href,
+      title: document.title
+    });
+  }
+}
+
+function onScrollCapture(e) {
+  if (agentModeActive) {
+    safeSendMessage({
+      type: 'SCREENSHOT_TRIGGER',
+      action: 'scroll',
+      eventType: 'navigation',
+      element: null,
+      coordinates: null,
+      url: window.location.href,
+      title: document.title
+    });
+  }
+}
 
 function startListening() {
   if (agentModeActive) {
@@ -78,6 +105,8 @@ function startListening() {
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
   document.addEventListener('contextmenu', onContextMenuCapture, true);
+  document.addEventListener('change', onInputCapture, true);
+  document.addEventListener('scroll', onScrollCapture, true);
 }
 
 function stopListening() {
@@ -86,6 +115,8 @@ function stopListening() {
   document.removeEventListener('click', onClickCapture, true);
   document.removeEventListener('dblclick', onDblClickCapture, true);
   document.removeEventListener('contextmenu', onContextMenuCapture, true);
+  document.removeEventListener('change', onInputCapture, true);
+  document.removeEventListener('scroll', onScrollCapture, true);
 }
 
 const observer = new MutationObserver((mutations) => {

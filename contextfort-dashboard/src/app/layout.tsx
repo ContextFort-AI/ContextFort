@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Inter } from "next/font/google";
+import Script from "next/script";
 
 import type { Metadata } from "next";
 
@@ -38,6 +39,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <ThemeBootScript />
       </head>
       <body className={`${inter.className} min-h-screen antialiased`}>
+        {/* Load mock Chrome API in development mode */}
+        {process.env.NODE_ENV === 'development' && (
+          <Script src="/mock-chrome-api.js" strategy="beforeInteractive" />
+        )}
         <PreferencesStoreProvider
           themeMode={theme_mode}
           themePreset={theme_preset}
