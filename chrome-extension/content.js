@@ -15,6 +15,8 @@ let agentModeActive = false;
 let detectionPending = false;
 let stopPending = false;
 
+let blockedElements = [];
+
 function captureElement(target) {
   if (!target) return null;
   return {
@@ -78,6 +80,7 @@ function startListening() {
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
   document.addEventListener('contextmenu', onContextMenuCapture, true);
+  document.addEventListener('click', onBlockedElementClick, true);
 }
 
 function stopListening() {
@@ -139,4 +142,71 @@ observer.observe(document.documentElement, {
 if (document.getElementById('claude-agent-glow-border')) {
   safeSendMessage({ type: 'AGENT_DETECTED', source: 'existing' });
   startListening();
+}
+
+
+
+// ============================================================================
+
+
+function isElementBlocked(element, metadata) {
+  const tag = element.tagName;
+  const id = element.id || null;
+  const className = element.className || null;
+  const text = element.textContent?.trim() || null;
+  const type = element.type || null;
+  const name = element.name || null;
+  
+  return (
+    metadata.tag === tag &&
+    metadata.id === id &&
+    metadata.className === className &&
+    (metadata.text === null || metadata.text === text) &&
+    metadata.type === type &&
+    metadata.name === name
+  );
+}
+
+
+
+// Check if click should be blocked
+function shouldBlockClick(element) {
+  // Check element and all its parents
+  let currentElement = element;
+  while (currentElement && currentElement !== document.body) {
+    for (const blockedMeta of blockedElements) {
+      if (isElementBlocked(currentElement, blockedMeta)) {
+        return true;
+      }
+    }
+    currentElement = currentElement.parentElement;
+  }
+  
+  return false;
+}
+
+
+function showBlockedFeedback(element) {
+  const originalBorder = element.style.border;
+  element.style.border = "2px solid red";
+  
+  setTimeout(() => {
+    element.style.border = originalBorder;
+  }, 500);
+}
+
+
+function onBlockedElementClick(e) {
+  if (shouldBlockClick(e.target)) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    
+    console.log("Click blocked on:", e.target);
+    
+    // Optional: Visual feedback
+    showBlockedFeedback(e.target);
+    
+    return false;
+  }
 }
