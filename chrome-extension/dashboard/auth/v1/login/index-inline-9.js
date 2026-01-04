@@ -1,1 +1,0 @@
-self.__next_f.push([1,"19:I[97367,[\"../../../_next/static/chunks/ff1a16fafef87110.js\",\"../../../_next/static/chunks/18b9c71c2562b215.js\"],\"OutletBoundary\"]\n13:[\"$\",\"$L19\",null,{\"children\":[\"$\",\"$17\",null,{\"name\":\"Next.MetadataOutlet\",\"children\":\"$@1a\"}]}]\n"])

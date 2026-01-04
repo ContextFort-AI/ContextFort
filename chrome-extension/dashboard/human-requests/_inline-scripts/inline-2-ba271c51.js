@@ -1,0 +1,1 @@
+self.__next_f.push([1,"1:\"$Sreact.fragment\"\n9:I[46982,[],\"default\"]\n:HL[\"../_next/static/chunks/4e20891f2fd03463.css\",\"style\"]\n:HL[\"../_next/static/chunks/35638781261ab6c7.css\",\"style\"]\n:HL[\"../_next/static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n2:Tc7e,"])

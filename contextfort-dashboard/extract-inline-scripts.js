@@ -1,77 +1,92 @@
 #!/usr/bin/env node
 
 /**
- * Post-build script to extract inline scripts from HTML files
- * This is required for Chrome Extension Manifest V3 CSP compliance
+ * Extract inline scripts from HTML files for Chrome extension CSP compliance
+ * Chrome extensions Manifest v3 don't allow inline scripts
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const OUTPUT_DIR = path.join(__dirname, 'out');
+const OUT_DIR = path.join(__dirname, 'out');
 
-function extractInlineScripts(filePath, outDir) {
-  let content = fs.readFileSync(filePath, 'utf-8');
-  let scriptCounter = 0;
-  let modified = false;
+function findHtmlFiles(dir) {
+  const files = [];
 
-  // Find all inline scripts (not including those with src attribute)
-  const inlineScriptRegex = /<script(?![^>]*\ssrc=)([^>]*)>([\s\S]*?)<\/script>/gi;
+  function walk(directory) {
+    const items = fs.readdirSync(directory);
 
-  content = content.replace(inlineScriptRegex, (match, attributes, scriptContent) => {
+    for (const item of items) {
+      const fullPath = path.join(directory, item);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        walk(fullPath);
+      } else if (item.endsWith('.html')) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  walk(dir);
+  return files;
+}
+
+function extractInlineScripts(htmlPath) {
+  const html = fs.readFileSync(htmlPath, 'utf-8');
+  const scriptDir = path.join(path.dirname(htmlPath), '_inline-scripts');
+
+  // Create _inline-scripts directory
+  if (!fs.existsSync(scriptDir)) {
+    fs.mkdirSync(scriptDir, { recursive: true });
+  }
+
+  let scriptIndex = 0;
+  let modifiedHtml = html;
+
+  // Find all inline scripts
+  const scriptRegex = /<script>([\s\S]*?)<\/script>/g;
+  let match;
+
+  while ((match = scriptRegex.exec(html)) !== null) {
+    const scriptContent = match[1];
+
     // Skip empty scripts
-    if (!scriptContent.trim()) {
-      return match;
-    }
+    if (scriptContent.trim() === '') continue;
 
-    // Skip scripts that are just JSON (like Next.js data)
-    if (attributes.includes('type="application/json"')) {
-      return match;
-    }
+    // Generate unique filename based on content hash
+    const hash = crypto.createHash('md5').update(scriptContent).digest('hex').substring(0, 8);
+    const scriptFilename = `inline-${scriptIndex}-${hash}.js`;
+    const scriptPath = path.join(scriptDir, scriptFilename);
 
-    modified = true;
-    scriptCounter++;
-
-    // Generate a unique filename based on the HTML file and script number
-    const htmlFileName = path.basename(filePath, '.html');
-    const scriptFileName = `${htmlFileName}-inline-${scriptCounter}.js`;
-    const scriptDir = path.dirname(filePath);
-    const scriptPath = path.join(scriptDir, scriptFileName);
-
-    // Write the script content to an external file
+    // Write script to external file
     fs.writeFileSync(scriptPath, scriptContent, 'utf-8');
 
     // Replace inline script with external script tag
-    const relativePath = `./${scriptFileName}`;
-    return `<script${attributes} src="${relativePath}"></script>`;
-  });
+    const relativePath = `./_inline-scripts/${scriptFilename}`;
+    modifiedHtml = modifiedHtml.replace(
+      match[0],
+      `<script src="${relativePath}"></script>`
+    );
 
-  if (modified) {
-    fs.writeFileSync(filePath, content, 'utf-8');
-    console.log(`✓ Extracted ${scriptCounter} inline script(s) from ${path.relative(outDir, filePath)}`);
+    scriptIndex++;
+  }
+
+  // Write modified HTML
+  if (scriptIndex > 0) {
+    fs.writeFileSync(htmlPath, modifiedHtml, 'utf-8');
+    console.log(`✅ Extracted ${scriptIndex} inline scripts from ${path.relative(OUT_DIR, htmlPath)}`);
   }
 }
 
-function walkDirectory(dir, callback) {
-  const files = fs.readdirSync(dir);
+console.log('🔧 Extracting inline scripts for Chrome extension CSP compliance...\n');
 
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
+const htmlFiles = findHtmlFiles(OUT_DIR);
+console.log(`Found ${htmlFiles.length} HTML files\n`);
 
-    if (stat.isDirectory()) {
-      walkDirectory(filePath, callback);
-    } else if (file.endsWith('.html')) {
-      callback(filePath);
-    }
-  }
+for (const htmlFile of htmlFiles) {
+  extractInlineScripts(htmlFile);
 }
 
-console.log('🔧 Extracting inline scripts from HTML files...\n');
-
-walkDirectory(OUTPUT_DIR, (filePath) => {
-  extractInlineScripts(filePath, OUTPUT_DIR);
-});
-
-console.log('\n✅ All inline scripts extracted successfully!');
+console.log('\n✅ All inline scripts extracted!');

@@ -15,6 +15,19 @@ let agentModeActive = false;
 let detectionPending = false;
 let stopPending = false;
 
+// On load, check if this tab is in an agent-active group
+(async () => {
+  console.log('[ContextFort] Checking if tab is in agent group...');
+  const response = await chrome.runtime.sendMessage({ type: 'CHECK_IF_AGENT_GROUP' });
+  console.log('[ContextFort] Response:', response);
+  if (response && response.isAgentGroup) {
+    console.log('[ContextFort] Tab is in agent group - starting monitoring');
+    startListening();
+  } else {
+    console.log('[ContextFort] Tab is NOT in agent group');
+  }
+})();
+
 function captureElement(target) {
   if (!target) return null;
   return {
@@ -99,8 +112,10 @@ function onScrollCapture(e) {
 
 function startListening() {
   if (agentModeActive) {
+    console.log('[ContextFort] Already listening, skipping');
     return;
   }
+  console.log('[ContextFort] Starting event listeners');
   agentModeActive = true;
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
@@ -110,7 +125,11 @@ function startListening() {
 }
 
 function stopListening() {
-  if (!agentModeActive) return;
+  if (!agentModeActive) {
+    console.log('[ContextFort] Already stopped, skipping');
+    return;
+  }
+  console.log('[ContextFort] Stopping event listeners');
   agentModeActive = false;
   document.removeEventListener('click', onClickCapture, true);
   document.removeEventListener('dblclick', onDblClickCapture, true);
@@ -171,3 +190,15 @@ if (document.getElementById('claude-agent-glow-border')) {
   safeSendMessage({ type: 'AGENT_DETECTED', source: 'existing' });
   startListening();
 }
+
+// Listen for broadcast messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('[ContextFort] Received message:', message.type);
+  if (message.type === 'START_MONITORING') {
+    console.log('[ContextFort] Received START_MONITORING - starting listeners');
+    startListening();
+  } else if (message.type === 'STOP_MONITORING') {
+    console.log('[ContextFort] Received STOP_MONITORING - stopping listeners');
+    stopListening();
+  }
+});

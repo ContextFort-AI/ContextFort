@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   openDashboardBtn.addEventListener('click', () => {
     chrome.tabs.create({
-      url: chrome.runtime.getURL('dashboard/dashboard/screenshots/index.html')
+      url: chrome.runtime.getURL('dashboard/visibility/index.html')
     });
   });
 });

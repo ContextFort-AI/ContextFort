@@ -1,21 +1,17 @@
 'use client';
 
-import { StatCard } from '@/components/dashboard/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   LinkIcon,
   RefreshCwIcon,
-  Trash2Icon,
-  GlobeIcon,
   ChevronDownIcon,
-  ExternalLinkIcon,
-  ClockIcon,
-  ActivityIcon,
-  LayersIcon
+  ChevronRightIcon,
+  ClockIcon
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 
 interface Screenshot {
   id: number;
@@ -25,6 +21,7 @@ interface Screenshot {
   reason: string;
   timestamp: string;
   dataUrl: string;
+  eventType?: string;
   sessionId?: number | null;
 }
 
@@ -40,38 +37,33 @@ interface Session {
   duration?: number;
 }
 
-interface SessionVisit {
-  sessionId: number;
-  sessionStartTime: string;
-  sessionStatus: 'active' | 'ended';
-  visitCount: number;
-  firstVisit: string;
-  lastVisit: string;
-  titles: string[];
+interface TransitionData {
+  fromUrl: string;
+  toUrl: string;
+  fromHostname: string;
+  toHostname: string;
+  transitionCount: number;
+  sessions: Map<number, {
+    sessionId: number;
+    sessionTitle: string;
+    sessionStatus: 'active' | 'ended';
+    sessionStartTime: string;
+    transitionCount: number;
+    firstTransition: string;
+    lastTransition: string;
+  }>;
 }
 
-interface URLData {
-  url: string;
-  hostname: string;
-  totalVisits: number;
-  sessionCount: number;
-  firstVisit: string;
-  lastVisit: string;
-  sessions: SessionVisit[];
-}
-
-export default function URLLogsPage() {
+export default function ControlsPage() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedURLs, setExpandedURLs] = useState<Set<string>>(new Set());
+  const [expandedTransitions, setExpandedTransitions] = useState<Set<string>>(new Set());
 
-  // Set page title
   useEffect(() => {
     document.title = 'Controls - ContextFort';
   }, []);
 
-  // Load data from Chrome storage
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -82,7 +74,6 @@ export default function URLLogsPage() {
         const screenshotsList = result.screenshots || [];
         const sessionsList = result.sessions || [];
 
-        // Deduplicate sessions
         const uniqueSessions = sessionsList.reduce((acc: Session[], session: Session) => {
           if (!acc.find(s => s.id === session.id)) {
             acc.push(session);
@@ -94,47 +85,17 @@ export default function URLLogsPage() {
         setSessions(uniqueSessions);
       }
     } catch (error) {
-      console.error('[URL Logs Page] Error loading data:', error);
+      console.error('[Controls Page] Error loading data:', error);
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
-    // Refresh every 3 seconds
     const interval = setInterval(loadData, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  // Toggle URL expansion
-  const toggleURL = (url: string) => {
-    const newExpanded = new Set(expandedURLs);
-    if (newExpanded.has(url)) {
-      newExpanded.delete(url);
-    } else {
-      newExpanded.add(url);
-    }
-    setExpandedURLs(newExpanded);
-  };
-
-  // Clear all data
-  const clearAllData = async () => {
-    if (confirm('Are you sure you want to clear all URL logs data?')) {
-      try {
-        // @ts-ignore - Chrome extension API
-        if (typeof chrome !== 'undefined' && chrome?.storage) {
-          // @ts-ignore - Chrome extension API
-          await chrome.storage.local.set({ screenshots: [], sessions: [] });
-          setScreenshots([]);
-          setSessions([]);
-        }
-      } catch (error) {
-        console.error('[URL Logs Page] Error clearing data:', error);
-      }
-    }
-  };
-
-  // Helper functions
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -149,83 +110,85 @@ export default function URLLogsPage() {
     return `${formatDate(timestamp)} ${formatTime(timestamp)}`;
   };
 
-  // Group screenshots by URL
-  const urlMap = new Map<string, URLData>();
-
+  // Group screenshots by session
+  const sessionScreenshots = new Map<number, Screenshot[]>();
   screenshots.forEach(screenshot => {
-    try {
-      const hostname = new URL(screenshot.url).hostname;
-      const sessionId = screenshot.sessionId;
+    const sessionId = screenshot.sessionId;
+    if (!sessionId) return;
+    if (!sessionScreenshots.has(sessionId)) {
+      sessionScreenshots.set(sessionId, []);
+    }
+    sessionScreenshots.get(sessionId)!.push(screenshot);
+  });
 
-      if (!sessionId) return;
+  // Create URL transitions
+  const transitionMap = new Map<string, TransitionData>();
 
-      const session = sessions.find(s => s.id === sessionId);
-      if (!session) return;
+  sessionScreenshots.forEach((sessionShots, sessionId) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
 
-      let urlData = urlMap.get(screenshot.url);
+    const sortedShots = sessionShots.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-      if (!urlData) {
-        urlData = {
-          url: screenshot.url,
-          hostname: hostname,
-          totalVisits: 0,
-          sessionCount: 0,
-          firstVisit: screenshot.timestamp,
-          lastVisit: screenshot.timestamp,
-          sessions: []
-        };
-        urlMap.set(screenshot.url, urlData);
+    for (let i = 0; i < sortedShots.length - 1; i++) {
+      const fromUrl = sortedShots[i].url;
+      const toUrl = sortedShots[i + 1].url;
+      if (fromUrl === toUrl) continue;
+
+      const transitionKey = `${fromUrl}|||${toUrl}`;
+
+      try {
+        const fromHostname = new URL(fromUrl).hostname;
+        const toHostname = new URL(toUrl).hostname;
+
+        if (!transitionMap.has(transitionKey)) {
+          transitionMap.set(transitionKey, {
+            fromUrl,
+            toUrl,
+            fromHostname,
+            toHostname,
+            transitionCount: 0,
+            sessions: new Map()
+          });
+        }
+        const transitionData = transitionMap.get(transitionKey)!;
+
+        if (!transitionData.sessions.has(sessionId)) {
+          transitionData.sessions.set(sessionId, {
+            sessionId,
+            sessionTitle: session.tabTitle || 'Unknown Page',
+            sessionStatus: session.status,
+            sessionStartTime: session.startTime,
+            transitionCount: 0,
+            firstTransition: sortedShots[i].timestamp,
+            lastTransition: sortedShots[i + 1].timestamp
+          });
+        }
+        const sessionData = transitionData.sessions.get(sessionId)!;
+
+        transitionData.transitionCount++;
+        sessionData.transitionCount++;
+        sessionData.lastTransition = sortedShots[i + 1].timestamp;
+      } catch (error) {
+        console.error('[URL Logs] Error processing transition:', error);
       }
-
-      // Update URL-level data
-      urlData.totalVisits++;
-      if (new Date(screenshot.timestamp) < new Date(urlData.firstVisit)) {
-        urlData.firstVisit = screenshot.timestamp;
-      }
-      if (new Date(screenshot.timestamp) > new Date(urlData.lastVisit)) {
-        urlData.lastVisit = screenshot.timestamp;
-      }
-
-      // Find or create session visit data
-      let sessionVisit = urlData.sessions.find(s => s.sessionId === sessionId);
-
-      if (!sessionVisit) {
-        sessionVisit = {
-          sessionId: sessionId,
-          sessionStartTime: session.startTime,
-          sessionStatus: session.status,
-          visitCount: 0,
-          firstVisit: screenshot.timestamp,
-          lastVisit: screenshot.timestamp,
-          titles: []
-        };
-        urlData.sessions.push(sessionVisit);
-        urlData.sessionCount++;
-      }
-
-      // Update session visit data
-      sessionVisit.visitCount++;
-      if (new Date(screenshot.timestamp) > new Date(sessionVisit.lastVisit)) {
-        sessionVisit.lastVisit = screenshot.timestamp;
-      }
-      if (!sessionVisit.titles.includes(screenshot.title)) {
-        sessionVisit.titles.push(screenshot.title);
-      }
-    } catch (error) {
-      console.error('[URL Logs] Error processing screenshot:', error);
     }
   });
 
-  const urlDataList = Array.from(urlMap.values()).sort((a, b) => b.totalVisits - a.totalVisits);
+  const sortedTransitions = Array.from(transitionMap.values()).sort((a, b) => b.transitionCount - a.transitionCount);
 
-  const totalURLs = urlDataList.length;
-  const urlsWithMultipleSessions = urlDataList.filter(u => u.sessionCount > 1).length;
-  const totalSessions = sessions.length;
-  const totalVisits = screenshots.length;
+  const toggleTransition = (key: string) => {
+    const newExpanded = new Set(expandedTransitions);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedTransitions(newExpanded);
+  };
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Controls</h1>
@@ -241,7 +204,6 @@ export default function URLLogsPage() {
         </div>
       </div>
 
-      {/* URL List */}
       {isLoading ? (
         <Card>
           <CardContent className="py-12">
@@ -251,82 +213,161 @@ export default function URLLogsPage() {
             </div>
           </CardContent>
         </Card>
-      ) : urlDataList.length === 0 ? (
+      ) : sortedTransitions.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center">
               <LinkIcon className="mb-4 h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mb-2 text-lg font-medium">No URL logs yet</h3>
+              <h3 className="mb-2 text-lg font-medium">No URL transitions yet</h3>
               <p className="text-sm text-muted-foreground">
-                URL logs will appear here when agent mode (debugger) is attached
+                Navigation patterns will appear when multiple URLs are visited in a session
               </p>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-4">
-          {urlDataList.map((urlData) => (
-            <Card key={urlData.url}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{urlData.hostname}</CardTitle>
-                    <CardDescription className="truncate">{urlData.url}</CardDescription>
-                  </div>
-                  <div className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                      <span>{urlData.totalVisits} visits</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <LayersIcon className="h-4 w-4 text-muted-foreground" />
-                      <span>{urlData.sessionCount} sessions</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {urlData.sessions.map((sessionVisit) => (
-                    <div
-                      key={sessionVisit.sessionId}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{formatDateTime(sessionVisit.sessionStartTime)}</span>
+        <div className="rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-b border-border">
+                <TableHead className="w-[18%]">From URL</TableHead>
+                <TableHead className="w-[18%]">To URL</TableHead>
+                <TableHead className="w-[13%]">Navigation Type</TableHead>
+                <TableHead className="w-[38%]">Sessions</TableHead>
+                <TableHead className="w-[13%] text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedTransitions.map((transition, index) => {
+                const isCrossDomain = transition.fromHostname !== transition.toHostname;
+                const transitionKey = `${transition.fromUrl}|||${transition.toUrl}`;
+                const isExpanded = expandedTransitions.has(transitionKey);
+
+                const toUrlScreenshots = screenshots
+                  .filter(s => s.url === transition.toUrl && s.sessionId)
+                  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                const sessionsArray = Array.from(transition.sessions.values()).sort((a, b) =>
+                  new Date(b.sessionStartTime).getTime() - new Date(a.sessionStartTime).getTime()
+                );
+                const latestSession = sessionsArray[0];
+
+                return (
+                  <Fragment key={transitionKey}>
+                    <TableRow className="border-b border-border">
+                      <TableCell>
+                        <span className="text-sm font-medium" title={transition.fromUrl}>
+                          {transition.fromHostname}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm font-medium" title={transition.toUrl}>
+                          {transition.toHostname}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={isCrossDomain ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-background'}>
+                          {isCrossDomain ? 'Cross-domain' : 'Same-domain'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3 p-2 border border-border rounded-md">
+                          <ClockIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm">
+                              Session | Started: {formatDateTime(latestSession.sessionStartTime)}
+                              {latestSession.sessionStatus === 'active' && (
+                                <span className="ml-2 text-xs">(Active)</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <Badge variant="outline" className="bg-background">
-                          Session {sessionVisit.sessionId}
-                        </Badge>
-                        <Badge variant="outline" className="bg-background">
-                          {sessionVisit.visitCount} visits
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={sessionVisit.sessionStatus === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-background'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => toggleTransition(transitionKey)}
+                          disabled={toUrlScreenshots.length === 0}
                         >
-                          {sessionVisit.sessionStatus}
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleURL(urlData.url)}
-                      >
-                        <ChevronDownIcon
-                          className={`h-4 w-4 transition-transform ${
-                            expandedURLs.has(urlData.url) ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                          {isExpanded ? (
+                            <ChevronDownIcon className="h-4 w-4" />
+                          ) : (
+                            <ChevronRightIcon className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+
+                    {isExpanded && toUrlScreenshots.length > 0 && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={5} className="p-0">
+                          <div className="p-6">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="border-b border-border">
+                                  <TableHead className="w-[35%]">Screenshot</TableHead>
+                                  <TableHead className="w-[15%]">Event</TableHead>
+                                  <TableHead className="w-[30%]">URL</TableHead>
+                                  <TableHead className="w-[20%]">Session</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {toUrlScreenshots.map((screenshot, idx) => {
+                                  const screenshotSession = sessions.find(s => s.id === screenshot.sessionId);
+                                  return (
+                                    <TableRow key={screenshot.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/50'}>
+                                      <TableCell>
+                                        {screenshot.dataUrl ? (
+                                          <img
+                                            src={screenshot.dataUrl}
+                                            alt="Screenshot"
+                                            className="w-[350px] h-auto rounded-md border border-border cursor-pointer hover:scale-[1.02] transition-transform"
+                                            onClick={() => window.open(screenshot.dataUrl, '_blank')}
+                                          />
+                                        ) : (
+                                          <div className="w-[350px] h-[200px] flex flex-col items-center justify-center bg-muted border-2 border-dashed border-muted-foreground/50 rounded-md">
+                                            <span className="text-4xl mb-2">📄</span>
+                                            <span className="text-sm font-semibold text-muted-foreground">Page Read</span>
+                                            <span className="text-xs text-muted-foreground/60 mt-1">No screenshot</span>
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className="text-base font-semibold">{screenshot.eventType || 'N/A'}</span>
+                                      </TableCell>
+                                      <TableCell className="break-words">
+                                        <a
+                                          href={screenshot.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-blue-500 hover:underline"
+                                        >
+                                          {screenshot.url}
+                                        </a>
+                                      </TableCell>
+                                      <TableCell className="break-words">
+                                        <span className="text-sm">
+                                          {screenshotSession
+                                            ? `Session | Started: ${formatDateTime(screenshotSession.startTime)}`
+                                            : 'N/A'}
+                                        </span>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

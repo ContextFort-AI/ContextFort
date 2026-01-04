@@ -110,9 +110,26 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // ============================================================================
 // MESSAGE LISTENERS
-chrome.runtime.onMessage.addListener(async (message, sender) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   const tab = sender.tab;
   const groupId = tab?.groupId;
+
+  // Check if this tab is in an agent-active group
+  if (message.type === 'CHECK_IF_AGENT_GROUP') {
+    console.log('[Background] CHECK_IF_AGENT_GROUP - tabId:', tab?.id, 'groupId:', groupId);
+    if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+      const session = sessions.get(groupId);
+      console.log('[Background] Session for group:', session);
+      if (session && session.status === 'active') {
+        console.log('[Background] Tab IS in agent group');
+        sendResponse({ isAgentGroup: true });
+        return true;
+      }
+    }
+    console.log('[Background] Tab is NOT in agent group');
+    sendResponse({ isAgentGroup: false });
+    return true;
+  }
 
   if (message.type === 'AGENT_DETECTED') {
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
@@ -131,12 +148,20 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
 
       // Add page_read entry and update visitedUrls
       await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
+
+      // Broadcast to all tabs in group to start monitoring
+      console.log('[Background] AGENT_DETECTED - broadcasting START_MONITORING');
+      await broadcastToGroup(groupId, { type: 'START_MONITORING' });
     }
   }
 
   else if (message.type === 'AGENT_STOPPED') {
     if (groupId) {
       trackAgentActivation(groupId, tab.id, 'stop');
+
+      // Broadcast to all tabs in group to stop monitoring
+      console.log('[Background] AGENT_STOPPED - broadcasting STOP_MONITORING');
+      await broadcastToGroup(groupId, { type: 'STOP_MONITORING' });
     }
   }
 
@@ -158,32 +183,24 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
       return;
     }
 
-    // Skip screenshot if agent's tab is not currently visible
-    if (!tab.active) {
-      return;
-    }
-
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        return;
-      }
-
+    // Helper function to save event data
+    const saveEventData = async (dataUrl) => {
       const screenshotId = Date.now() + Math.random();
       const screenshotData = {
-        id: screenshotId,                       // Unique identifier
-        sessionId: activation.sessionId,         // Links to session
-        tabId: tab.id,                          // Tab where screenshot was taken
-        url: message.url || tab.url,            // Page URL
-        title: message.title || tab.title,      // Page title
-        reason: 'agent_event',                  // Why screenshot was taken
-        timestamp: new Date().toISOString(),    // ISO 8601 timestamp
-        dataUrl: dataUrl,                       // Base64 PNG image data
-        eventType: message.eventType || 'unknown', // 'click', 'input', or 'navigation'
+        id: screenshotId,
+        sessionId: activation.sessionId,
+        tabId: tab.id,
+        url: message.url || tab.url,
+        title: message.title || tab.title,
+        reason: 'agent_event',
+        timestamp: new Date().toISOString(),
+        dataUrl: dataUrl,  // null if tab not active
+        eventType: message.eventType || 'unknown',
         eventDetails: {
-          element: message.element || null,     // Element info (tag, id, class, text)
-          coordinates: message.coordinates || null, // Click coordinates {x, y}
-          inputValue: message.inputValue || null, // Input value for text events
-          actionType: message.action            // 'click', 'dblclick', 'input', 'change', etc.
+          element: message.element || null,
+          coordinates: message.coordinates || null,
+          inputValue: message.inputValue || null,
+          actionType: message.action
         }
       };
 
@@ -194,18 +211,36 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
       screenshots.push(screenshotData);
 
       if (screenshots.length > 100) {
-        screenshots.shift(); // Remove oldest
+        screenshots.shift();
       }
 
       const sessionIndex = allSessions.findIndex(s => s.id === activation.sessionId);
       if (sessionIndex !== -1) {
         allSessions[sessionIndex].screenshotCount = (allSessions[sessionIndex].screenshotCount || 0) + 1;
-        // Update in-memory count too
-        sessions.get(groupId).screenshotCount = allSessions[sessionIndex].screenshotCount;
+        if (sessions.get(groupId)) {
+          sessions.get(groupId).screenshotCount = allSessions[sessionIndex].screenshotCount;
+        }
       }
 
-      // Save updated data to storage
       await chrome.storage.local.set({ screenshots: screenshots, sessions: allSessions });
+    };
+
+    // If tab is not active, save event without screenshot
+    if (!tab.active) {
+      await saveEventData(null);
+      return;
+    }
+
+    // Tab is active, capture screenshot
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        // Screenshot failed, save event without screenshot
+        await saveEventData(null);
+        return;
+      }
+
+      // Screenshot succeeded, save with image
+      await saveEventData(dataUrl);
     });
   }
 
@@ -288,18 +323,8 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
   // Get tab info for window ID
   const tab = await chrome.tabs.get(tabId);
 
-  // Skip screenshot if tab is not currently visible
-  if (!tab.active) {
-    return;
-  }
-
-  // Capture screenshot
-  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
-    if (chrome.runtime.lastError) {
-      console.log('[Page Read] Screenshot failed:', chrome.runtime.lastError.message);
-      return;
-    }
-
+  // Helper to save page_read data
+  const savePageReadData = async (dataUrl) => {
     const result = await chrome.storage.local.get(['screenshots']);
     const screenshots = result.screenshots || [];
 
@@ -311,7 +336,7 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
       title: title,
       reason: 'page_read',
       timestamp: new Date().toISOString(),
-      dataUrl: dataUrl,  // Now with screenshot
+      dataUrl: dataUrl,  // null if tab not active
       eventType: 'page_read',
       eventDetails: {
         element: null,
@@ -328,7 +353,37 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
     }
 
     await chrome.storage.local.set({ screenshots: screenshots });
+  };
+
+  // If tab is not active, save without screenshot
+  if (!tab.active) {
+    await savePageReadData(null);
+    return;
+  }
+
+  // Tab is active, capture screenshot
+  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
+    if (chrome.runtime.lastError) {
+      console.log('[Page Read] Screenshot failed:', chrome.runtime.lastError.message);
+      await savePageReadData(null);
+      return;
+    }
+
+    await savePageReadData(dataUrl);
   });
+}
+
+// Helper function to broadcast message to all tabs in a group
+async function broadcastToGroup(groupId, message) {
+  console.log('[Background] Broadcasting', message.type, 'to group', groupId);
+  const tabs = await chrome.tabs.query({ groupId: groupId });
+  console.log('[Background] Found', tabs.length, 'tabs in group');
+  for (const tab of tabs) {
+    console.log('[Background] Sending to tab:', tab.id, tab.url);
+    chrome.tabs.sendMessage(tab.id, message).catch((err) => {
+      console.log('[Background] Failed to send to tab', tab.id, ':', err.message);
+    });
+  }
 }
 
 // Helper function to show notification when navigation is blocked
