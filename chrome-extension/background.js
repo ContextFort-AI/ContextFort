@@ -1,8 +1,14 @@
 const sessions = new Map(); // groupId -> session object
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
-const urlBlockingRules = [
-  // Add your rules here as arrays: ['domain1.com', 'domain2.com']
-];
+let urlBlockingRules = []; // Loaded from storage, managed via dashboard
+
+// Load URL blocking rules from storage on startup
+(async () => {
+  const result = await chrome.storage.local.get(['urlBlockingRules']);
+  if (result.urlBlockingRules) {
+    urlBlockingRules = result.urlBlockingRules;
+  }
+})();
 
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({
@@ -204,6 +210,11 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
       // Save updated data to storage
       await chrome.storage.local.set({ screenshots: screenshots, sessions: allSessions });
     });
+  }
+
+  // Dashboard requested to reload blocking rules
+  if (message.type === 'RELOAD_BLOCKING_RULES') {
+    urlBlockingRules = message.rules || [];
   }
 });
 // ============================================================================

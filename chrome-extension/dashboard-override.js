@@ -2979,13 +2979,16 @@ function injectURLLogs(screenshots, sessions) {
 
       targetContainer.innerHTML = html;
 
-      console.log('[URL Logs] HTML injected, setting up event listeners in 50ms...');
+      console.log('[URL Logs] HTML injected, setting up event listeners in 100ms...');
 
       // Wait for DOM to be ready
       setTimeout(() => {
+        console.log('[URL Logs] ===== INSIDE SETTIMEOUT, STARTING EVENT LISTENER SETUP =====');
         console.log('[URL Logs] Checking for elements...');
         console.log('[URL Logs] session-card elements:', document.querySelectorAll('[class^="session-card-"]').length);
         console.log('[URL Logs] session-nav-link elements:', document.querySelectorAll('.session-nav-link').length);
+        console.log('[URL Logs] toggle-switch elements:', document.querySelectorAll('.toggle-switch').length);
+        console.log('[URL Logs] url-transition-row elements:', document.querySelectorAll('.url-transition-row').length);
 
         // Add event listeners for expandable session cards (only for expand/collapse)
         document.querySelectorAll('[class^="session-card-"]').forEach(card => {
@@ -3059,30 +3062,101 @@ function injectURLLogs(screenshots, sessions) {
         });
 
         // Add toggle switch functionality
-        document.querySelectorAll('.toggle-switch').forEach(toggleSwitch => {
+        console.log('[URL Logs] Found toggle switches:', document.querySelectorAll('.toggle-switch').length);
+
+        document.querySelectorAll('.toggle-switch').forEach((toggleSwitch, idx) => {
+          console.log('[URL Logs] Setting up toggle switch', idx);
           const checkbox = toggleSwitch.querySelector('.toggle-checkbox');
           const slider = toggleSwitch.querySelector('.toggle-slider');
           const knob = toggleSwitch.querySelector('.toggle-knob');
           const label = toggleSwitch.parentElement.querySelector('.toggle-label');
 
-          checkbox.addEventListener('change', function(e) {
+          console.log('[URL Logs] Toggle switch elements:', { checkbox, slider, knob, label });
+
+          // Add click handler on the label itself
+          toggleSwitch.addEventListener('click', function(e) {
+            e.stopPropagation();
+            console.log('[URL Logs] Toggle switch clicked!');
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+          });
+
+          checkbox.addEventListener('change', async function(e) {
+            console.log('[URL Logs] Checkbox changed! Checked:', this.checked);
             e.stopPropagation();
 
+            const fromUrl = toggleSwitch.getAttribute('data-from-url');
+            const toUrl = toggleSwitch.getAttribute('data-to-url');
+
+            // Extract hostnames
+            const getHostname = (url) => {
+              try {
+                return new URL(url).hostname;
+              } catch {
+                return null;
+              }
+            };
+
+            const fromHostname = getHostname(fromUrl);
+            const toHostname = getHostname(toUrl);
+
+            if (!fromHostname || !toHostname) {
+              console.error('[URL Logs] Invalid URLs:', fromUrl, toUrl);
+              return;
+            }
+
+            // Get current blocking rules from storage
+            const result = await chrome.storage.local.get(['urlBlockingRules']);
+            let urlBlockingRules = result.urlBlockingRules || [];
+
             if (this.checked) {
-              // Allowed state (ON)
+              // Allowed state (ON) - Remove from blocking rules
               slider.style.backgroundColor = '#10b981';
               slider.style.boxShadow = 'inset 0 0 0 2px #10b981';
               knob.style.transform = 'translateX(26px)';
               label.textContent = 'Allowed';
               label.style.color = '#10b981';
+
+              // Remove rule if exists
+              urlBlockingRules = urlBlockingRules.filter(rule => {
+                return !(
+                  (rule[0] === fromHostname && rule[1] === toHostname) ||
+                  (rule[0] === toHostname && rule[1] === fromHostname)
+                );
+              });
+
+              console.log('[URL Logs] ✅ Removed blocking rule:', [fromHostname, toHostname]);
             } else {
-              // Blocked state (OFF)
+              // Blocked state (OFF) - Add to blocking rules
               slider.style.backgroundColor = '#ef4444';
               slider.style.boxShadow = 'inset 0 0 0 2px #ef4444';
               knob.style.transform = 'translateX(0)';
               label.textContent = 'Blocked';
               label.style.color = '#ef4444';
+
+              // Check if rule already exists
+              const ruleExists = urlBlockingRules.some(rule => {
+                return (
+                  (rule[0] === fromHostname && rule[1] === toHostname) ||
+                  (rule[0] === toHostname && rule[1] === fromHostname)
+                );
+              });
+
+              if (!ruleExists) {
+                urlBlockingRules.push([fromHostname, toHostname]);
+                console.log('[URL Logs] 🚫 Added blocking rule:', [fromHostname, toHostname]);
+              }
             }
+
+            // Save updated rules to storage
+            await chrome.storage.local.set({ urlBlockingRules: urlBlockingRules });
+            console.log('[URL Logs] Updated urlBlockingRules in storage:', urlBlockingRules);
+
+            // Notify background.js to reload rules
+            chrome.runtime.sendMessage({
+              type: 'RELOAD_BLOCKING_RULES',
+              rules: urlBlockingRules
+            });
           });
 
           // Add hover effect to label (container)
@@ -3094,6 +3168,58 @@ function injectURLLogs(screenshots, sessions) {
             slider.style.opacity = '1';
           });
         });
+
+        // Load existing blocking rules and update toggle states
+        (async () => {
+          const result = await chrome.storage.local.get(['urlBlockingRules']);
+          const urlBlockingRules = result.urlBlockingRules || [];
+          console.log('[URL Logs] Loaded existing blocking rules:', urlBlockingRules);
+
+          document.querySelectorAll('.toggle-switch').forEach(toggleSwitch => {
+            const fromUrl = toggleSwitch.getAttribute('data-from-url');
+            const toUrl = toggleSwitch.getAttribute('data-to-url');
+
+            const getHostname = (url) => {
+              try {
+                return new URL(url).hostname;
+              } catch {
+                return null;
+              }
+            };
+
+            const fromHostname = getHostname(fromUrl);
+            const toHostname = getHostname(toUrl);
+
+            if (!fromHostname || !toHostname) return;
+
+            // Check if this transition is blocked
+            const isBlocked = urlBlockingRules.some(rule => {
+              return (
+                (rule[0] === fromHostname && rule[1] === toHostname) ||
+                (rule[0] === toHostname && rule[1] === fromHostname)
+              );
+            });
+
+            if (isBlocked) {
+              // Set to blocked state
+              const checkbox = toggleSwitch.querySelector('.toggle-checkbox');
+              const slider = toggleSwitch.querySelector('.toggle-slider');
+              const knob = toggleSwitch.querySelector('.toggle-knob');
+              const label = toggleSwitch.parentElement.querySelector('.toggle-label');
+
+              checkbox.checked = false;
+              slider.style.backgroundColor = '#ef4444';
+              slider.style.boxShadow = 'inset 0 0 0 2px #ef4444';
+              knob.style.transform = 'translateX(0)';
+              label.textContent = 'Blocked';
+              label.style.color = '#ef4444';
+
+              console.log('[URL Logs] Set blocked state for:', fromHostname, '→', toHostname);
+            }
+          });
+        })();
+
+        console.log('[URL Logs] ===== FINISHED EVENT LISTENER SETUP =====');
       }, 100);
 
 
