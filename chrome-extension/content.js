@@ -27,6 +27,7 @@ let stopPending = false;
     console.log('[ContextFort] Tab is NOT in agent group');
   }
 })();
+let blockedElements = [];
 
 function captureElement(target) {
   if (!target) return null;
@@ -122,6 +123,7 @@ function startListening() {
   document.addEventListener('contextmenu', onContextMenuCapture, true);
   document.addEventListener('change', onInputCapture, true);
   document.addEventListener('scroll', onScrollCapture, true);
+  document.addEventListener('click', onBlockedElementClick, true);
 }
 
 function stopListening() {
@@ -202,3 +204,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     stopListening();
   }
 });
+
+
+// ============================================================================
+
+
+function isElementBlocked(element, metadata) {
+  const tag = element.tagName;
+  const id = element.id || null;
+  const className = element.className || null;
+  const text = element.textContent?.trim() || null;
+  const type = element.type || null;
+  const name = element.name || null;
+  
+  return (
+    metadata.tag === tag &&
+    metadata.id === id &&
+    metadata.className === className &&
+    (metadata.text === null || metadata.text === text) &&
+    metadata.type === type &&
+    metadata.name === name
+  );
+}
+
+
+
+// Check if click should be blocked
+function shouldBlockClick(element) {
+  // Check element and all its parents
+  let currentElement = element;
+  while (currentElement && currentElement !== document.body) {
+    for (const blockedMeta of blockedElements) {
+      if (isElementBlocked(currentElement, blockedMeta)) {
+        return true;
+      }
+    }
+    currentElement = currentElement.parentElement;
+  }
+  
+  return false;
+}
+
+
+function showBlockedFeedback(element) {
+  const originalBorder = element.style.border;
+  element.style.border = "2px solid red";
+  
+  setTimeout(() => {
+    element.style.border = originalBorder;
+  }, 500);
+}
+
+
+function onBlockedElementClick(e) {
+  if (shouldBlockClick(e.target)) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    
+    console.log("Click blocked on:", e.target);
+    
+    // Optional: Visual feedback
+    showBlockedFeedback(e.target);
+    
+    return false;
+  }
+}
