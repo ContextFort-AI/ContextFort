@@ -6,7 +6,9 @@ const STORAGE_KEYS = [
   'screenshots',
   'sessions',
   'whitelist',
-  'sensitiveWords'
+  'sensitiveWords',
+  'userEmail',
+  'userData',
 ];
 
 async function exportStorage() {
