@@ -2,12 +2,14 @@
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
 import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
 
-let currentuser = ''
+let currentUser = '';
+chrome.storage.local.get('userData', (result) => {
+  currentUser = result.userData?.email || '';
+});
 
 // Initialize PostHog when extension starts
 initPostHog();
-identifyUser(currentuser, {email:currentuser});
-
+identifyUser(currentUser, {email:currentUser});
 // Track extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
