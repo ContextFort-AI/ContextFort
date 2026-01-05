@@ -1,8 +1,11 @@
 // background.js
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
 
+let currentuser = ''
+
 // Initialize PostHog when extension starts
 initPostHog();
+identifyUser(currentuser, {email:currentuser});
 
 // Track extension installation
 chrome.runtime.onInstalled.addListener((details) => {
@@ -157,9 +160,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 
   if (message.type === 'AGENT_DETECTED') {
+    trackEvent('AGENT_DETECTED', {agentMode: 'started'});
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
       const session = await getOrCreateSession(groupId, tab.id, tab.url, tab.title);
-
       // Check if this URL should be blocked before allowing agent mode to activate
       const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
       if (blockCheck.blocked) {
@@ -181,6 +184,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 
   else if (message.type === 'AGENT_STOPPED') {
+    trackEvent('AGENT_STOPPED', {agentMode: 'stopped'});
     if (groupId) {
       trackAgentActivation(groupId, tab.id, 'stop');
 
