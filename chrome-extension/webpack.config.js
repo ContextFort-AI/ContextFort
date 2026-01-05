@@ -32,10 +32,14 @@ module.exports = {
       patterns: [
         { from: 'manifest.json', to: 'manifest.json' },
         { from: 'popup.html', to: 'popup.html' },
-        { from: 'privacy.html', to: 'privacy.html' },
         { from: 'icon128.png', to: 'icon128.png' },
-        { from: 'dashboard', to: 'dashboard' },
-        { from: 'dummy-data.js', to: 'dummy-data.js' }
+        {
+          from: 'dashboard',
+          to: 'dashboard',
+          globOptions: {
+            ignore: ['**/mock-storage-data.json'] // Exclude mock data from production build
+          }
+        }
       ]
     })
   ],

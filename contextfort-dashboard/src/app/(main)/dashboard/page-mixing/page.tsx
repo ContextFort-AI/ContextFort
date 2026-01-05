@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import {
   LinkIcon,
   RefreshCwIcon,
@@ -45,6 +46,7 @@ interface TransitionData {
   fromHostname: string;
   toHostname: string;
   transitionCount: number;
+  hasInteraction: boolean; // true if destination page had click/inputtext
   sessions: Map<number, {
     sessionId: number;
     sessionTitle: string;
@@ -61,8 +63,10 @@ export default function PageMixingPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTransitions, setExpandedTransitions] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<'cross-domain' | 'same-domain'>('cross-domain');
+  const [domainFilter, setDomainFilter] = useState<'cross-domain' | 'same-domain'>('cross-domain');
+  const [interactionFilter, setInteractionFilter] = useState<'all' | 'with-interaction' | 'page-read-only'>('all');
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
+  const [urlBlockingRules, setUrlBlockingRules] = useState<string[][]>([]);
 
   useEffect(() => {
     document.title = 'Page Mixing - ContextFort';
@@ -74,9 +78,10 @@ export default function PageMixingPage() {
       // @ts-ignore - Chrome extension API
       if (typeof chrome !== 'undefined' && chrome?.storage) {
         // @ts-ignore - Chrome extension API
-        const result = await chrome.storage.local.get(['screenshots', 'sessions']);
+        const result = await chrome.storage.local.get(['screenshots', 'sessions', 'urlBlockingRules']);
         const screenshotsList = result.screenshots || [];
         const sessionsList = result.sessions || [];
+        const rules = result.urlBlockingRules || [];
 
         const uniqueSessions = sessionsList.reduce((acc: Session[], session: Session) => {
           if (!acc.find(s => s.id === session.id)) {
@@ -87,6 +92,7 @@ export default function PageMixingPage() {
 
         setScreenshots(screenshotsList);
         setSessions(uniqueSessions);
+        setUrlBlockingRules(rules);
       }
     } catch (error) {
       console.error('[Controls Page] Error loading data:', error);
@@ -133,23 +139,32 @@ export default function PageMixingPage() {
     const sortedShots = sessionShots.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     for (let i = 0; i < sortedShots.length - 1; i++) {
-      const fromUrl = sortedShots[i].url;
-      const toUrl = sortedShots[i + 1].url;
-      if (fromUrl === toUrl) continue;
+      const fromShot = sortedShots[i];
+      const toShot = sortedShots[i + 1];
 
-      const transitionKey = `${fromUrl}|||${toUrl}`;
+      // Skip if URL and title are both the same
+      if (fromShot.url === toShot.url && fromShot.title === toShot.title) continue;
+
+      const transitionKey = `${fromShot.url}|||${toShot.url}`;
 
       try {
-        const fromHostname = new URL(fromUrl).hostname;
-        const toHostname = new URL(toUrl).hostname;
+        const fromHostname = new URL(fromShot.url).hostname;
+        const toHostname = new URL(toShot.url).hostname;
+
+        // Check if destination page has any interaction events (click/input)
+        const toUrlScreenshots = sortedShots.filter(s => s.url === toShot.url);
+        const hasInteraction = toUrlScreenshots.some(s =>
+          s.eventType === 'click' || s.eventType === 'input'
+        );
 
         if (!transitionMap.has(transitionKey)) {
           transitionMap.set(transitionKey, {
-            fromUrl,
-            toUrl,
+            fromUrl: fromShot.url,
+            toUrl: toShot.url,
             fromHostname,
             toHostname,
             transitionCount: 0,
+            hasInteraction,
             sessions: new Map()
           });
         }
@@ -179,11 +194,20 @@ export default function PageMixingPage() {
 
   const sortedTransitions = Array.from(transitionMap.values()).sort((a, b) => b.transitionCount - a.transitionCount);
 
-  // Filter transitions based on domain type
-  const filteredTransitions = sortedTransitions.filter((transition) => {
+  // Filter by domain type first (for calculating interaction counts)
+  const domainFilteredTransitions = sortedTransitions.filter((transition) => {
     const isCrossDomain = transition.fromHostname !== transition.toHostname;
-    if (filter === 'cross-domain') return isCrossDomain;
-    if (filter === 'same-domain') return !isCrossDomain;
+    if (domainFilter === 'cross-domain') return isCrossDomain;
+    if (domainFilter === 'same-domain') return !isCrossDomain;
+    return true;
+  });
+
+  // Then filter by both domain and interaction type
+  const filteredTransitions = domainFilteredTransitions.filter((transition) => {
+    // Interaction filter
+    if (interactionFilter === 'with-interaction' && !transition.hasInteraction) return false;
+    if (interactionFilter === 'page-read-only' && transition.hasInteraction) return false;
+
     return true;
   });
 
@@ -208,6 +232,41 @@ export default function PageMixingPage() {
     setExpandedTransitions(newExpanded);
   };
 
+  // Check if a transition is blocked
+  const isTransitionBlocked = (fromHostname: string, toHostname: string): boolean => {
+    return urlBlockingRules.some(([domain1, domain2]) => {
+      const match1 = fromHostname === domain1 && toHostname === domain2;
+      const match2 = fromHostname === domain2 && toHostname === domain1;
+      return match1 || match2;
+    });
+  };
+
+  // Toggle blocking for a transition
+  const handleToggleBlock = async (fromHostname: string, toHostname: string) => {
+    const isBlocked = isTransitionBlocked(fromHostname, toHostname);
+    let newRules: string[][];
+
+    if (isBlocked) {
+      // Remove the rule
+      newRules = urlBlockingRules.filter(([domain1, domain2]) => {
+        const match1 = fromHostname === domain1 && toHostname === domain2;
+        const match2 = fromHostname === domain2 && toHostname === domain1;
+        return !(match1 || match2);
+      });
+    } else {
+      // Add the rule
+      newRules = [...urlBlockingRules, [fromHostname, toHostname]];
+    }
+
+    setUrlBlockingRules(newRules);
+
+    // @ts-ignore - Chrome extension API
+    if (typeof chrome !== 'undefined' && chrome?.storage) {
+      // @ts-ignore - Chrome extension API
+      await chrome.storage.local.set({ urlBlockingRules: newRules });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -226,22 +285,49 @@ export default function PageMixingPage() {
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">View:</span>
-        <Button
-          variant={filter === 'cross-domain' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFilter('cross-domain')}
-        >
-          Cross Domain ({sortedTransitions.filter(t => t.fromHostname !== t.toHostname).length})
-        </Button>
-        <Button
-          variant={filter === 'same-domain' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setFilter('same-domain')}
-        >
-          Same Domain ({sortedTransitions.filter(t => t.fromHostname === t.toHostname).length})
-        </Button>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Domain:</span>
+          <Button
+            variant={domainFilter === 'cross-domain' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDomainFilter('cross-domain')}
+          >
+            Cross Domain ({sortedTransitions.filter(t => t.fromHostname !== t.toHostname).length})
+          </Button>
+          <Button
+            variant={domainFilter === 'same-domain' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDomainFilter('same-domain')}
+          >
+            Same Domain ({sortedTransitions.filter(t => t.fromHostname === t.toHostname).length})
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Interaction:</span>
+          <Button
+            variant={interactionFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setInteractionFilter('all')}
+          >
+            All ({domainFilteredTransitions.length})
+          </Button>
+          <Button
+            variant={interactionFilter === 'with-interaction' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setInteractionFilter('with-interaction')}
+          >
+            With Interaction ({domainFilteredTransitions.filter(t => t.hasInteraction).length})
+          </Button>
+          <Button
+            variant={interactionFilter === 'page-read-only' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setInteractionFilter('page-read-only')}
+          >
+            Page Read Only ({domainFilteredTransitions.filter(t => !t.hasInteraction).length})
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -270,9 +356,9 @@ export default function PageMixingPage() {
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center">
               <LinkIcon className="mb-4 h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mb-2 text-lg font-medium">No {filter === 'cross-domain' ? 'cross-domain' : 'same-domain'} transitions</h3>
+              <h3 className="mb-2 text-lg font-medium">No transitions match the current filters</h3>
               <p className="text-sm text-muted-foreground">
-                Try switching the view to see other transitions
+                Try adjusting the domain or interaction filters
               </p>
             </div>
           </CardContent>
@@ -283,9 +369,10 @@ export default function PageMixingPage() {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-border">
                 <TableHead className="w-[20%]">Domain</TableHead>
-                <TableHead className="w-[30%]">From</TableHead>
-                <TableHead className="w-[30%]">To</TableHead>
-                <TableHead className="w-[15%] text-center">Count</TableHead>
+                <TableHead className="w-[25%]">From</TableHead>
+                <TableHead className="w-[25%]">To</TableHead>
+                <TableHead className="w-[10%] text-center">Count</TableHead>
+                <TableHead className="w-[15%] text-center">Block</TableHead>
                 <TableHead className="w-[5%] text-center"></TableHead>
               </TableRow>
             </TableHeader>
@@ -329,6 +416,23 @@ export default function PageMixingPage() {
                         <Badge variant="outline" className="bg-muted text-foreground border-border">
                           {transition.transitionCount}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-center gap-2">
+                          <Switch
+                            checked={isTransitionBlocked(transition.fromHostname, transition.toHostname)}
+                            onCheckedChange={() => handleToggleBlock(transition.fromHostname, transition.toHostname)}
+                          />
+                          <Badge
+                            variant="outline"
+                            className={isTransitionBlocked(transition.fromHostname, transition.toHostname)
+                              ? 'bg-red-500/10 text-red-500 border-red-500/20 text-xs'
+                              : 'bg-green-500/10 text-green-500 border-green-500/20 text-xs'
+                            }
+                          >
+                            {isTransitionBlocked(transition.fromHostname, transition.toHostname) ? 'BLOCKED' : 'ACTIVE'}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <Button

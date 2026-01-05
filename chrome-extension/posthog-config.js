@@ -6,7 +6,7 @@ let posthogInitialized = false;
 export const initPostHog = () => {
   if (posthogInitialized) return;
 
-    posthog.init('posthogkey', {
+    posthog.init('phc_BwH9To2ytkZmR3NuXoSs8ZLUOGQrhN4MiJFNSOBHWrX', {
     
         api_host: 'https://us.i.posthog.com',
         disable_external_dependency_loading: true,

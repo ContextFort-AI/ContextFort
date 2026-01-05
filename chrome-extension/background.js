@@ -124,6 +124,37 @@ async function endSession(groupId) {
 chrome.tabGroups.onRemoved.addListener(async (groupId) => {
   await endSession(groupId);
 });
+
+// Detect when green checkmark emoji is removed from tab group title (indicates clear chat)
+const groupTitles = new Map(); // Track previous titles: groupId -> title
+
+chrome.tabGroups.onUpdated.addListener(async (group) => {
+  // Check if this group has an active session
+  const session = sessions.get(group.id);
+  if (!session || session.status !== 'active') {
+    groupTitles.set(group.id, group.title); // Update title cache even if no session
+    return;
+  }
+
+  const previousTitle = groupTitles.get(group.id);
+  const currentTitle = group.title;
+
+  // Check if ✅ was removed (clear chat happened)
+  const hadCheckmark = previousTitle && previousTitle.includes('✅');
+  const hasCheckmark = currentTitle && currentTitle.includes('✅');
+
+  if (hadCheckmark && !hasCheckmark) {
+    // Find the active tab in this group and end its session
+    for (const [tabId, activation] of activeAgentTabs.entries()) {
+      if (activation.groupId === group.id) {
+        trackAgentActivation(group.id, tabId, 'stop');
+      }
+    }
+  }
+
+  // Update title cache
+  groupTitles.set(group.id, currentTitle);
+});
 // ============================================================================
 
 
@@ -133,7 +164,9 @@ chrome.tabGroups.onRemoved.addListener(async (groupId) => {
 // ALL ABOUT ACTIVE AGENT TABS
 function trackAgentActivation(groupId, tabId, action) {
   const session = sessions.get(groupId);
-  if (!session) return;
+  if (!session) {
+    return;
+  }
 
   if (action === 'start') {
     activeAgentTabs.set(tabId, {
@@ -223,14 +256,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
   else if (message.type === 'AGENT_STOPPED') {
     if (groupId) {
-      trackAgentActivation(groupId, tab.id, 'stop');
-    }
-  }
-
-  else if (message.type === 'SIDE_PANEL_CLOSED') {
-    // Side panel closed - end active session if one exists for this tab
-    if (groupId && activeAgentTabs.has(tab.id)) {
-      console.log('[ContextFort] Side panel closed, ending active session for tab', tab.id);
       trackAgentActivation(groupId, tab.id, 'stop');
     }
   }
@@ -365,8 +390,11 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
 
     // Check if these two domains are in blocking rules
     for (const [domain1, domain2] of urlBlockingRules) {
-      const match1 = (visitedHostname.includes(domain1) && newHostname.includes(domain2));
-      const match2 = (visitedHostname.includes(domain2) && newHostname.includes(domain1));
+      // More precise hostname matching (exact match or subdomain)
+      const match1 = (visitedHostname === domain1 || visitedHostname.endsWith('.' + domain1)) &&
+                     (newHostname === domain2 || newHostname.endsWith('.' + domain2));
+      const match2 = (visitedHostname === domain2 || visitedHostname.endsWith('.' + domain2)) &&
+                     (newHostname === domain1 || newHostname.endsWith('.' + domain1));
 
       if (match1 || match2) {
         return {
