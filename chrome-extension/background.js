@@ -202,6 +202,14 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     }
   }
 
+  else if (message.type === 'SIDE_PANEL_CLOSED') {
+    // Side panel closed - end active session if one exists for this tab
+    if (groupId && activeAgentTabs.has(tab.id)) {
+      console.log('[ContextFort] Side panel closed, ending active session for tab', tab.id);
+      trackAgentActivation(groupId, tab.id, 'stop');
+    }
+  }
+
   // Content script triggered screenshot capture
   if (message.type === 'SCREENSHOT_TRIGGER') {
     let activation = activeAgentTabs.get(tab.id);
