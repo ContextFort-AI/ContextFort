@@ -1,5 +1,8 @@
 const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
+const webpack = require('webpack');
+require('dotenv').config();
 
 module.exports = {
   mode: 'production',
@@ -28,6 +31,10 @@ module.exports = {
     ]
   },
   plugins: [
+    new webpack.DefinePlugin({
+      'process.env.API_URL': JSON.stringify(process.env.API_URL),
+      'process.env.POSTHOG_KEY': JSON.stringify(process.env.POSTHOG_KEY)
+    }),
     new CopyPlugin({
       patterns: [
         { from: 'manifest.json', to: 'manifest.json' },

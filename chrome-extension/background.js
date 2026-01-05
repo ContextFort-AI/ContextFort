@@ -1,9 +1,15 @@
 // background.js
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
+import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
+
+let currentUser = '';
+chrome.storage.local.get('userData', (result) => {
+  currentUser = result.userData?.email || '';
+});
 
 // Initialize PostHog when extension starts
 initPostHog();
-
+identifyUser(currentUser, {email:currentUser});
 // Track extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -93,7 +99,6 @@ async function getOrCreateSession(groupId, firstTabId, firstTabUrl, firstTabTitl
       try {
         await chrome.tabs.ungroup(tabToRemove.id);
       } catch (err) {
-        console.error('[ContextFort] Failed to ungroup tab', tabToRemove.id, ':', err);
       }
     }
   }
@@ -215,7 +220,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
             try {
               await chrome.tabs.ungroup(tabToRemove.id);
             } catch (err) {
-              console.error('[ContextFort] Failed to ungroup tab', tabToRemove.id, ':', err);
             }
           }
         }
@@ -235,9 +239,9 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   const groupId = tab?.groupId;
 
   if (message.type === 'AGENT_DETECTED') {
+    trackEvent('AGENT_DETECTED', {agentMode: 'started'});
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
       const session = await getOrCreateSession(groupId, tab.id, tab.url, tab.title);
-
       // Check if this URL should be blocked before allowing agent mode to activate
       const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
       if (blockCheck.blocked) {
@@ -255,6 +259,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 
   else if (message.type === 'AGENT_STOPPED') {
+    trackEvent('AGENT_STOPPED', {agentMode: 'stopped'});
     if (groupId) {
       trackAgentActivation(groupId, tab.id, 'stop');
     }
@@ -360,6 +365,41 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
   }
+
+  if (message.action === 'login') {
+        loginWithEmail(message.email)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true; // Keep channel open for async response
+    }
+
+    if (message.action === 'verifyOTP') {
+        verifyOTP(message.email, message.otpCode)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
+    if (message.action === 'resendOTP') {
+        resendOTP(message.email)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
+    if (message.action === 'isLoggedIn') {
+        isLoggedIn()
+            .then(result => sendResponse({ isLoggedIn: result }))
+            .catch(error => sendResponse({ isLoggedIn: false }));
+        return true;
+    }
+
+    if (message.action === 'logout') {
+        logout()
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
 });
 // ============================================================================
 
@@ -474,7 +514,6 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
   // Tab is active, capture screenshot
   chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
     if (chrome.runtime.lastError) {
-      console.log('[ContextFort] Screenshot failed during page_read (likely redirect), skipping entry:', chrome.runtime.lastError.message);
       return;  // Don't save page_read if screenshot fails
     }
 
@@ -504,7 +543,6 @@ function sendStopAgentMessage(tabId) {
     });
   } catch (e) {
     // Claude extension might not be available
-    console.log('[URL Blocking] Could not send STOP_AGENT to Claude:', e.message);
   }
 }
 

@@ -29,7 +29,6 @@ let blockedElements = [];
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.blockedActions) {
     blockedElements = changes.blockedActions.newValue || [];
-    console.log('[ContextFort] Blocked actions updated:', blockedElements.length, 'actions');
   }
 });
 
@@ -326,7 +325,6 @@ function onBlockedElementClick(e) {
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    console.log("[ContextFort] Click blocked on:", e.target);
 
     // Visual feedback
     showBlockedFeedback(e.target);
@@ -340,12 +338,123 @@ function onBlockedElementInput(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-
-    console.log("[ContextFort] Input blocked on:", e.target);
-
     // Visual feedback
     showBlockedFeedback(e.target);
 
     return false;
   }
+}
+
+
+// ============================================================================
+// USER AUTH FUNCTIONS (from auth.js)
+
+function authSendMessage(action, data = {}) {
+    return new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action, ...data }, resolve);
+    });
+}
+
+
+async function handleEmailSubmit() {
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        showStatus('Please enter your email', 'error');
+        return;
+    }
+
+    if (!isValidEmail(email)) {
+        showStatus('Please enter a valid email', 'error');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+
+    const result = await authSendMessage('login', { email });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Continue';
+
+    if (result.success) {
+        if (result.requiresOTP) {
+            showOTPSection();
+            showStatus(result.message, 'success');
+        } else {
+            showDashboard();
+            showStatus('Login successful!', 'success');
+        }
+    } else {
+        showStatus(result.error, 'error');
+    }
+}
+
+async function handleOTPVerify() {
+    const result = await chrome.storage.local.get('userEmail');
+    const email = result.userEmail;
+    const otpCode = otpInput.value.trim();
+
+    if (!otpCode || otpCode.length !== 6) {
+        showStatus('Please enter a valid 6-digit OTP', 'error');
+        return;
+    }
+
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying...';
+
+    const verifyResult = await authSendMessage('verifyOTP', { email, otpCode });
+
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Verify OTP';
+
+    if (verifyResult.success) {
+        showDashboard();
+        showStatus('Email verified successfully!', 'success');
+    } else {
+        showStatus(verifyResult.error, 'error');
+    }
+}
+
+async function handleResendOTP() {
+    const result = await chrome.storage.local.get('userEmail');
+    const email = result.userEmail;
+
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending...';
+
+    const resendResult = await authSendMessage('resendOTP', { email });
+
+    resendBtn.disabled = false;
+    resendBtn.textContent = 'Resend OTP';
+
+    if (resendResult.success) {
+        showStatus(resendResult.message, 'success');
+    } else {
+        showStatus(resendResult.error, 'error');
+    }
+}
+
+async function handleLogout() {
+    const result = await authSendMessage('logout');
+    
+    if (result.success) {
+        showEmailSection();
+        showStatus('Logged out successfully', 'success');
+    }
+}
+
+function showEmailSection() {
+}
+
+function showOTPSection() {
+}
+
+function showDashboard() {
+
+}
+
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
