@@ -1,6 +1,6 @@
 // auth.js - Shared authentication functions
 
-const API_BASE_URL = 'YOUR_API_URL'; // Define your API URL
+const API_BASE_URL = process.env.API_URL; // Define your API URL
 
 // Storage helpers for Chrome Extension
 async function saveToStorage(key, value) {
@@ -208,7 +208,21 @@ async function logout() {
     }
 }
 
-// Export for use in other scripts
+// ES6 exports for webpack
+export {
+    loginWithEmail,
+    verifyOTP,
+    resendOTP,
+    getCurrentUser,
+    isLoggedIn,
+    logout,
+    STORAGE_KEYS_AUTH,
+    saveToStorage,
+    getFromStorage,
+    removeFromStorage
+};
+
+// Export for use in other scripts (CommonJS compatibility)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         loginWithEmail,
@@ -217,6 +231,9 @@ if (typeof module !== 'undefined' && module.exports) {
         getCurrentUser,
         isLoggedIn,
         logout,
-        STORAGE_KEYS_AUTH
+        STORAGE_KEYS_AUTH,
+        saveToStorage,
+        getFromStorage,
+        removeFromStorage
     };
 }
