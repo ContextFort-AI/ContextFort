@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Build script to update Chrome extension with latest React UI changes
+# Run this script whenever you make UI changes in the React app
+
+set -e
+
+echo "📦 Building Next.js app for Chrome extension..."
+
+# Build the Next.js app with production config (relative paths)
+NODE_ENV=production npm run build
+
+echo "✅ Build complete!"
+
+# Extract inline scripts for Chrome extension CSP compliance
+echo "🔧 Extracting inline scripts..."
+node extract-inline-scripts.js
+
+# Copy to chrome extension (copy out/dashboard contents to avoid double nesting)
+echo "📋 Copying build to chrome-extension/dashboard..."
+if [ -d "../chrome-extension/dashboard" ]; then
+  mv ../chrome-extension/dashboard ../chrome-extension/dashboard.old-$(date +%Y%m%d-%H%M%S)
+fi
+# Copy _next and other root files
+mkdir -p ../chrome-extension/dashboard
+cp -r out/_next ../chrome-extension/dashboard/
+cp out/*.html ../chrome-extension/dashboard/ 2>/dev/null || true
+cp out/*.ico ../chrome-extension/dashboard/ 2>/dev/null || true
+cp out/*.js ../chrome-extension/dashboard/ 2>/dev/null || true
+cp out/*.json ../chrome-extension/dashboard/ 2>/dev/null || true
+# Copy dashboard app contents (flatten one level)
+cp -r out/dashboard/* ../chrome-extension/dashboard/
+
+echo "✅ Chrome extension dashboard updated!"
+echo ""
+echo "🔄 Next steps:"
+echo "1. Go to chrome://extensions/"
+echo "2. Click 'Reload' button on the Claude Agent Detector extension"
+echo "3. Open the extension dashboard to see your changes"
+echo ""
+echo "💡 Tip: For faster iteration, use 'npm run dev' and develop at localhost:3004"
+echo "   Only run this script when you want to test in the actual extension"

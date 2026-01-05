@@ -13,7 +13,7 @@ function VisibilityPageContent() {
   const targetSessionId = searchParams.get('session');
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<Record<number, number>>({});
   const hasAutoExpandedRef = useRef(false);
@@ -25,8 +25,8 @@ function VisibilityPageContent() {
   }, []);
 
   // Load screenshots and sessions from Chrome storage
-  const loadScreenshots = async () => {
-    setIsLoading(true);
+  const loadScreenshots = async (showLoading = false) => {
+    if (showLoading) setIsLoading(true);
     try {
       // @ts-ignore - Chrome extension API
       if (typeof chrome !== 'undefined' && chrome?.storage) {
@@ -72,7 +72,7 @@ function VisibilityPageContent() {
     } catch (error) {
       console.error('Error loading screenshots:', error);
     }
-    setIsLoading(false);
+    if (showLoading) setIsLoading(false);
   };
 
   // Reset auto-expand when target session changes
@@ -82,9 +82,6 @@ function VisibilityPageContent() {
 
   useEffect(() => {
     loadScreenshots();
-    // Refresh every 3 seconds
-    const interval = setInterval(loadScreenshots, 3000);
-    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -126,7 +123,7 @@ function VisibilityPageContent() {
   };
 
   const handleRefetch = () => {
-    loadScreenshots();
+    loadScreenshots(true);
   };
 
   // Transform data for TanStack Table

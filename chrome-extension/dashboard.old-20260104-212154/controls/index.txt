@@ -1,0 +1,108 @@
+1:"$Sreact.fragment"
+9:I[46982,[],"default"]
+:HL["../_next/static/chunks/4e20891f2fd03463.css","style"]
+:HL["../_next/static/chunks/fa4d84d1cb8b77a1.css","style"]
+:HL["../_next/static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+2:Tc7e,
+    (function () {
+      try {
+        var root = document.documentElement;
+        var PERSISTENCE = {"theme_mode":"client-cookie","theme_preset":"client-cookie","content_layout":"client-cookie","navbar_style":"client-cookie","sidebar_variant":"client-cookie","sidebar_collapsible":"client-cookie"};
+        var DEFAULTS = {"theme_mode":"light","theme_preset":"default","content_layout":"centered","navbar_style":"sticky","sidebar_variant":"inset","sidebar_collapsible":"icon"};
+
+        function readCookie(name) {
+          var match = document.cookie.split("; ").find(function(c) {
+            return c.indexOf(name + "=") === 0;
+          });
+          return match ? match.split("=")[1] : null;
+        }
+
+        function readLocal(name) {
+          try {
+            return window.localStorage.getItem(name);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function readPreference(key, fallback) {
+          var mode = PERSISTENCE[key];
+          var value = null;
+
+          if (mode === "localStorage") {
+            value = readLocal(key);
+          }
+
+          if (!value && (mode === "client-cookie" || mode === "server-cookie")) {
+            value = readCookie(key);
+          }
+
+          if (!value || typeof value !== "string") {
+            return fallback;
+          }
+
+          return value;
+        }
+
+        var rawMode = readPreference("theme_mode", DEFAULTS.theme_mode);
+        var rawPreset = readPreference("theme_preset", DEFAULTS.theme_preset);
+        var rawContentLayout = readPreference("content_layout", DEFAULTS.content_layout);
+        var rawNavbarStyle = readPreference("navbar_style", DEFAULTS.navbar_style);
+        var rawSidebarVariant = readPreference("sidebar_variant", DEFAULTS.sidebar_variant);
+        var rawSidebarCollapsible = readPreference("sidebar_collapsible", DEFAULTS.sidebar_collapsible);
+
+        var mode = (rawMode === "dark" || rawMode === "light") ? rawMode : "light";
+        var preset = rawPreset || DEFAULTS.theme_preset;
+        var contentLayout = rawContentLayout || DEFAULTS.content_layout;
+        var navbarStyle = rawNavbarStyle || DEFAULTS.navbar_style;
+        var sidebarVariant = rawSidebarVariant || DEFAULTS.sidebar_variant;
+        var sidebarCollapsible = rawSidebarCollapsible || DEFAULTS.sidebar_collapsible;
+
+        root.classList.remove("light", "dark");
+        root.classList.add(mode);
+        root.setAttribute("data-theme-preset", preset);
+        root.setAttribute("data-content-layout", contentLayout);
+        root.setAttribute("data-navbar-style", navbarStyle);
+        root.setAttribute("data-sidebar-variant", sidebarVariant);
+        root.setAttribute("data-sidebar-collapsible", sidebarCollapsible);
+
+        root.style.colorScheme = mode === "dark" ? "dark" : "light";
+
+        var prefs = {
+          themeMode: mode,
+          themePreset: preset,
+          contentLayout: contentLayout,
+          navbarStyle: navbarStyle,
+          sidebarVariant: sidebarVariant,
+          sidebarCollapsible: sidebarCollapsible,
+        };
+
+        window.__PREFERENCES__ = prefs;
+      } catch (e) {
+        console.warn("ThemeBootScript error:", e);
+      }
+    })();
+  0:{"P":null,"b":"ROpuEFOmSeWBpTK7DV95o","c":["","dashboard","controls",""],"q":"","i":false,"f":[[["",{"children":["(main)",{"children":["dashboard",{"children":["controls",{"children":["__PAGE__",{}]}]}]}]},"$undefined","$undefined",true],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"../_next/static/chunks/4e20891f2fd03463.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"../_next/static/chunks/fa4d84d1cb8b77a1.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"../_next/static/chunks/95c668f29306b018.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","className":"light","data-theme-preset":"default","data-content-layout":"centered","data-navbar-style":"sticky","data-sidebar-variant":"inset","data-sidebar-collapsible":"icon","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]}],"$L3"]}]]}],{"children":["$L4",{"children":["$L5",{"children":["$L6",{"children":["$L7",{},null,false,false]},null,false,false]},null,false,false]},null,false,false]},null,false,false],"$L8",false]],"m":"$undefined","G":["$9",[]],"S":true}
+a:I[67883,["../_next/static/chunks/95c668f29306b018.js"],"PreferencesStoreProvider"]
+b:I[77011,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"default"]
+c:I[27276,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"default"]
+d:I[83518,["../_next/static/chunks/95c668f29306b018.js","../_next/static/chunks/ab404cfb12043028.js","../_next/static/chunks/6af2dc380af45f8c.js"],"default"]
+e:I[41238,["../_next/static/chunks/95c668f29306b018.js"],"Toaster"]
+f:I[4122,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"ClientSegmentRoot"]
+10:I[87393,["../_next/static/chunks/95c668f29306b018.js","../_next/static/chunks/7a72e91618e4df82.js","../_next/static/chunks/6af2dc380af45f8c.js","../_next/static/chunks/bd5d1ff94ddb52ba.js","../_next/static/chunks/601d37d28f4e1f64.js","../_next/static/chunks/36d8d532179b96d5.js"],"default"]
+13:I[92267,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"OutletBoundary"]
+14:"$Sreact.suspense"
+16:I[92267,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"ViewportBoundary"]
+18:I[92267,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"MetadataBoundary"]
+3:["$","body",null,{"className":"inter_5972bc34-module__OU16Qa__className min-h-screen antialiased","children":[false,["$","$La",null,{"themeMode":"light","themePreset":"default","contentLayout":"centered","navbarStyle":"sticky","children":[["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}],["$","$Le",null,{}]]}]]}]
+4:["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+5:["$","$1","c",{"children":[[["$","script","script-0",{"src":"../_next/static/chunks/7a72e91618e4df82.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"../_next/static/chunks/6af2dc380af45f8c.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"../_next/static/chunks/bd5d1ff94ddb52ba.js","async":true,"nonce":"$undefined"}],["$","script","script-3",{"src":"../_next/static/chunks/601d37d28f4e1f64.js","async":true,"nonce":"$undefined"}],["$","script","script-4",{"src":"../_next/static/chunks/36d8d532179b96d5.js","async":true,"nonce":"$undefined"}]],["$","$Lf",null,{"Component":"$10","slots":{"children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]},"serverProvidedParams":{"params":{},"promises":["$@11"]}}]]}]
+6:["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+7:["$","$1","c",{"children":["$L12",null,["$","$L13",null,{"children":["$","$14",null,{"name":"Next.MetadataOutlet","children":"$@15"}]}]]}]
+8:["$","$1","h",{"children":[null,["$","$L16",null,{"children":"$L17"}],["$","div",null,{"hidden":true,"children":["$","$L18",null,{"children":["$","$14",null,{"name":"Next.Metadata","children":"$L19"}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}]
+12:E{"digest":"NEXT_REDIRECT;replace;/dashboard/controls/page-mixing;307;"}
+11:"$5:props:children:1:props:serverProvidedParams:params"
+17:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+1a:I[34481,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"IconMark"]
+15:null
+19:[["$","title","0",{"children":"ContextFort"}],["$","meta","1",{"name":"description","content":"ContextFort provides real-time monitoring of POST requests and click detection to protect against data exfiltration and automated threats. Built with Next.js, Tailwind CSS, and shadcn/ui."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.0b3bf435.ico","sizes":"256x256","type":"image/x-icon"}],["$","$L1a","3",{}]]
