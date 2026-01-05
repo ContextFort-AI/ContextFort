@@ -72,7 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-10">
-              <a href="/dashboard/default/index.html">
+              <a href="/dashboard">
                 <Command className="h-6 w-6" />
                 <span className="font-bold text-xl">{APP_CONFIG.name}</span>
               </a>

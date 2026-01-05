@@ -15,19 +15,24 @@ let agentModeActive = false;
 let detectionPending = false;
 let stopPending = false;
 
-// On load, check if this tab is in an agent-active group
+let blockedElements = [];
+
+// Load blocked actions from storage on initialization
 (async () => {
-  console.log('[ContextFort] Checking if tab is in agent group...');
-  const response = await chrome.runtime.sendMessage({ type: 'CHECK_IF_AGENT_GROUP' });
-  console.log('[ContextFort] Response:', response);
-  if (response && response.isAgentGroup) {
-    console.log('[ContextFort] Tab is in agent group - starting monitoring');
-    startListening();
-  } else {
-    console.log('[ContextFort] Tab is NOT in agent group');
+  const result = await chrome.storage.local.get(['blockedActions']);
+  if (result.blockedActions) {
+    blockedElements = result.blockedActions;
   }
 })();
-let blockedElements = [];
+
+// Listen for storage changes to update blockedElements when dashboard changes
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.blockedActions) {
+    blockedElements = changes.blockedActions.newValue || [];
+    console.log('[ContextFort] Blocked actions updated:', blockedElements.length, 'actions');
+  }
+});
+
 
 function captureElement(target) {
   if (!target) return null;
@@ -48,7 +53,10 @@ function onClickCapture(e) {
       action: 'click',                                  // Type of action
       eventType: 'click',                               // Category: click
       element: captureElement(e.target),                // Clicked element metadata
-      coordinates: { x: e.clientX, y: e.clientY },      // Click position on screen
+      coordinates: {
+        x: e.clientX * window.devicePixelRatio,         // Convert CSS pixels to physical pixels
+        y: e.clientY * window.devicePixelRatio
+      },
       url: window.location.href,                        // Current page URL
       title: document.title                             // Current page title
     });
@@ -62,7 +70,10 @@ function onDblClickCapture(e) {
       action: 'dblclick',
       eventType: 'click',
       element: captureElement(e.target),
-      coordinates: { x: e.clientX, y: e.clientY },
+      coordinates: {
+        x: e.clientX * window.devicePixelRatio,         // Convert CSS pixels to physical pixels
+        y: e.clientY * window.devicePixelRatio
+      },
       url: window.location.href,
       title: document.title
     });
@@ -76,7 +87,10 @@ function onContextMenuCapture(e) {
       action: 'rightclick',
       eventType: 'click',
       element: captureElement(e.target),
-      coordinates: { x: e.clientX, y: e.clientY },
+      coordinates: {
+        x: e.clientX * window.devicePixelRatio,         // Convert CSS pixels to physical pixels
+        y: e.clientY * window.devicePixelRatio
+      },
       url: window.location.href,
       title: document.title
     });
@@ -113,31 +127,37 @@ function onScrollCapture(e) {
 
 function startListening() {
   if (agentModeActive) {
-    console.log('[ContextFort] Already listening, skipping');
     return;
   }
-  console.log('[ContextFort] Starting event listeners');
   agentModeActive = true;
+  // Add blocking listeners FIRST (before capture listeners)
+  document.addEventListener('click', onBlockedElementClick, true);
+  document.addEventListener('input', onBlockedElementInput, true);
+  document.addEventListener('change', onBlockedElementInput, true);
+  // Then add capture listeners
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
   document.addEventListener('contextmenu', onContextMenuCapture, true);
+  document.addEventListener('input', onInputCapture, true);
   document.addEventListener('change', onInputCapture, true);
   document.addEventListener('scroll', onScrollCapture, true);
-  document.addEventListener('click', onBlockedElementClick, true);
 }
 
 function stopListening() {
   if (!agentModeActive) {
-    console.log('[ContextFort] Already stopped, skipping');
     return;
   }
-  console.log('[ContextFort] Stopping event listeners');
   agentModeActive = false;
-  document.removeEventListener('click', onClickCapture, true);
-  document.removeEventListener('dblclick', onDblClickCapture, true);
-  document.removeEventListener('contextmenu', onContextMenuCapture, true);
-  document.removeEventListener('change', onInputCapture, true);
+  // Remove in reverse order
   document.removeEventListener('scroll', onScrollCapture, true);
+  document.removeEventListener('change', onInputCapture, true);
+  document.removeEventListener('input', onInputCapture, true);
+  document.removeEventListener('contextmenu', onContextMenuCapture, true);
+  document.removeEventListener('dblclick', onDblClickCapture, true);
+  document.removeEventListener('click', onClickCapture, true);
+  document.removeEventListener('change', onBlockedElementInput, true);
+  document.removeEventListener('input', onBlockedElementInput, true);
+  document.removeEventListener('click', onBlockedElementClick, true);
 }
 
 const observer = new MutationObserver((mutations) => {
@@ -145,8 +165,7 @@ const observer = new MutationObserver((mutations) => {
     for (const node of mutation.addedNodes) {
       if (node.nodeType === Node.ELEMENT_NODE) {
         if (node.id === 'claude-agent-glow-border' ||
-            node.id === 'claude-agent-stop-button' ||
-            node.id === 'claude-agent-animation-styles') {
+            node.id === 'claude-agent-stop-button') {
 
           if (!detectionPending && !agentModeActive) {
             detectionPending = true;
@@ -154,10 +173,9 @@ const observer = new MutationObserver((mutations) => {
 
             safeSendMessage({
               type: 'AGENT_DETECTED',
-              elementId: node.id,                         // Which element was detected
               url: window.location.href
             });
-            startListening();                             // Begin capturing events
+            startListening();
           }
         }
       }
@@ -167,15 +185,14 @@ const observer = new MutationObserver((mutations) => {
       if (node.nodeType === Node.ELEMENT_NODE) {
         if (node.id === 'claude-agent-glow-border' ||
             node.id === 'claude-agent-stop-button') {
-          if (!stopPending && agentModeActive) {
+          if (!stopPending && agentModeActive && !document.hidden) {
             stopPending = true;
             setTimeout(() => { stopPending = false; }, 100);
 
             safeSendMessage({
-              type: 'AGENT_STOPPED',
-              elementId: node.id
+              type: 'AGENT_STOPPED'
             });
-            stopListening();                              // Mark agent mode as stopped
+            stopListening();
           }
         }
       }
@@ -193,80 +210,142 @@ if (document.getElementById('claude-agent-glow-border')) {
   startListening();
 }
 
-// Listen for broadcast messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[ContextFort] Received message:', message.type);
-  if (message.type === 'START_MONITORING') {
-    console.log('[ContextFort] Received START_MONITORING - starting listeners');
-    startListening();
-  } else if (message.type === 'STOP_MONITORING') {
-    console.log('[ContextFort] Received STOP_MONITORING - stopping listeners');
-    stopListening();
+// When tab becomes visible, check if glow is still present after delay
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && agentModeActive) {
+    // Tab became visible and we think agent is active
+    // Wait 500ms to give Claude time to re-show the glow (they use 300ms delay)
+    setTimeout(() => {
+      if (!document.getElementById('claude-agent-glow-border') && agentModeActive) {
+        // Glow didn't reappear - agent stopped while we were away
+        safeSendMessage({ type: 'AGENT_STOPPED' });
+        stopListening();
+      } else {
+      }
+    }, 500);
   }
 });
 
-
 // ============================================================================
-
+// BLOCKED ELEMENT CLICK PREVENTION
 
 function isElementBlocked(element, metadata) {
   const tag = element.tagName;
   const id = element.id || null;
   const className = element.className || null;
   const text = element.textContent?.trim() || null;
-  const type = element.type || null;
-  const name = element.name || null;
-  
+  const elementType = element.type || null;
+  const elementName = element.name || null;
+
   return (
-    metadata.tag === tag &&
-    metadata.id === id &&
-    metadata.className === className &&
-    (metadata.text === null || metadata.text === text) &&
-    metadata.type === type &&
-    metadata.name === name
+    metadata.elementTag === tag &&
+    metadata.elementId === id &&
+    metadata.elementClass === className &&
+    (metadata.elementText === null || metadata.elementText === text) &&
+    metadata.elementType === elementType &&
+    metadata.elementName === elementName
   );
 }
 
-
-
 // Check if click should be blocked
 function shouldBlockClick(element) {
+  const currentUrl = window.location.href;
+  const currentTitle = document.title;
+
   // Check element and all its parents
   let currentElement = element;
   while (currentElement && currentElement !== document.body) {
     for (const blockedMeta of blockedElements) {
+      // Check if actionType is click
+      if (blockedMeta.actionType !== 'click') {
+        continue;
+      }
+
+      // Check if URL and title match
+      if (blockedMeta.url && blockedMeta.url !== currentUrl) {
+        continue;
+      }
+      if (blockedMeta.title && blockedMeta.title !== currentTitle) {
+        continue;
+      }
+
       if (isElementBlocked(currentElement, blockedMeta)) {
         return true;
       }
     }
     currentElement = currentElement.parentElement;
   }
-  
+
   return false;
 }
 
+// Check if input should be blocked
+function shouldBlockInput(element) {
+  const currentUrl = window.location.href;
+  const currentTitle = document.title;
+
+  // Check element and all its parents
+  let currentElement = element;
+  while (currentElement && currentElement !== document.body) {
+    for (const blockedMeta of blockedElements) {
+      // Check if actionType is input or change
+      if (blockedMeta.actionType !== 'input' && blockedMeta.actionType !== 'change') {
+        continue;
+      }
+
+      // Check if URL and title match
+      if (blockedMeta.url && blockedMeta.url !== currentUrl) {
+        continue;
+      }
+      if (blockedMeta.title && blockedMeta.title !== currentTitle) {
+        continue;
+      }
+
+      if (isElementBlocked(currentElement, blockedMeta)) {
+        return true;
+      }
+    }
+    currentElement = currentElement.parentElement;
+  }
+
+  return false;
+}
 
 function showBlockedFeedback(element) {
   const originalBorder = element.style.border;
   element.style.border = "2px solid red";
-  
+
   setTimeout(() => {
     element.style.border = originalBorder;
   }, 500);
 }
-
 
 function onBlockedElementClick(e) {
   if (shouldBlockClick(e.target)) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    
-    console.log("Click blocked on:", e.target);
-    
-    // Optional: Visual feedback
+
+    console.log("[ContextFort] Click blocked on:", e.target);
+
+    // Visual feedback
     showBlockedFeedback(e.target);
-    
+
+    return false;
+  }
+}
+
+function onBlockedElementInput(e) {
+  if (shouldBlockInput(e.target)) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    console.log("[ContextFort] Input blocked on:", e.target);
+
+    // Visual feedback
+    showBlockedFeedback(e.target);
+
     return false;
   }
 }

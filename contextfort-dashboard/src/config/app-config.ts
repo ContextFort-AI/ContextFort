@@ -7,7 +7,7 @@ export const APP_CONFIG = {
   version: packageJson.version,
   copyright: `© ${currentYear}, ContextFort.`,
   meta: {
-    title: "ContextFort - Real-time Incident Dashboard",
+    title: "ContextFort",
     description:
       "ContextFort provides real-time monitoring of POST requests and click detection to protect against data exfiltration and automated threats. Built with Next.js, Tailwind CSS, and shadcn/ui.",
   },

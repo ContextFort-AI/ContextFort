@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
@@ -129,16 +129,38 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    columnResizeMode: 'onChange',
+    defaultColumn: {
+      minSize: 50,
+      maxSize: 500,
+    },
   });
+
+  // Store image dimensions by screenshot ID
+  const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
+
+  const handleImageLoad = (screenshotId: number, e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setImageDimensions(prev => ({
+      ...prev,
+      [screenshotId]: {
+        width: img.naturalWidth,
+        height: img.naturalHeight
+      }
+    }));
+  };
 
   return (
     <div className="rounded-md border border-border">
-      <Table>
+      <Table style={{ tableLayout: 'fixed', width: '100%' }}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-border">
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead
+                  key={header.id}
+                  style={{ width: `${header.getSize()}%`, minWidth: `${header.getSize()}%`, maxWidth: `${header.getSize()}%` }}
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -158,11 +180,15 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                   {/* Main Row */}
                   <TableRow
                     data-state={row.getIsSelected() && 'selected'}
+                    data-session-id={sessionRow.session.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors border-b border-border"
                     onClick={() => onRowClick(sessionRow.session.id)}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        style={{ width: `${cell.column.getSize()}%`, minWidth: `${cell.column.getSize()}%`, maxWidth: `${cell.column.getSize()}%` }}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -193,20 +219,72 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
 
                           {/* Screenshots Grid */}
                           <div className="grid grid-cols-4 gap-4">
-                            {sessionRow.screenshots.map((screenshot) => {
+                            {sessionRow.screenshots.map((screenshot, index) => {
                               const actionType = screenshot.eventDetails?.actionType || screenshot.reason;
+                              const coordinates = screenshot.eventDetails?.coordinates;
+                              const element = screenshot.eventDetails?.element;
+                              const inputValue = screenshot.eventDetails?.inputValue;
+
+                              // Get display screenshot - for click actions with no dataUrl, use previous screenshot
+                              const getDisplayScreenshot = () => {
+                                // If this is a click action with no screenshot, use previous one
+                                if (actionType === 'click' && !screenshot.dataUrl) {
+                                  // Look backwards for previous screenshot with dataUrl
+                                  for (let i = index - 1; i >= 0; i--) {
+                                    if (sessionRow.screenshots[i].dataUrl) {
+                                      return sessionRow.screenshots[i].dataUrl;
+                                    }
+                                  }
+                                }
+                                return screenshot.dataUrl;
+                              };
+
+                              const displayDataUrl = getDisplayScreenshot();
+
+                              // Generate action description
+                              const getActionDescription = () => {
+                                if (inputValue) {
+                                  return `Input: "${inputValue}"`;
+                                }
+                                if (element) {
+                                  const parts = [];
+                                  if (element.tag) parts.push(element.tag);
+                                  if (element.id) parts.push(`#${element.id}`);
+                                  else if (element.className) parts.push(`.${element.className.split(' ')[0]}`);
+                                  if (element.text) parts.push(`"${element.text}"`);
+                                  return parts.length > 0 ? `Clicked: ${parts.join(' ')}` : null;
+                                }
+                                return null;
+                              };
+
+                              const actionDescription = getActionDescription();
+
                               return (
                                 <Dialog key={screenshot.id}>
                                   <DialogTrigger asChild>
-                                    <div className="bg-card rounded-lg border border-border overflow-hidden hover:border-muted-foreground transition-colors cursor-pointer">
-                                      <div className="relative w-full h-[120px] bg-muted">
+                                    <div className="bg-card rounded-lg border border-border overflow-hidden hover:border-muted-foreground transition-colors cursor-pointer flex flex-col h-full">
+                                      <div className="relative w-full h-[120px] bg-muted flex-shrink-0">
                                         <img
-                                          src={screenshot.dataUrl}
+                                          src={displayDataUrl}
                                           alt={`Screenshot ${screenshot.id}`}
                                           className="w-full h-full object-cover"
+                                          onLoad={(e) => handleImageLoad(screenshot.id, e)}
                                         />
+                                        {/* Red box overlay for click coordinates - only show for action, not result */}
+                                        {coordinates && imageDimensions[screenshot.id] && !actionType.includes('_result') && (
+                                          <div
+                                            className="absolute border-2 border-red-500 bg-red-500/20"
+                                            style={{
+                                              left: `${(coordinates.x / imageDimensions[screenshot.id].width) * 100}%`,
+                                              top: `${(coordinates.y / imageDimensions[screenshot.id].height) * 100}%`,
+                                              width: '20px',
+                                              height: '20px',
+                                              transform: 'translate(-50%, -50%)'
+                                            }}
+                                          />
+                                        )}
                                       </div>
-                                      <div className="p-3 space-y-2">
+                                      <div className="p-3 space-y-2 flex-1 flex flex-col">
                                         <div className="flex items-center justify-between gap-2">
                                           <div className="text-xs text-muted-foreground">
                                             {formatDate(screenshot.timestamp)} {formatTime(screenshot.timestamp)}
@@ -226,15 +304,45 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                             {screenshot.url}
                                           </div>
                                         </div>
+                                        {/* Action description - fixed height slot */}
+                                        <div className="h-[28px] flex items-center">
+                                          {actionDescription && (
+                                            <div className="text-xs text-foreground bg-muted/50 px-2 py-1 rounded border border-border truncate w-full">
+                                              {actionDescription}
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </DialogTrigger>
-                                  <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-                                    <img
-                                      src={screenshot.dataUrl}
-                                      alt={`Screenshot ${screenshot.id}`}
-                                      className="w-full h-full object-contain"
-                                    />
+                                  <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
+                                    <div className="relative">
+                                      <img
+                                        src={displayDataUrl}
+                                        alt={`Screenshot ${screenshot.id}`}
+                                        className="w-full h-full object-contain"
+                                        onLoad={(e) => handleImageLoad(screenshot.id, e)}
+                                      />
+                                      {/* Red box overlay for full-size view - only show for action, not result */}
+                                      {coordinates && imageDimensions[screenshot.id] && !actionType.includes('_result') && (
+                                        <div
+                                          className="absolute border-4 border-red-500 bg-red-500/30"
+                                          style={{
+                                            left: `${(coordinates.x / imageDimensions[screenshot.id].width) * 100}%`,
+                                            top: `${(coordinates.y / imageDimensions[screenshot.id].height) * 100}%`,
+                                            width: '40px',
+                                            height: '40px',
+                                            transform: 'translate(-50%, -50%)'
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+                                    {/* Action description in dialog */}
+                                    {actionDescription && (
+                                      <div className="text-sm text-foreground bg-muted p-3 rounded border border-border mt-2">
+                                        {actionDescription}
+                                      </div>
+                                    )}
                                   </DialogContent>
                                 </Dialog>
                               );
