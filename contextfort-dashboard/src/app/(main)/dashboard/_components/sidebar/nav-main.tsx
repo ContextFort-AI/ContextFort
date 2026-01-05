@@ -35,6 +35,10 @@ const IsComingSoon = () => (
 
 // Helper to convert Next.js route to static file path
 const toStaticPath = (url: string): string => {
+  // In development mode, use Next.js routes without .html
+  if (process.env.NODE_ENV === 'development') {
+    return url;
+  }
   // For Chrome extension static export, append /index.html to paths
   if (url.endsWith('/')) {
     return `${url}index.html`;
@@ -156,7 +160,11 @@ export function NavMain({ items }: NavMainProps) {
     if (subItems?.length) {
       return subItems.some((sub) => path.startsWith(sub.url));
     }
-    return path === url;
+    // Exact match for /dashboard (home), startsWith for others
+    if (url === "/dashboard") {
+      return path === "/dashboard";
+    }
+    return path.startsWith(url);
   };
 
   const isSubmenuOpen = (subItems?: NavMainItem["subItems"]) => {

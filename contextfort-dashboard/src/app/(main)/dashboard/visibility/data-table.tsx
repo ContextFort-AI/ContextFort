@@ -129,16 +129,24 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    columnResizeMode: 'onChange',
+    defaultColumn: {
+      minSize: 50,
+      maxSize: 500,
+    },
   });
 
   return (
     <div className="rounded-md border border-border">
-      <Table>
+      <Table style={{ tableLayout: 'fixed', width: '100%' }}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-border">
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead
+                  key={header.id}
+                  style={{ width: `${header.getSize()}%`, minWidth: `${header.getSize()}%`, maxWidth: `${header.getSize()}%` }}
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -162,7 +170,10 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                     onClick={() => onRowClick(sessionRow.session.id)}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        style={{ width: `${cell.column.getSize()}%`, minWidth: `${cell.column.getSize()}%`, maxWidth: `${cell.column.getSize()}%` }}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -195,18 +206,53 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                           <div className="grid grid-cols-4 gap-4">
                             {sessionRow.screenshots.map((screenshot) => {
                               const actionType = screenshot.eventDetails?.actionType || screenshot.reason;
+                              const coordinates = screenshot.eventDetails?.coordinates;
+                              const element = screenshot.eventDetails?.element;
+                              const inputValue = screenshot.eventDetails?.inputValue;
+
+                              // Generate action description
+                              const getActionDescription = () => {
+                                if (inputValue) {
+                                  return `Input: "${inputValue}"`;
+                                }
+                                if (element) {
+                                  const parts = [];
+                                  if (element.tag) parts.push(element.tag);
+                                  if (element.id) parts.push(`#${element.id}`);
+                                  else if (element.className) parts.push(`.${element.className.split(' ')[0]}`);
+                                  if (element.text) parts.push(`"${element.text}"`);
+                                  return parts.length > 0 ? `Clicked: ${parts.join(' ')}` : null;
+                                }
+                                return null;
+                              };
+
+                              const actionDescription = getActionDescription();
+
                               return (
                                 <Dialog key={screenshot.id}>
                                   <DialogTrigger asChild>
-                                    <div className="bg-card rounded-lg border border-border overflow-hidden hover:border-muted-foreground transition-colors cursor-pointer">
-                                      <div className="relative w-full h-[120px] bg-muted">
+                                    <div className="bg-card rounded-lg border border-border overflow-hidden hover:border-muted-foreground transition-colors cursor-pointer flex flex-col h-full">
+                                      <div className="relative w-full h-[120px] bg-muted flex-shrink-0">
                                         <img
                                           src={screenshot.dataUrl}
                                           alt={`Screenshot ${screenshot.id}`}
                                           className="w-full h-full object-cover"
                                         />
+                                        {/* Red box overlay for click coordinates */}
+                                        {coordinates && (
+                                          <div
+                                            className="absolute border-2 border-red-500 bg-red-500/20"
+                                            style={{
+                                              left: `${(coordinates.x / 1920) * 100}%`,
+                                              top: `${(coordinates.y / 1080) * 100}%`,
+                                              width: '20px',
+                                              height: '20px',
+                                              transform: 'translate(-50%, -50%)'
+                                            }}
+                                          />
+                                        )}
                                       </div>
-                                      <div className="p-3 space-y-2">
+                                      <div className="p-3 space-y-2 flex-1 flex flex-col">
                                         <div className="flex items-center justify-between gap-2">
                                           <div className="text-xs text-muted-foreground">
                                             {formatDate(screenshot.timestamp)} {formatTime(screenshot.timestamp)}
@@ -226,15 +272,44 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                             {screenshot.url}
                                           </div>
                                         </div>
+                                        {/* Action description - fixed height slot */}
+                                        <div className="h-[28px] flex items-center">
+                                          {actionDescription && (
+                                            <div className="text-xs text-foreground bg-muted/50 px-2 py-1 rounded border border-border truncate w-full">
+                                              {actionDescription}
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </DialogTrigger>
-                                  <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-                                    <img
-                                      src={screenshot.dataUrl}
-                                      alt={`Screenshot ${screenshot.id}`}
-                                      className="w-full h-full object-contain"
-                                    />
+                                  <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
+                                    <div className="relative">
+                                      <img
+                                        src={screenshot.dataUrl}
+                                        alt={`Screenshot ${screenshot.id}`}
+                                        className="w-full h-full object-contain"
+                                      />
+                                      {/* Red box overlay for full-size view */}
+                                      {coordinates && (
+                                        <div
+                                          className="absolute border-4 border-red-500 bg-red-500/30"
+                                          style={{
+                                            left: `${(coordinates.x / 1920) * 100}%`,
+                                            top: `${(coordinates.y / 1080) * 100}%`,
+                                            width: '40px',
+                                            height: '40px',
+                                            transform: 'translate(-50%, -50%)'
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+                                    {/* Action description in dialog */}
+                                    {actionDescription && (
+                                      <div className="text-sm text-foreground bg-muted p-3 rounded border border-border mt-2">
+                                        {actionDescription}
+                                      </div>
+                                    )}
                                   </DialogContent>
                                 </Dialog>
                               );

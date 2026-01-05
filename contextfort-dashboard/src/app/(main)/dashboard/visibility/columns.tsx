@@ -151,19 +151,22 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'preview',
     accessorKey: 'currentScreenshot',
     header: 'Preview',
+    size: 30,
+    minSize: 30,
+    maxSize: 30,
     cell: ({ row }) => {
       const currentScreenshot = row.original.currentScreenshot;
 
       if (!currentScreenshot || !currentScreenshot.dataUrl) {
         return (
-          <div className="relative w-[180px] h-[100px] bg-muted rounded overflow-hidden border border-border flex items-center justify-center">
+          <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border flex items-center justify-center">
             <span className="text-xs text-muted-foreground">No preview</span>
           </div>
         );
       }
 
       return (
-        <div className="relative w-[180px] h-[100px] bg-muted rounded overflow-hidden border border-border">
+        <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border">
           <img
             src={currentScreenshot.dataUrl}
             alt="Preview"
@@ -177,21 +180,52 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'event',
     accessorKey: 'currentScreenshot.reason',
     header: 'Event',
+    size: 20,
+    minSize: 20,
+    maxSize: 20,
     cell: ({ row }) => {
       const currentScreenshot = row.original.currentScreenshot;
 
       if (!currentScreenshot) return null;
 
       const actionType = currentScreenshot.eventDetails?.actionType || currentScreenshot.reason;
+      const coordinates = currentScreenshot.eventDetails?.coordinates;
+      const element = currentScreenshot.eventDetails?.element;
+      const inputValue = currentScreenshot.eventDetails?.inputValue;
+
+      // Generate action description
+      const getActionDescription = () => {
+        if (inputValue) {
+          return `Input: "${inputValue}"`;
+        }
+        if (element) {
+          const parts = [];
+          if (element.tag) parts.push(element.tag);
+          if (element.id) parts.push(`#${element.id}`);
+          else if (element.className) parts.push(`.${element.className.split(' ')[0]}`);
+          if (element.text) parts.push(`"${element.text}"`);
+          return parts.length > 0 ? `Clicked: ${parts.join(' ')}` : null;
+        }
+        return null;
+      };
+
+      const actionDescription = getActionDescription();
 
       return (
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">
-            {getReasonIcon(actionType)}
-          </span>
-          <span className="text-sm text-foreground">
-            {getReasonLabel(currentScreenshot)}
-          </span>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">
+              {getReasonIcon(actionType)}
+            </span>
+            <span className="text-sm text-foreground">
+              {getReasonLabel(currentScreenshot)}
+            </span>
+          </div>
+          {actionDescription && (
+            <div className="text-xs text-foreground bg-muted/50 px-2 py-1 rounded border border-border truncate">
+              {actionDescription}
+            </div>
+          )}
         </div>
       );
     },
@@ -200,6 +234,9 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'url',
     accessorKey: 'session.tabUrl',
     header: 'URL',
+    size: 25,
+    minSize: 25,
+    maxSize: 25,
     cell: ({ row }) => {
       const title = row.original.session.tabTitle;
       const url = row.original.session.tabUrl;
@@ -220,6 +257,9 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'time',
     accessorKey: 'session.startTime',
     header: 'Time',
+    size: 10,
+    minSize: 10,
+    maxSize: 10,
     cell: ({ row }) => {
       const startTime = row.original.session.startTime;
 
@@ -235,6 +275,9 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'captures',
     accessorKey: 'screenshots.length',
     header: () => <div className="text-right">Captures</div>,
+    size: 10,
+    minSize: 10,
+    maxSize: 10,
     cell: ({ row }) => {
       const count = row.original.screenshots.length;
 
@@ -249,6 +292,9 @@ export const columns: ColumnDef<SessionRow>[] = [
   },
   {
     id: 'actions',
+    size: 5,
+    minSize: 5,
+    maxSize: 5,
     cell: ({ row }) => {
       const isExpanded = row.original.isExpanded;
 
