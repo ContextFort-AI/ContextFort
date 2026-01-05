@@ -50,6 +50,16 @@ export const sidebarItems: NavGroup[] = [
         title: "Controls",
         url: "/dashboard/controls",
         icon: Sliders,
+        subItems: [
+          {
+            title: "Page Mixing",
+            url: "/dashboard/controls/page-mixing",
+          },
+          {
+            title: "Action Block",
+            url: "/dashboard/controls/action-block",
+          },
+        ],
       },
       // Future features (keep pages for later):
       // {

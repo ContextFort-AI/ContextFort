@@ -151,9 +151,9 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'preview',
     accessorKey: 'currentScreenshot',
     header: 'Preview',
-    size: 30,
-    minSize: 30,
-    maxSize: 30,
+    size: 35,
+    minSize: 35,
+    maxSize: 35,
     cell: ({ row }) => {
       const currentScreenshot = row.original.currentScreenshot;
 
@@ -234,9 +234,9 @@ export const columns: ColumnDef<SessionRow>[] = [
     id: 'url',
     accessorKey: 'session.tabUrl',
     header: 'URL',
-    size: 25,
-    minSize: 25,
-    maxSize: 25,
+    size: 20,
+    minSize: 20,
+    maxSize: 20,
     cell: ({ row }) => {
       const title = row.original.session.tabTitle;
       const url = row.original.session.tabUrl;

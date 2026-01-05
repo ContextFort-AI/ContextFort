@@ -1,14 +1,20 @@
 const sessions = new Map(); // groupId -> session object
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
 let urlBlockingRules = []; // Loaded from storage, managed via dashboard
+let blockedActions = []; // Loaded from storage, managed via dashboard
 
-// Load URL blocking rules and restore active sessions on startup
+// Load URL blocking rules, blocked actions, and restore active sessions on startup
 (async () => {
-  const result = await chrome.storage.local.get(['urlBlockingRules', 'sessions']);
+  const result = await chrome.storage.local.get(['urlBlockingRules', 'blockedActions', 'sessions']);
 
   // Restore URL blocking rules
   if (result.urlBlockingRules) {
     urlBlockingRules = result.urlBlockingRules;
+  }
+
+  // Restore blocked actions
+  if (result.blockedActions) {
+    blockedActions = result.blockedActions;
   }
 
   // Restore active sessions to in-memory Map
@@ -215,7 +221,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     }
 
     // Helper function to save event data
-    const saveEventData = async (dataUrl, isResult = false, urlOverride = null, titleOverride = null) => {
+    const saveEventData = async (dataUrl, isResult = false, urlOverride = null, titleOverride = null, actionId = null) => {
       const screenshotId = Date.now() + Math.random();
       const screenshotData = {
         id: screenshotId,
@@ -227,11 +233,19 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         timestamp: new Date().toISOString(),
         dataUrl: dataUrl,  // null for action, screenshot for result
         eventType: message.eventType || 'unknown',
-        eventDetails: {
+        eventDetails: isResult ? {
+          // Result entries only have actionType and link back to action
+          element: null,
+          coordinates: null,
+          inputValue: null,
+          actionType: message.action + '_result',
+          actionId: actionId  // Links back to the action entry
+        } : {
+          // Action entries have full details
           element: message.element || null,
           coordinates: message.coordinates || null,
           inputValue: message.inputValue || null,
-          actionType: isResult ? message.action + '_result' : message.action
+          actionType: message.action
         }
       };
 
@@ -254,10 +268,12 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       }
 
       await chrome.storage.local.set({ screenshots: screenshots, sessions: allSessions });
+
+      return screenshotId;  // Return the ID so result can link back
     };
 
     // Step 1: Immediately save the action with null screenshot
-    await saveEventData(null, false);
+    const actionId = await saveEventData(null, false);
 
     // If tab is not active, we're done (only action saved, no result)
     if (!tab.active) {
@@ -265,25 +281,26 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     }
 
     // Step 2: Tab is active, capture screenshot and save as result
-    console.log('[ContextFort] Attempting to capture screenshot for result, tabId:', tab.id, 'windowId:', tab.windowId);
     chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
-      console.log('[ContextFort] captureVisibleTab callback fired, error:', chrome.runtime.lastError);
       if (chrome.runtime.lastError) {
-        console.log('[ContextFort] Screenshot error:', chrome.runtime.lastError.message);
         return;
       }
 
-      console.log('[ContextFort] Screenshot captured, saving result entry');
       // Get fresh tab info at screenshot time to capture current URL/title
       const currentTab = await chrome.tabs.get(tab.id);
-      // Screenshot succeeded, save result with current page's URL/title
-      await saveEventData(dataUrl, true, currentTab.url, currentTab.title);
+      // Screenshot succeeded, save result with current page's URL/title and link to action
+      await saveEventData(dataUrl, true, currentTab.url, currentTab.title, actionId);
     });
   }
 
   // Dashboard requested to reload blocking rules
   if (message.type === 'RELOAD_BLOCKING_RULES') {
     urlBlockingRules = message.rules || [];
+  }
+
+  // Dashboard requested to reload blocked actions
+  if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
+    blockedActions = message.actions || [];
   }
 });
 // ============================================================================
@@ -396,8 +413,8 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
   // Tab is active, capture screenshot
   chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
     if (chrome.runtime.lastError) {
-      await savePageReadData(null);
-      return;
+      console.log('[ContextFort] Screenshot failed during page_read (likely redirect), skipping entry:', chrome.runtime.lastError.message);
+      return;  // Don't save page_read if screenshot fails
     }
 
     await savePageReadData(dataUrl);

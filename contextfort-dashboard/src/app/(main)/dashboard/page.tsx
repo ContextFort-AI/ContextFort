@@ -25,9 +25,13 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const result = await chrome.storage.local.get(["sessions", "screenshots"]);
-        setSessions(result.sessions || []);
-        setScreenshots(result.screenshots || []);
+        // @ts-ignore - Chrome extension API
+        if (typeof chrome !== 'undefined' && chrome?.storage) {
+          // @ts-ignore - Chrome extension API
+          const result = await chrome.storage.local.get(["sessions", "screenshots"]);
+          setSessions(result.sessions || []);
+          setScreenshots(result.screenshots || []);
+        }
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {

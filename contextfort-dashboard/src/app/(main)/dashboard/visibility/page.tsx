@@ -3,17 +3,21 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCwIcon, EyeIcon } from 'lucide-react';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { columns, Screenshot, Session, SessionRow } from './columns';
 import { DataTable } from './data-table';
 
-export default function VisibilityPage() {
+function VisibilityPageContent() {
+  const searchParams = useSearchParams();
+  const targetSessionId = searchParams.get('session');
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
   const [currentScreenshotIndex, setCurrentScreenshotIndex] = useState<Record<number, number>>({});
   const hasAutoExpandedRef = useRef(false);
+  const sessionRowRef = useRef<Record<number, HTMLElement | null>>({});
 
   // Set page title
   useEffect(() => {
@@ -43,10 +47,26 @@ export default function VisibilityPage() {
         setScreenshots(screenshotsList);
         setSessions(uniqueSessions);
 
-        // Auto-expand the first (most recent) session ONLY on first load
+        // Handle session parameter from URL or auto-expand first session
         if (uniqueSessions.length > 0 && !hasAutoExpandedRef.current) {
-          setExpandedSessions(new Set([uniqueSessions[0].id]));
-          hasAutoExpandedRef.current = true;
+          if (targetSessionId) {
+            // Expand specific session from URL parameter
+            const sessionId = parseInt(targetSessionId, 10);
+            setExpandedSessions(new Set([sessionId]));
+            hasAutoExpandedRef.current = true;
+
+            // Scroll to the session row after a brief delay to ensure rendering
+            setTimeout(() => {
+              const element = document.querySelector(`[data-session-id="${sessionId}"]`);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 500);
+          } else {
+            // Auto-expand the first session
+            setExpandedSessions(new Set([uniqueSessions[0].id]));
+            hasAutoExpandedRef.current = true;
+          }
         }
       }
     } catch (error) {
@@ -55,11 +75,17 @@ export default function VisibilityPage() {
     setIsLoading(false);
   };
 
+  // Reset auto-expand when target session changes
+  useEffect(() => {
+    hasAutoExpandedRef.current = false;
+  }, [targetSessionId]);
+
   useEffect(() => {
     loadScreenshots();
     // Refresh every 3 seconds
     const interval = setInterval(loadScreenshots, 3000);
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Group screenshots by session and filter out sessions with no screenshots
@@ -160,5 +186,30 @@ export default function VisibilityPage() {
         <DataTable columns={columns} data={tableData} onRowClick={toggleSession} />
       )}
     </div>
+  );
+}
+
+export default function VisibilityPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Visibility</h1>
+            <p className="text-muted-foreground">Monitor agent sessions and captured screenshots</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex items-center justify-center">
+              <RefreshCwIcon className="mr-2 h-5 w-5 animate-spin" />
+              <span className="text-sm text-muted-foreground">Loading...</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <VisibilityPageContent />
+    </Suspense>
   );
 }
