@@ -1,5 +1,6 @@
 // background.js
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
+import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
 
 let currentuser = ''
 
@@ -339,6 +340,41 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
   }
+
+  if (message.action === 'login') {
+        loginWithEmail(message.email)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true; // Keep channel open for async response
+    }
+
+    if (message.action === 'verifyOTP') {
+        verifyOTP(message.email, message.otpCode)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
+    if (message.action === 'resendOTP') {
+        resendOTP(message.email)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
+    if (message.action === 'isLoggedIn') {
+        isLoggedIn()
+            .then(result => sendResponse({ isLoggedIn: result }))
+            .catch(error => sendResponse({ isLoggedIn: false }));
+        return true;
+    }
+
+    if (message.action === 'logout') {
+        logout()
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
 });
 // ============================================================================
 
