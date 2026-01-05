@@ -71,11 +71,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-10">
-              <a href="/dashboard">
-                <Command className="h-6 w-6" />
-                <span className="font-bold text-xl">{APP_CONFIG.name}</span>
-              </a>
+            <SidebarMenuButton className="h-10 pointer-events-none">
+              <Command className="h-6 w-6" />
+              <span className="font-bold text-xl">{APP_CONFIG.name}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

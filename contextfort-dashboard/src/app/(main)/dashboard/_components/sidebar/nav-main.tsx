@@ -169,7 +169,7 @@ export function NavMain({ items }: NavMainProps) {
 
   const isSubmenuOpen = (subItems?: NavMainItem["subItems"]) => {
     // Always keep Controls menu expanded
-    if (subItems?.some((sub) => sub.url.includes('/controls/'))) {
+    if (subItems?.some((sub) => sub.url.includes('/action-block') || sub.url.includes('/page-mixing'))) {
       return true;
     }
     return subItems?.some((sub) => path.startsWith(sub.url)) ?? false;
