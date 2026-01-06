@@ -5,6 +5,10 @@ import {
   Eye,
   Sliders,
   BarChart3,
+  Globe,
+  ScrollText,
+  FileCheck,
+  History,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -38,7 +42,7 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "Home",
-        url: "/dashboard",
+        url: "/dashboard/home",
         icon: BarChart3,
       },
       {
@@ -58,6 +62,28 @@ export const sidebarItems: NavGroup[] = [
           {
             title: "Action Block",
             url: "/dashboard/action-block",
+          },
+          {
+            title: "Domains",
+            url: "/dashboard/domains",
+            icon: Globe,
+          },
+        ],
+      },
+      {
+        title: "Governance",
+        url: "/dashboard/governance/rules",
+        icon: ScrollText,
+        subItems: [
+          {
+            title: "Rules",
+            url: "/dashboard/governance/rules",
+            icon: FileCheck,
+          },
+          {
+            title: "Rules Applied Instances",
+            url: "/dashboard/governance/instances",
+            icon: History,
           },
         ],
       },

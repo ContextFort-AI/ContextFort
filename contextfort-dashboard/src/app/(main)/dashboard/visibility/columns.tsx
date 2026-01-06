@@ -156,8 +156,37 @@ export const columns: ColumnDef<SessionRow>[] = [
     maxSize: 35,
     cell: ({ row }) => {
       const currentScreenshot = row.original.currentScreenshot;
+      const allScreenshots = row.original.screenshots;
 
-      if (!currentScreenshot || !currentScreenshot.dataUrl) {
+      if (!currentScreenshot) {
+        return (
+          <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">No preview</span>
+          </div>
+        );
+      }
+
+      // Get display screenshot - for click actions with no dataUrl, use previous screenshot
+      const getDisplayDataUrl = () => {
+        const actionType = currentScreenshot.eventDetails?.actionType || currentScreenshot.reason;
+
+        // If this is a click action with no screenshot, use previous one
+        if (actionType === 'click' && !currentScreenshot.dataUrl) {
+          const currentIndex = allScreenshots.findIndex(s => s.id === currentScreenshot.id);
+
+          // Look backwards for previous screenshot with dataUrl
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            if (allScreenshots[i].dataUrl) {
+              return allScreenshots[i].dataUrl;
+            }
+          }
+        }
+        return currentScreenshot.dataUrl;
+      };
+
+      const displayDataUrl = getDisplayDataUrl();
+
+      if (!displayDataUrl) {
         return (
           <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border flex items-center justify-center">
             <span className="text-xs text-muted-foreground">No preview</span>
@@ -168,7 +197,7 @@ export const columns: ColumnDef<SessionRow>[] = [
       return (
         <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border">
           <img
-            src={currentScreenshot.dataUrl}
+            src={displayDataUrl}
             alt="Preview"
             className="w-full h-full object-cover"
           />

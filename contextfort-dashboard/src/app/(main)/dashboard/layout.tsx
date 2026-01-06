@@ -7,6 +7,7 @@ import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sideb
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SIDEBAR_COLLAPSIBLE_VALUES, SIDEBAR_VARIANT_VALUES } from "@/lib/preferences/layout";
 import { cn } from "@/lib/utils";
+import { AuthModal } from "@/app/(main)/dashboard/_components/AuthModal";
 
 function getCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
@@ -20,6 +21,7 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
   const [defaultOpen, setDefaultOpen] = useState(true);
   const [variant, setVariant] = useState<typeof SIDEBAR_VARIANT_VALUES[number]>("inset");
   const [collapsible, setCollapsible] = useState<typeof SIDEBAR_COLLAPSIBLE_VALUES[number]>("icon");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Read preferences from cookies on client side
@@ -37,6 +39,74 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
     }
   }, []);
 
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Timeout after 2 seconds
+      const timeoutId = setTimeout(() => {
+        console.warn('[Auth] Check timeout, showing auth modal');
+        setIsAuthenticated(false);
+      }, 2000);
+
+      try {
+        // @ts-ignore - Chrome extension API
+        if (typeof chrome !== 'undefined' && chrome?.storage && chrome?.runtime) {
+          // @ts-ignore - Chrome extension API
+          const result = await chrome.storage.local.get(['accessToken', 'userData']);
+
+          if (result.accessToken) {
+            // Token exists, verify it with API
+            // @ts-ignore - Chrome extension API
+            const verifyResult: any = await new Promise((resolve) => {
+              // @ts-ignore - Chrome extension API
+              chrome.runtime.sendMessage({
+                action: 'isLoggedIn'
+              }, (response: any) => {
+                resolve(response);
+              });
+            });
+
+            clearTimeout(timeoutId);
+            setIsAuthenticated(verifyResult?.isLoggedIn === true);
+          } else {
+            // No token found
+            clearTimeout(timeoutId);
+            setIsAuthenticated(false);
+          }
+        } else {
+          // Not in extension context, skip auth
+          clearTimeout(timeoutId);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        clearTimeout(timeoutId);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleAuthenticated = () => {
+    setIsAuthenticated(true);
+  };
+
+  // Show loading state while checking auth
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show auth modal if not authenticated
+  if (!isAuthenticated) {
+    return <AuthModal onAuthenticated={handleAuthenticated} />;
+  }
+
+  // Show dashboard if authenticated
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar variant={variant} collapsible={collapsible} />

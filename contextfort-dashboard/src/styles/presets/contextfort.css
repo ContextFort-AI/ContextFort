@@ -1,0 +1,145 @@
+/*
+label: ContextFort
+value: contextfort
+*/
+
+:root[data-theme-preset="contextfort"] {
+  /* Radius: Sharp corners for security-focused aesthetic */
+  --radius: 0.25rem;
+
+  /* Brand Colors (Light mode - minimal, mostly for compatibility) */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.05 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.05 0 0);
+  --primary: oklch(0.7 0.2 150); /* Neon Green */
+  --primary-foreground: oklch(0.05 0 0);
+  --secondary: oklch(0.1 0 0); /* Surface Layer */
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.7 0.2 150); /* Neon Green accent */
+  --accent-foreground: oklch(0.05 0 0);
+  --destructive: oklch(0.6 0.21 25.33);
+  --border: oklch(0.2 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(0.7 0.2 150); /* Neon Green ring */
+
+  /* Chart colors - green spectrum */
+  --chart-1: oklch(0.7 0.2 150);
+  --chart-2: oklch(0.65 0.18 145);
+  --chart-3: oklch(0.6 0.16 140);
+  --chart-4: oklch(0.55 0.14 135);
+  --chart-5: oklch(0.5 0.12 130);
+
+  /* Sidebar - Deep background */
+  --sidebar: oklch(0.05 0 0);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.7 0.2 150);
+  --sidebar-primary-foreground: oklch(0.05 0 0);
+  --sidebar-accent: oklch(0.1 0 0);
+  --sidebar-accent-foreground: oklch(0.7 0.2 150);
+  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-ring: oklch(0.7 0.2 150);
+
+  /* Main background */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.05 0 0);
+
+  /* Minimal shadows for flat design */
+  --shadow-2xs: 0px 1px 2px 0px oklch(0 0 0 / 0.05);
+  --shadow-xs: 0px 1px 2px 0px oklch(0 0 0 / 0.05);
+  --shadow-sm: 0px 1px 3px 0px oklch(0 0 0 / 0.1);
+  --shadow: 0px 1px 3px 0px oklch(0 0 0 / 0.1);
+  --shadow-md: 0px 2px 4px 0px oklch(0 0 0 / 0.1);
+  --shadow-lg: 0px 4px 6px 0px oklch(0 0 0 / 0.1);
+  --shadow-xl: 0px 8px 10px 0px oklch(0 0 0 / 0.1);
+  --shadow-2xl: 0px 12px 16px 0px oklch(0 0 0 / 0.15);
+}
+
+.dark:root[data-theme-preset="contextfort"] {
+  /* Deep Background - Core brand color */
+  --background: oklch(0.05 0 0); /* #0D0D0D */
+  --foreground: oklch(1 0 0); /* #FFFFFF */
+
+  /* Surface Layer */
+  --card: oklch(0.1 0 0); /* #1A1A1A */
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.1 0 0);
+  --popover-foreground: oklch(1 0 0);
+
+  /* Primary Neon Green - Brand accent */
+  --primary: oklch(0.7 0.2 150); /* #4ADE80 */
+  --primary-foreground: oklch(0.05 0 0);
+
+  /* Secondary Surface */
+  --secondary: oklch(0.15 0 0);
+  --secondary-foreground: oklch(1 0 0);
+
+  /* Muted elements */
+  --muted: oklch(0.15 0 0);
+  --muted-foreground: oklch(0.6 0 0); /* #999999 */
+
+  /* Accent - Neon Green */
+  --accent: oklch(0.1 0 0);
+  --accent-foreground: oklch(0.7 0.2 150);
+
+  /* Destructive - Red for alerts */
+  --destructive: oklch(0.6 0.21 25.33);
+
+  /* Borders - Subtle separation */
+  --border: oklch(0.15 0 0);
+  --input: oklch(0.15 0 0);
+  --ring: oklch(0.7 0.2 150); /* Neon Green focus ring */
+
+  /* Charts - Green spectrum for data viz */
+  --chart-1: oklch(0.7 0.2 150);
+  --chart-2: oklch(0.65 0.18 145);
+  --chart-3: oklch(0.6 0.16 140);
+  --chart-4: oklch(0.55 0.14 135);
+  --chart-5: oklch(0.5 0.12 130);
+
+  /* Sidebar - Deep Background with Neon accents */
+  --sidebar: oklch(0.05 0 0);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.7 0.2 150);
+  --sidebar-primary-foreground: oklch(0.05 0 0);
+  --sidebar-accent: oklch(0.1 0 0);
+  --sidebar-accent-foreground: oklch(0.7 0.2 150);
+  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-ring: oklch(0.7 0.2 150);
+
+  /* Minimal shadows for depth in dark mode */
+  --shadow-2xs: 0px 1px 2px 0px oklch(0 0 0 / 0.3);
+  --shadow-xs: 0px 1px 2px 0px oklch(0 0 0 / 0.3);
+  --shadow-sm: 0px 1px 3px 0px oklch(0 0 0 / 0.4);
+  --shadow: 0px 1px 3px 0px oklch(0 0 0 / 0.4);
+  --shadow-md: 0px 2px 4px 0px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0px 4px 6px 0px oklch(0 0 0 / 0.5);
+  --shadow-xl: 0px 8px 10px 0px oklch(0 0 0 / 0.5);
+  --shadow-2xl: 0px 12px 16px 0px oklch(0 0 0 / 0.6);
+}
+
+/* ContextFort Typography Overrides */
+:root[data-theme-preset="contextfort"] {
+  /* Apply Space Grotesk to headings and navigation */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+  }
+
+  /* JetBrains Mono for technical content */
+  code, pre, kbd, samp,
+  [data-slot="badge"],
+  .font-mono {
+    font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+  }
+
+  /* Navigation items use Space Grotesk */
+  [data-slot="sidebar"] [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar"] [data-slot="sidebar-menu-sub-button"] {
+    font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+  }
+}

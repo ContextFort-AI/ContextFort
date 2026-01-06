@@ -160,16 +160,18 @@ export function NavMain({ items }: NavMainProps) {
     if (subItems?.length) {
       return subItems.some((sub) => path.startsWith(sub.url));
     }
-    // Exact match for /dashboard (home), startsWith for others
-    if (url === "/dashboard") {
-      return path === "/dashboard";
-    }
+    // All dashboard pages use startsWith
     return path.startsWith(url);
   };
 
   const isSubmenuOpen = (subItems?: NavMainItem["subItems"]) => {
-    // Always keep Controls menu expanded
-    if (subItems?.some((sub) => sub.url.includes('/action-block') || sub.url.includes('/page-mixing'))) {
+    // Always keep Controls and Governance menus expanded
+    if (subItems?.some((sub) =>
+      sub.url.includes('/action-block') ||
+      sub.url.includes('/page-mixing') ||
+      sub.url.includes('/domains') ||
+      sub.url.includes('/governance/')
+    )) {
       return true;
     }
     return subItems?.some((sub) => path.startsWith(sub.url)) ?? false;

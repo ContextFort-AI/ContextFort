@@ -41,6 +41,14 @@ export const THEME_PRESET_OPTIONS = [
       dark: "oklch(0.64 0.17 36.44)",
     },
   },
+  {
+    label: "ContextFort",
+    value: "contextfort",
+    primary: {
+      light: "oklch(0.7 0.2 150)",
+      dark: "oklch(0.7 0.2 150)",
+    },
+  },
 ] as const;
 
 export const THEME_PRESET_VALUES = THEME_PRESET_OPTIONS.map((p) => p.value);

@@ -10,10 +10,7 @@ export const initPostHog = () => {
     
         api_host: 'https://us.i.posthog.com',
         disable_external_dependency_loading: true,
-        persistence: 'localStorage',
-        loaded: (posthog) => {
-        console.log('PostHog loaded successfully');
-        }
+        persistence: 'localStorage'
     });
 
   posthogInitialized = true;

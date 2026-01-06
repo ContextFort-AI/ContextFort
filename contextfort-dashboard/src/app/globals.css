@@ -5,8 +5,22 @@
 @import "../styles/presets/brutalist.css";
 @import "../styles/presets/soft-pop.css";
 @import "../styles/presets/tangerine.css";
+@import "../styles/presets/contextfort.css";
 
 @custom-variant dark (&:is(.dark *));
+
+/* Font utilities */
+.font-space-grotesk {
+  font-family: var(--font-space-grotesk), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-jetbrains {
+  font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+}
+
+.tracking-tighter {
+  letter-spacing: -0.05em;
+}
 
 @theme inline {
   --color-background: var(--background);

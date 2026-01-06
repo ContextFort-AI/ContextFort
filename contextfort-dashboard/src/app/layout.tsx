@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Inter } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 
 import type { Metadata } from "next";
@@ -13,7 +13,17 @@ import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provi
 
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-space-grotesk"
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-jetbrains-mono"
+});
 
 export const metadata: Metadata = {
   title: APP_CONFIG.meta.title,
@@ -38,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         {/* Applies theme and layout preferences on load to avoid flicker and unnecessary server rerenders. */}
         <ThemeBootScript />
       </head>
-      <body className={`${inter.className} min-h-screen antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} min-h-screen antialiased`}>
         {/* Load mock Chrome API in development mode */}
         {process.env.NODE_ENV === 'development' && (
           <Script src="/mock-chrome-api.js" strategy="beforeInteractive" />

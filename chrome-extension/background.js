@@ -2,14 +2,8 @@
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
 import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
 
-let currentUser = '';
-chrome.storage.local.get('userData', (result) => {
-  currentUser = result.userData?.email || '';
-});
-
 // Initialize PostHog when extension starts
 initPostHog();
-identifyUser(currentUser, {email:currentUser});
 // Track extension installation
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -149,10 +143,16 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
   const hasCheckmark = currentTitle && currentTitle.includes('✅');
 
   if (hadCheckmark && !hasCheckmark) {
-    // Find the active tab in this group and end its session
+    // Find the active tab in this group and end its session (only if tab is active)
     for (const [tabId, activation] of activeAgentTabs.entries()) {
       if (activation.groupId === group.id) {
-        trackAgentActivation(group.id, tabId, 'stop');
+        // Check if tab is active before ending session
+        chrome.tabs.get(tabId, (tab) => {
+          if (!chrome.runtime.lastError && tab && tab.active) {
+            console.log('[ContextFort] ✅ Green checkmark removed on active tab - ending session');
+            trackAgentActivation(group.id, tabId, 'stop');
+          }
+        });
       }
     }
   }
@@ -234,27 +234,28 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // ============================================================================
 // MESSAGE LISTENERS
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tab = sender.tab;
   const groupId = tab?.groupId;
 
   if (message.type === 'AGENT_DETECTED') {
     trackEvent('AGENT_DETECTED', {agentMode: 'started'});
     if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      const session = await getOrCreateSession(groupId, tab.id, tab.url, tab.title);
-      // Check if this URL should be blocked before allowing agent mode to activate
-      const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
-      if (blockCheck.blocked) {
-        // Stop agent mode, show notification, don't activate
-        sendStopAgentMessage(tab.id);
-        showBlockNotification(blockCheck, tab.url);
-        return; // Don't activate agent mode on blocked URL
-      }
+      getOrCreateSession(groupId, tab.id, tab.url, tab.title).then(session => {
+        // Check if this URL should be blocked before allowing agent mode to activate
+        const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
+        if (blockCheck.blocked) {
+          // Stop agent mode, show notification, don't activate
+          sendStopAgentMessage(tab.id);
+          showBlockNotification(blockCheck, tab.url);
+          return; // Don't activate agent mode on blocked URL
+        }
 
-      trackAgentActivation(groupId, tab.id, 'start');
+        trackAgentActivation(groupId, tab.id, 'start');
 
-      // Add page_read entry and update visitedUrls
-      await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
+        // Add page_read entry and update visitedUrls
+        addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
+      });
     }
   }
 
@@ -336,24 +337,30 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     };
 
     // Step 1: Immediately save the action with null screenshot
-    const actionId = await saveEventData(null, false);
-
-    // If tab is not active, we're done (only action saved, no result)
-    if (!tab.active) {
-      return;
-    }
-
-    // Step 2: Tab is active, capture screenshot and save as result
-    chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
-      if (chrome.runtime.lastError) {
+    saveEventData(null, false).then(actionId => {
+      // If tab is not active, we're done (only action saved, no result)
+      if (!tab.active) {
         return;
       }
 
-      // Get fresh tab info at screenshot time to capture current URL/title
-      const currentTab = await chrome.tabs.get(tab.id);
-      // Screenshot succeeded, save result with current page's URL/title and link to action
-      await saveEventData(dataUrl, true, currentTab.url, currentTab.title, actionId);
-    });
+
+      // Step 2: Get current tab info first, then capture screenshot
+      chrome.tabs.get(tab.id, (currentTab) => {
+        if (chrome.runtime.lastError || !currentTab) {
+          return;
+        }
+
+        // Now capture screenshot with the URL/title we already have
+        chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
+          if (chrome.runtime.lastError) {
+            return;
+          }
+
+          // Screenshot succeeded, save result with URL/title from before capture
+          saveEventData(dataUrl, true, currentTab.url, currentTab.title, actionId);
+        });
+      });
+  });
   }
 
   // Dashboard requested to reload blocking rules
@@ -400,6 +407,17 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
     }
+
+    if (message.action === 'identifyUser') {
+        try {
+            identifyUser(message.email, { email: message.email });
+            trackEvent('user_authenticated', { email: message.email });
+            sendResponse({ success: true });
+        } catch (error) {
+            sendResponse({ success: false, error: error.message });
+        }
+        return true;
+    }
 });
 // ============================================================================
 
@@ -418,30 +436,69 @@ function getHostname(url) {
   }
 }
 
+// Helper function to check if hostname matches pattern
+function matchesHostname(hostname, pattern) {
+  if (pattern === "") return true; // Empty string matches anything
+  return hostname === pattern || hostname.endsWith('.' + pattern);
+}
+
 // Check if navigation should be blocked based on rules
 function shouldBlockNavigation(newUrl, visitedUrls) {
   const newHostname = getHostname(newUrl);
   if (!newHostname) return { blocked: false };
 
-  // Check each visited URL against blocking rules
+  // Check 1: Block initial navigation (pattern: ["", "domain"])
+  // This blocks going TO a domain from anywhere (including initial visit)
+  if (visitedUrls.length === 0) {
+    for (const [domain1, domain2] of urlBlockingRules) {
+      if (domain1 === "" && matchesHostname(newHostname, domain2)) {
+        return {
+          blocked: true,
+          reason: `Initial navigation to ${newHostname} is blocked`,
+          conflictingUrl: null
+        };
+      }
+    }
+  }
+
+  // Check 2: Check visited URLs against blocking rules
   for (const visitedUrl of visitedUrls) {
     const visitedHostname = getHostname(visitedUrl);
     if (!visitedHostname) continue;
 
-    // Check if these two domains are in blocking rules
     for (const [domain1, domain2] of urlBlockingRules) {
-      // More precise hostname matching (exact match or subdomain)
-      const match1 = (visitedHostname === domain1 || visitedHostname.endsWith('.' + domain1)) &&
-                     (newHostname === domain2 || newHostname.endsWith('.' + domain2));
-      const match2 = (visitedHostname === domain2 || visitedHostname.endsWith('.' + domain2)) &&
-                     (newHostname === domain1 || newHostname.endsWith('.' + domain1));
-
-      if (match1 || match2) {
+      // Pattern: ["domain", ""] blocks leaving FROM domain
+      if (domain2 === "" && matchesHostname(visitedHostname, domain1)) {
         return {
           blocked: true,
-          reason: `Cannot navigate to ${newHostname} because ${visitedHostname} was already visited in this session`,
+          reason: `Cannot leave ${visitedHostname} (exit blocked)`,
           conflictingUrl: visitedUrl
         };
+      }
+
+      // Pattern: ["", "domain"] blocks going TO domain (when visitedUrls is not empty)
+      if (domain1 === "" && matchesHostname(newHostname, domain2)) {
+        return {
+          blocked: true,
+          reason: `Navigation to ${newHostname} is blocked`,
+          conflictingUrl: null
+        };
+      }
+
+      // Pattern: ["domain1", "domain2"] bidirectional blocking (existing logic)
+      if (domain1 !== "" && domain2 !== "") {
+        const match1 = matchesHostname(visitedHostname, domain1) &&
+                       matchesHostname(newHostname, domain2);
+        const match2 = matchesHostname(visitedHostname, domain2) &&
+                       matchesHostname(newHostname, domain1);
+
+        if (match1 || match2) {
+          return {
+            blocked: true,
+            reason: `Cannot navigate to ${newHostname} because ${visitedHostname} was already visited in this session`,
+            conflictingUrl: visitedUrl
+          };
+        }
       }
     }
   }

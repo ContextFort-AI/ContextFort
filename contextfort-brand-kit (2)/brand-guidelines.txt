@@ -1,0 +1,51 @@
+# ContextFort Design Kit & Brand Guidelines v1.1
+
+## 1. Brand Essence
+ContextFort provides high-fidelity visibility and granular controls for browser agents. Our brand is built on three pillars:
+- **Uncompromising Security**: Shield-based iconography representing protection.
+- **Technical Precision**: Monospace typography and high-contrast dark mode interfaces.
+- **Forward-Thinking Visibility**: Neon green highlights representing active detection and "go" signal.
+
+## 2. Color Palette
+The ContextFort palette is optimized for high-contrast dark environments.
+
+- **Primary Neon (Success/Action)**: 
+  - Hex: #4ADE80
+  - OKLCH: oklch(0.7 0.2 150)
+- **Deep Background**: 
+  - Hex: #0D0D0D
+  - OKLCH: oklch(0.05 0 0)
+- **Surface Layer**: 
+  - Hex: #1A1A1A
+  - OKLCH: oklch(0.1 0 0)
+- **Muted Foreground**: 
+  - Hex: #999999
+  - OKLCH: oklch(0.6 0 0)
+
+## 3. Typography
+We use a dual-font system to balance brand personality with technical utility.
+
+- **Primary Heading: Space Grotesk**
+  - Usage: Headlines, Landing Page Hero, Main Nav.
+  - Characteristics: Tracking-tighter (-0.05em), Bold weights.
+- **Technical/UI: JetBrains Mono**
+  - Usage: Code feeds, data tables, status labels.
+  - Characteristics: High legibility, fixed-width.
+
+## 4. Logo Assets
+- **Primary Mark (Shield)**: Use for favicons, app icons, and small scale applications.
+- **Full Logotype**: Use for headers and official documents. Always use uppercase "CONTEXTFORT" with tight letter spacing.
+
+## 5. Spacing System
+We follow a 4pt/8pt grid system.
+- Standard Padding: 16px (4 units) / 24px (6 units)
+- Section Spacing: 96px (24 units)
+
+## 6. Logo Usage Rules
+- **DO**: Use the Primary Neon Shield on dark backgrounds.
+- **DO**: Maintain a minimum clear space equal to 50% of the shield's width.
+- **DON'T**: Distort the shield aspect ratio.
+- **DON'T**: Use low-contrast colors for the logo.
+
+---
+© 2026 Context Fort, Inc. All rights reserved.

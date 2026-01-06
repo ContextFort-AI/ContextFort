@@ -232,14 +232,22 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                   // Look backwards for previous screenshot with dataUrl
                                   for (let i = index - 1; i >= 0; i--) {
                                     if (sessionRow.screenshots[i].dataUrl) {
-                                      return sessionRow.screenshots[i].dataUrl;
+                                      return {
+                                        dataUrl: sessionRow.screenshots[i].dataUrl,
+                                        screenshotId: sessionRow.screenshots[i].id
+                                      };
                                     }
                                   }
                                 }
-                                return screenshot.dataUrl;
+                                return {
+                                  dataUrl: screenshot.dataUrl,
+                                  screenshotId: screenshot.id
+                                };
                               };
 
-                              const displayDataUrl = getDisplayScreenshot();
+                              const displayScreenshot = getDisplayScreenshot();
+                              const displayDataUrl = displayScreenshot.dataUrl;
+                              const displayScreenshotId = displayScreenshot.screenshotId;
 
                               // Generate action description
                               const getActionDescription = () => {
@@ -268,15 +276,15 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                           src={displayDataUrl}
                                           alt={`Screenshot ${screenshot.id}`}
                                           className="w-full h-full object-cover"
-                                          onLoad={(e) => handleImageLoad(screenshot.id, e)}
+                                          onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
                                         />
                                         {/* Red box overlay for click coordinates - only show for action, not result */}
-                                        {coordinates && imageDimensions[screenshot.id] && !actionType.includes('_result') && (
+                                        {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
                                           <div
                                             className="absolute border-2 border-red-500 bg-red-500/20"
                                             style={{
-                                              left: `${(coordinates.x / imageDimensions[screenshot.id].width) * 100}%`,
-                                              top: `${(coordinates.y / imageDimensions[screenshot.id].height) * 100}%`,
+                                              left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
+                                              top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
                                               width: '20px',
                                               height: '20px',
                                               transform: 'translate(-50%, -50%)'
@@ -321,15 +329,15 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                         src={displayDataUrl}
                                         alt={`Screenshot ${screenshot.id}`}
                                         className="w-full h-full object-contain"
-                                        onLoad={(e) => handleImageLoad(screenshot.id, e)}
+                                        onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
                                       />
                                       {/* Red box overlay for full-size view - only show for action, not result */}
-                                      {coordinates && imageDimensions[screenshot.id] && !actionType.includes('_result') && (
+                                      {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
                                         <div
                                           className="absolute border-4 border-red-500 bg-red-500/30"
                                           style={{
-                                            left: `${(coordinates.x / imageDimensions[screenshot.id].width) * 100}%`,
-                                            top: `${(coordinates.y / imageDimensions[screenshot.id].height) * 100}%`,
+                                            left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
+                                            top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
                                             width: '40px',
                                             height: '40px',
                                             transform: 'translate(-50%, -50%)'
