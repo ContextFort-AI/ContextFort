@@ -343,9 +343,16 @@ function onBlockedElementClick(e) {
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-
     // Visual feedback
     showBlockedFeedback(e.target);
+
+    // Notify background to stop agent and show notification
+    safeSendMessage({
+      type: 'ACTION_BLOCKED',
+      actionType: 'click',
+      url: window.location.href,
+      title: document.title
+    });
 
     return false;
   }
@@ -356,8 +363,17 @@ function onBlockedElementInput(e) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
+
     // Visual feedback
     showBlockedFeedback(e.target);
+
+    // Notify background to stop agent and show notification
+    safeSendMessage({
+      type: 'ACTION_BLOCKED',
+      actionType: 'input',
+      url: window.location.href,
+      title: document.title
+    });
 
     return false;
   }

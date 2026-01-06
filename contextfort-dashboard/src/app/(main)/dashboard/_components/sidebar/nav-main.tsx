@@ -35,6 +35,10 @@ const IsComingSoon = () => (
 
 // Helper to convert Next.js route to static file path
 const toStaticPath = (url: string): string => {
+  // If it's an external URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
   // In development mode, use Next.js routes without .html
   if (process.env.NODE_ENV === 'development') {
     return url;
@@ -157,6 +161,10 @@ export function NavMain({ items }: NavMainProps) {
   const { state, isMobile } = useSidebar();
 
   const isItemActive = (url: string, subItems?: NavMainItem["subItems"]) => {
+    // External URLs are never active
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return false;
+    }
     if (subItems?.length) {
       return subItems.some((sub) => path.startsWith(sub.url));
     }

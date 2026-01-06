@@ -364,6 +364,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
 
+  // Blocked action detected - stop agent and show notification
+  else if (message.type === 'ACTION_BLOCKED') {
+    trackEvent('ACTION_BLOCKED', {actionType: message.actionType});
+
+    // Stop agent mode
+    sendStopAgentMessage(tab.id);
+
+    // Show notification
+    chrome.notifications.create({
+      type: 'basic',
+      title: '⛔ Action Blocked',
+      message: `Agent attempted to ${message.actionType} on a restricted element at ${getHostname(message.url)}`,
+      priority: 2
+    });
+  }
+
   // Content script triggered screenshot capture
   if (message.type === 'SCREENSHOT_TRIGGER') {
     console.log('[ContextFort] 🎯 SCREENSHOT_TRIGGER received:', {
@@ -459,37 +475,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[ContextFort] ❌ Failed to get tab info for click ACTION:', chrome.runtime.lastError?.message);
           return;
         }
+        console.log('[ContextFort] 📝 Tab info retrieved, immediately take screenshot...');
+        // Step 3: Capture screenshot AFTER delay
+        chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl1) => {
+          if (chrome.runtime.lastError) {
+            console.log('[ContextFort] ❌ Screenshot capture failed for click ACTION:', chrome.runtime.lastError.message);
+            return;
+          }
 
-        console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before screenshot...');
+          console.log('[ContextFort] 📸 First screenshot captured, saving click ACTION...');
 
-        // Step 2: Wait 300ms for page to settle
-        setTimeout(() => {
-          console.log('[ContextFort] ⏱️ 300ms elapsed, capturing first screenshot for ACTION...');
+          // Step 4: Save ACTION with screenshot
+          saveEventData(dataUrl1, false, currentTab.url, currentTab.title, null).then(actionId => {
+            console.log('[ContextFort] ✅ Click ACTION saved, checking if we should capture RESULT...', {
+              actionId,
+              tabActive: currentTab.active
+            });
 
-          // Step 3: Capture screenshot AFTER delay
-          chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl1) => {
-            if (chrome.runtime.lastError) {
-              console.log('[ContextFort] ❌ Screenshot capture failed for click ACTION:', chrome.runtime.lastError.message);
-              return;
-            }
+            console.log('[ContextFort] 📝 Waiting 1000ms before RESULT ...');
 
-            console.log('[ContextFort] 📸 First screenshot captured, saving click ACTION...');
-
-            // Step 4: Save ACTION with screenshot
-            saveEventData(dataUrl1, false, currentTab.url, currentTab.title, null).then(actionId => {
-              console.log('[ContextFort] ✅ Click ACTION saved, checking if we should capture RESULT...', {
-                actionId,
-                tabActive: currentTab.active
-              });
-
-              // If tab is not active, we're done (only action saved)
-              if (!currentTab.active) {
-                console.log('[ContextFort] ⏭️ Tab not active, skipping click RESULT capture');
-                return;
-              }
-
-              console.log('[ContextFort] 📷 Tab is active, getting tab info for click RESULT...');
-
+            setTimeout(() => {
               // Step 5: Get tab info for result
               chrome.tabs.get(tab.id, (resultTab) => {
                 if (chrome.runtime.lastError || !resultTab) {
@@ -497,31 +502,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                   return;
                 }
 
-                console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before second screenshot...');
+                console.log('[ContextFort] 📝 Tab info retrieved, taking second screenshot...');
 
-                // Step 6: Wait 300ms again
-                setTimeout(() => {
-                  console.log('[ContextFort] ⏱️ 300ms elapsed, capturing second screenshot for click RESULT...');
+                // Step 7: Capture screenshot for result
+                chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl2) => {
+                  if (chrome.runtime.lastError) {
+                    console.log('[ContextFort] ❌ Screenshot capture failed for click RESULT:', chrome.runtime.lastError.message);
+                    return;
+                  }
 
-                  // Step 7: Capture screenshot for result
-                  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl2) => {
-                    if (chrome.runtime.lastError) {
-                      console.log('[ContextFort] ❌ Screenshot capture failed for click RESULT:', chrome.runtime.lastError.message);
-                      return;
-                    }
+                  console.log('[ContextFort] 📸 Second screenshot captured, saving click RESULT...');
 
-                    console.log('[ContextFort] 📸 Second screenshot captured, saving click RESULT...');
-
-                    // Step 8: Save RESULT with second screenshot
-                    saveEventData(dataUrl2, true, resultTab.url, resultTab.title, actionId);
-                  });
-                }, 300);
+                  // Step 8: Save RESULT with second screenshot
+                  saveEventData(dataUrl2, true, resultTab.url, resultTab.title, actionId);
+                });
               });
-            });
+            }, 300);
           });
-        }, 300);
+        });
       });
     }
+
     // INPUT ACTIONS: Debounce and collect all inputs
     else if (message.action === 'input') {
       console.log('[ContextFort] ⌨️ Input action received, starting/resetting debounce timer...');
@@ -581,7 +582,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           // Wait 300ms for page to settle
           setTimeout(() => {
-            console.log('[ContextFort] ⏱️ 300ms elapsed, capturing screenshot for input RESULT...');
+            console.log('[ContextFort] ⏱️ 500ms elapsed, capturing screenshot for input RESULT...');
 
             // Capture screenshot
             chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
@@ -626,7 +627,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 });
               });
             });
-          }, 300);
+          }, 500);
         });
       }, INPUT_DEBOUNCE_MS);
 
@@ -661,7 +662,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // Step 4: Save RESULT only (no action saved)
             saveEventData(dataUrl, true, currentTab.url, currentTab.title, null);
           });
-        }, 300);
+        }, 500);
       });
     }
   }
@@ -750,17 +751,15 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
   const newHostname = getHostname(newUrl);
   if (!newHostname) return { blocked: false };
 
-  // Check 1: Block initial navigation (pattern: ["", "domain"])
-  // This blocks going TO a domain from anywhere (including initial visit)
-  if (visitedUrls.length === 0) {
-    for (const [domain1, domain2] of urlBlockingRules) {
-      if (domain1 === "" && matchesHostname(newHostname, domain2)) {
-        return {
-          blocked: true,
-          reason: `Initial navigation to ${newHostname} is blocked`,
-          conflictingUrl: null
-        };
-      }
+  // Check 1: ALWAYS check if the new URL is blocked via "Block Visit" (pattern: ["", "domain"])
+  // This blocks going TO a domain from anywhere, regardless of visitedUrls
+  for (const [domain1, domain2] of urlBlockingRules) {
+    if (domain1 === "" && matchesHostname(newHostname, domain2)) {
+      return {
+        blocked: true,
+        reason: `Navigation to ${newHostname} is blocked (Block Visit rule)`,
+        conflictingUrl: null
+      };
     }
   }
 
@@ -774,17 +773,8 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
       if (domain2 === "" && matchesHostname(visitedHostname, domain1)) {
         return {
           blocked: true,
-          reason: `Cannot leave ${visitedHostname} (exit blocked)`,
+          reason: `Cannot leave ${visitedHostname} (Block Exit rule)`,
           conflictingUrl: visitedUrl
-        };
-      }
-
-      // Pattern: ["", "domain"] blocks going TO domain (when visitedUrls is not empty)
-      if (domain1 === "" && matchesHostname(newHostname, domain2)) {
-        return {
-          blocked: true,
-          reason: `Navigation to ${newHostname} is blocked`,
-          conflictingUrl: null
         };
       }
 
@@ -830,55 +820,35 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
   // Add to visitedUrls
   await addVisitedUrl(session, url);
 
-  // Get tab info for window ID
-  const tab = await chrome.tabs.get(tabId);
+  // Save page_read data without screenshot
+  const result = await chrome.storage.local.get(['screenshots']);
+  const screenshots = result.screenshots || [];
 
-  // Helper to save page_read data
-  const savePageReadData = async (dataUrl) => {
-    const result = await chrome.storage.local.get(['screenshots']);
-    const screenshots = result.screenshots || [];
-
-    const pageReadData = {
-      id: Date.now() + Math.random(),
-      sessionId: session.id,
-      tabId: tabId,
-      url: url,
-      title: title,
-      reason: 'page_read',
-      timestamp: new Date().toISOString(),
-      dataUrl: dataUrl,  // null if tab not active
-      eventType: 'page_read',
-      eventDetails: {
-        element: null,
-        coordinates: null,
-        inputValue: null,
-        actionType: 'page_read'
-      }
-    };
-
-    screenshots.push(pageReadData);
-
-    if (screenshots.length > 100) {
-      screenshots.shift();
+  const pageReadData = {
+    id: Date.now() + Math.random(),
+    sessionId: session.id,
+    tabId: tabId,
+    url: url,
+    title: title,
+    reason: 'page_read',
+    timestamp: new Date().toISOString(),
+    dataUrl: null,  // No screenshot for page_read
+    eventType: 'page_read',
+    eventDetails: {
+      element: null,
+      coordinates: null,
+      inputValue: null,
+      actionType: 'page_read'
     }
-
-    await chrome.storage.local.set({ screenshots: screenshots });
   };
 
-  // If tab is not active, save without screenshot
-  if (!tab.active) {
-    await savePageReadData(null);
-    return;
+  screenshots.push(pageReadData);
+
+  if (screenshots.length > 100) {
+    screenshots.shift();
   }
 
-  // Tab is active, capture screenshot
-  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, async (dataUrl) => {
-    if (chrome.runtime.lastError) {
-      return;  // Don't save page_read if screenshot fails
-    }
-
-    await savePageReadData(dataUrl);
-  });
+  await chrome.storage.local.set({ screenshots: screenshots });
 }
 
 // Helper function to show notification when navigation is blocked

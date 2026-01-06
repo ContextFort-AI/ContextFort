@@ -9,6 +9,7 @@ import {
   ScrollText,
   FileCheck,
   History,
+  Calendar,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -86,6 +87,12 @@ export const sidebarItems: NavGroup[] = [
             icon: History,
           },
         ],
+      },
+      {
+        title: "Book Demo with Team",
+        url: "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2-LisBxMgnCRJ-LKKb-R3pFbF841mGLD05pQdMbsBW-4MJvb0Jy2ksFKVYziMHfKcECrF9yIHt",
+        icon: Calendar,
+        newTab: true,
       },
       // Future features (keep pages for later):
       // {
