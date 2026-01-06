@@ -177,7 +177,7 @@ export default function GovernanceRulesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border border-border">
+        <div className="rounded-md border border-border overflow-auto max-h-[calc(100vh-20rem)]">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-border">
@@ -195,7 +195,10 @@ export default function GovernanceRulesPage() {
 
                 return (
                   <Fragment key={rule.id}>
-                    <TableRow className="border-b border-border hover:bg-muted/50 transition-colors">
+                    <TableRow
+                      className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => toggleExpanded(rule.id)}
+                    >
                       <TableCell>
                         <Icon className="h-5 w-5 text-muted-foreground" />
                       </TableCell>
@@ -223,18 +226,13 @@ export default function GovernanceRulesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => toggleExpanded(rule.id)}
-                        >
+                        <div className="flex justify-center">
                           {isExpanded ? (
-                            <ChevronDownIcon className="h-4 w-4" />
+                            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
                           ) : (
-                            <ChevronRightIcon className="h-4 w-4" />
+                            <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
                           )}
-                        </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
 

@@ -236,7 +236,6 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
 
           if (window.focused) {
             // Tab is active and window is focused - end session
-            activeAgentTabs.delete(activeTab.id);
             endSession(group.id);
           } else {
             // Tab is active but window not focused - restore checkmark
@@ -277,8 +276,9 @@ function trackAgentActivation(groupId, tabId, action) {
       sessionId: session.id,
       groupId: groupId
     });
+  } else if (action === 'stop') {
+    activeAgentTabs.delete(tabId);
   }
-  // Note: 'stop' action removed - use endSession() directly instead
 }
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
@@ -360,8 +360,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   else if (message.type === 'AGENT_STOPPED') {
     trackEvent('AGENT_STOPPED', {agentMode: 'stopped'});
     if (groupId) {
-      activeAgentTabs.delete(tab.id);
-      endSession(groupId);
+      trackAgentActivation(groupId, tab.id, 'stop');
     }
   }
 
@@ -907,11 +906,11 @@ function sendStopAgentMessage(tabId) {
   }
 }
 
-// Helper function to stop tracking agent on a tab and end session
+// Helper function to stop tracking agent on a tab
 function stopAgentTracking(tabId, groupId) {
   activeAgentTabs.delete(tabId);
   if (groupId) {
-    endSession(groupId);
+    trackAgentActivation(groupId, tabId, 'stop');
   }
 }
 
