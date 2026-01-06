@@ -170,7 +170,8 @@ export function NavMain({ items }: NavMainProps) {
       sub.url.includes('/action-block') ||
       sub.url.includes('/page-mixing') ||
       sub.url.includes('/domains') ||
-      sub.url.includes('/governance/')
+      sub.url.includes('/rules') ||
+      sub.url.includes('/instances')
     )) {
       return true;
     }

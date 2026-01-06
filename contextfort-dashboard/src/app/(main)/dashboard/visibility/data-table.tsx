@@ -224,33 +224,17 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                               const coordinates = screenshot.eventDetails?.coordinates;
                               const element = screenshot.eventDetails?.element;
                               const inputValue = screenshot.eventDetails?.inputValue;
+                              const inputValues = screenshot.eventDetails?.inputValues;
 
-                              // Get display screenshot - for click actions with no dataUrl, use previous screenshot
-                              const getDisplayScreenshot = () => {
-                                // If this is a click action with no screenshot, use previous one
-                                if (actionType === 'click' && !screenshot.dataUrl) {
-                                  // Look backwards for previous screenshot with dataUrl
-                                  for (let i = index - 1; i >= 0; i--) {
-                                    if (sessionRow.screenshots[i].dataUrl) {
-                                      return {
-                                        dataUrl: sessionRow.screenshots[i].dataUrl,
-                                        screenshotId: sessionRow.screenshots[i].id
-                                      };
-                                    }
-                                  }
-                                }
-                                return {
-                                  dataUrl: screenshot.dataUrl,
-                                  screenshotId: screenshot.id
-                                };
-                              };
-
-                              const displayScreenshot = getDisplayScreenshot();
-                              const displayDataUrl = displayScreenshot.dataUrl;
-                              const displayScreenshotId = displayScreenshot.screenshotId;
+                              // All actions now have screenshots, no need for fallback logic
+                              const displayDataUrl = screenshot.dataUrl;
+                              const displayScreenshotId = screenshot.id;
 
                               // Generate action description
                               const getActionDescription = () => {
+                                if (inputValues && inputValues.length > 0) {
+                                  return `Inputs (${inputValues.length}): ${inputValues.map(v => `"${v}"`).join(', ')}`;
+                                }
                                 if (inputValue) {
                                   return `Input: "${inputValue}"`;
                                 }

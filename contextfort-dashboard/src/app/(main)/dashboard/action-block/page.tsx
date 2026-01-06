@@ -578,8 +578,8 @@ export default function ActionBlockPage() {
                             <h4 className="text-sm font-medium mb-3">Screenshots ({action.screenshots.length})</h4>
                             <div className="space-y-4">
                               {(() => {
-                                // Pair action screenshots with their results
-                                const pairs: Array<{ action: Screenshot; result?: Screenshot }> = [];
+                                // Process screenshots: clicks have action+result pairs, other actions only have result
+                                const items: Array<{ action: Screenshot | null; result: Screenshot }> = [];
                                 const processedIds = new Set<number>();
 
                                 action.screenshots.forEach((screenshot) => {
@@ -587,12 +587,20 @@ export default function ActionBlockPage() {
 
                                   const actionType = screenshot.eventDetails?.actionType || screenshot.reason;
 
-                                  // If this is a result, skip (will be paired with action)
-                                  if (actionType.endsWith('_result')) {
+                                  // If this is a result-only entry (input_result, dblclick_result, rightclick_result)
+                                  if (actionType.endsWith('_result') && !actionType.startsWith('click')) {
+                                    // Non-click results are standalone (no action entry)
+                                    items.push({ action: null, result: screenshot });
+                                    processedIds.add(screenshot.id);
                                     return;
                                   }
 
-                                  // Find corresponding result - search GLOBALLY in all screenshots
+                                  // If this is a click_result, skip (will be paired with click action)
+                                  if (actionType === 'click_result') {
+                                    return;
+                                  }
+
+                                  // This is a click action - find its corresponding result
                                   let result = screenshots.find(s => s.eventDetails?.actionId === screenshot.id);
 
                                   // Fallback: Find by timestamp (result comes right after action) if actionId linking failed
@@ -601,88 +609,151 @@ export default function ActionBlockPage() {
                                     if (globalIndex >= 0 && globalIndex < screenshots.length - 1) {
                                       const nextShot = screenshots[globalIndex + 1];
                                       const nextActionType = nextShot.eventDetails?.actionType || nextShot.reason;
-                                      // Check if next screenshot is a result for this action type
-                                      if (nextActionType === `${actionType}_result`) {
+                                      // Check if next screenshot is click_result
+                                      if (nextActionType === 'click_result') {
                                         result = nextShot;
                                       }
                                     }
                                   }
 
-                                  pairs.push({ action: screenshot, result });
-                                  processedIds.add(screenshot.id);
-                                  if (result) processedIds.add(result.id);
+                                  if (result) {
+                                    items.push({ action: screenshot, result });
+                                    processedIds.add(screenshot.id);
+                                    processedIds.add(result.id);
+                                  }
                                 });
 
-                                return pairs.map(({ action: actionShot, result }, pairIndex) => {
-                                  const actionType = actionShot.eventDetails?.actionType || actionShot.reason;
+                                return items.map(({ action: actionShot, result }, itemIndex) => {
+                                  // For result-only entries, get actionType from result
+                                  const actionType = actionShot
+                                    ? (actionShot.eventDetails?.actionType || actionShot.reason)
+                                    : (result.eventDetails?.actionType || result.reason);
 
-                                  // Get display screenshot for action (use previous if null)
-                                  const getActionDisplayScreenshot = () => {
-                                    if (actionType === 'click' && !actionShot.dataUrl) {
-                                      // Look backwards in GLOBAL screenshots array for previous one with dataUrl
-                                      const globalIndex = screenshots.findIndex(s => s.id === actionShot.id);
-                                      if (globalIndex > 0) {
-                                        for (let i = globalIndex - 1; i >= 0; i--) {
-                                          if (screenshots[i].dataUrl) {
-                                            return screenshots[i].dataUrl;
-                                          }
-                                        }
-                                      }
-                                    }
-                                    return actionShot.dataUrl;
-                                  };
+                                  // All actions now have screenshots, no need for fallback logic
+                                  const actionDisplayUrl = actionShot?.dataUrl;
 
-                                  const actionDisplayUrl = getActionDisplayScreenshot();
-
-                                  const coordinates = actionShot.eventDetails?.coordinates;
+                                  const coordinates = actionShot?.eventDetails?.coordinates;
 
                                   return (
-                                    <div key={actionShot.id} className="flex items-center gap-4">
-                                      {/* Action Card */}
+                                    <div key={actionShot?.id || result.id} className="flex items-center gap-4">
+                                      {/* Action Card - only for click actions */}
+                                      {actionShot && (
+                                        <>
+                                          <Dialog>
+                                            <DialogTrigger asChild>
+                                              <div className="w-[400px] bg-card rounded-lg border border-border overflow-hidden flex flex-col cursor-pointer hover:border-muted-foreground transition-colors">
+                                                <div className="relative w-full h-[180px] bg-muted">
+                                                  {actionDisplayUrl && (
+                                                    <img
+                                                      src={actionDisplayUrl}
+                                                      alt={`Action ${actionShot.id}`}
+                                                      className="w-full h-full object-cover"
+                                                      onLoad={(e) => handleImageLoad(actionShot.id, e)}
+                                                    />
+                                                  )}
+                                                  {/* Red box overlay for click coordinates - only show for action, not result */}
+                                                  {coordinates && imageDimensions[actionShot.id] && !actionType.includes('_result') && (
+                                                    <div
+                                                      className="absolute border-2 border-red-500 bg-red-500/20"
+                                                      style={{
+                                                        left: `${(coordinates.x / imageDimensions[actionShot.id].width) * 100}%`,
+                                                        top: `${(coordinates.y / imageDimensions[actionShot.id].height) * 100}%`,
+                                                        width: '20px',
+                                                        height: '20px',
+                                                        transform: 'translate(-50%, -50%)'
+                                                      }}
+                                                    />
+                                                  )}
+                                                  <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                                    Action
+                                                  </div>
+                                                </div>
+                                                <div className="p-2 flex-1 flex flex-col">
+                                                  <div className="text-xs text-muted-foreground">
+                                                    {new Date(actionShot.timestamp).toLocaleString()}
+                                                  </div>
+                                                  <div className="text-xs text-foreground mb-2">
+                                                    Session: {actionShot.sessionId || 'N/A'}
+                                                  </div>
+                                                  {actionShot.sessionId && (
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="mt-auto h-7 text-xs"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        window.location.href = `/dashboard/visibility?session=${actionShot.sessionId}`;
+                                                      }}
+                                                    >
+                                                      <ExternalLinkIcon className="mr-1 h-3 w-3" />
+                                                      View Session
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
+                                              <div className="relative">
+                                                <img
+                                                  src={actionDisplayUrl}
+                                                  alt={`Action ${actionShot.id}`}
+                                                  className="w-full h-full object-contain"
+                                                  onLoad={(e) => handleImageLoad(actionShot.id, e)}
+                                                />
+                                                {/* Red box overlay for full-size view */}
+                                                {coordinates && imageDimensions[actionShot.id] && !actionType.includes('_result') && (
+                                                  <div
+                                                    className="absolute border-4 border-red-500 bg-red-500/30"
+                                                    style={{
+                                                      left: `${(coordinates.x / imageDimensions[actionShot.id].width) * 100}%`,
+                                                      top: `${(coordinates.y / imageDimensions[actionShot.id].height) * 100}%`,
+                                                      width: '40px',
+                                                      height: '40px',
+                                                      transform: 'translate(-50%, -50%)'
+                                                    }}
+                                                  />
+                                                )}
+                                              </div>
+                                            </DialogContent>
+                                          </Dialog>
+
+                                          {/* Arrow - only for click actions with result */}
+                                          <div className="text-2xl text-muted-foreground">→</div>
+                                        </>
+                                      )}
+
+                                      {/* Result Card - always shown */}
                                       <Dialog>
                                         <DialogTrigger asChild>
                                           <div className="w-[400px] bg-card rounded-lg border border-border overflow-hidden flex flex-col cursor-pointer hover:border-muted-foreground transition-colors">
                                             <div className="relative w-full h-[180px] bg-muted">
-                                              {actionDisplayUrl && (
+                                              {result.dataUrl && (
                                                 <img
-                                                  src={actionDisplayUrl}
-                                                  alt={`Action ${actionShot.id}`}
+                                                  src={result.dataUrl}
+                                                  alt={`Result ${result.id}`}
                                                   className="w-full h-full object-cover"
-                                                  onLoad={(e) => handleImageLoad(actionShot.id, e)}
+                                                  onLoad={(e) => handleImageLoad(result.id, e)}
                                                 />
                                               )}
-                                              {/* Red box overlay for click coordinates - only show for action, not result */}
-                                              {coordinates && imageDimensions[actionShot.id] && !actionType.includes('_result') && (
-                                                <div
-                                                  className="absolute border-2 border-red-500 bg-red-500/20"
-                                                  style={{
-                                                    left: `${(coordinates.x / imageDimensions[actionShot.id].width) * 100}%`,
-                                                    top: `${(coordinates.y / imageDimensions[actionShot.id].height) * 100}%`,
-                                                    width: '20px',
-                                                    height: '20px',
-                                                    transform: 'translate(-50%, -50%)'
-                                                  }}
-                                                />
-                                              )}
-                                              <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                                                Action
+                                              <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                                                Result
                                               </div>
                                             </div>
                                             <div className="p-2 flex-1 flex flex-col">
                                               <div className="text-xs text-muted-foreground">
-                                                {new Date(actionShot.timestamp).toLocaleString()}
+                                                {new Date(result.timestamp).toLocaleString()}
                                               </div>
                                               <div className="text-xs text-foreground mb-2">
-                                                Session: {actionShot.sessionId || 'N/A'}
+                                                Session: {result.sessionId || 'N/A'}
                                               </div>
-                                              {actionShot.sessionId && (
+                                              {result.sessionId && (
                                                 <Button
                                                   variant="outline"
                                                   size="sm"
                                                   className="mt-auto h-7 text-xs"
                                                   onClick={(e) => {
                                                     e.stopPropagation();
-                                                    window.location.href = `/dashboard/visibility?session=${actionShot.sessionId}`;
+                                                    window.location.href = `/dashboard/visibility?session=${result.sessionId}`;
                                                   }}
                                                 >
                                                   <ExternalLinkIcon className="mr-1 h-3 w-3" />
@@ -694,90 +765,17 @@ export default function ActionBlockPage() {
                                         </DialogTrigger>
                                         <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
                                           <div className="relative">
-                                            <img
-                                              src={actionDisplayUrl}
-                                              alt={`Action ${actionShot.id}`}
-                                              className="w-full h-full object-contain"
-                                              onLoad={(e) => handleImageLoad(actionShot.id, e)}
-                                            />
-                                            {/* Red box overlay for full-size view */}
-                                            {coordinates && imageDimensions[actionShot.id] && !actionType.includes('_result') && (
-                                              <div
-                                                className="absolute border-4 border-red-500 bg-red-500/30"
-                                                style={{
-                                                  left: `${(coordinates.x / imageDimensions[actionShot.id].width) * 100}%`,
-                                                  top: `${(coordinates.y / imageDimensions[actionShot.id].height) * 100}%`,
-                                                  width: '40px',
-                                                  height: '40px',
-                                                  transform: 'translate(-50%, -50%)'
-                                                }}
+                                            {result.dataUrl && (
+                                              <img
+                                                src={result.dataUrl}
+                                                alt={`Result ${result.id}`}
+                                                className="w-full h-full object-contain"
+                                                onLoad={(e) => handleImageLoad(result.id, e)}
                                               />
                                             )}
                                           </div>
                                         </DialogContent>
                                       </Dialog>
-
-                                      {/* Arrow */}
-                                      {result && (
-                                        <div className="text-2xl text-muted-foreground">→</div>
-                                      )}
-
-                                      {/* Result Card */}
-                                      {result && (
-                                        <Dialog>
-                                          <DialogTrigger asChild>
-                                            <div className="w-[400px] bg-card rounded-lg border border-border overflow-hidden flex flex-col cursor-pointer hover:border-muted-foreground transition-colors">
-                                              <div className="relative w-full h-[180px] bg-muted">
-                                                {result.dataUrl && (
-                                                  <img
-                                                    src={result.dataUrl}
-                                                    alt={`Result ${result.id}`}
-                                                    className="w-full h-full object-cover"
-                                                    onLoad={(e) => handleImageLoad(result.id, e)}
-                                                  />
-                                                )}
-                                                <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                                                  Result
-                                                </div>
-                                              </div>
-                                              <div className="p-2 flex-1 flex flex-col">
-                                                <div className="text-xs text-muted-foreground">
-                                                  {new Date(result.timestamp).toLocaleString()}
-                                                </div>
-                                                <div className="text-xs text-foreground mb-2">
-                                                  Session: {result.sessionId || 'N/A'}
-                                                </div>
-                                                {result.sessionId && (
-                                                  <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="mt-auto h-7 text-xs"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      window.location.href = `/dashboard/visibility?session=${result.sessionId}`;
-                                                    }}
-                                                  >
-                                                    <ExternalLinkIcon className="mr-1 h-3 w-3" />
-                                                    View Session
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </DialogTrigger>
-                                          <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
-                                            <div className="relative">
-                                              {result.dataUrl && (
-                                                <img
-                                                  src={result.dataUrl}
-                                                  alt={`Result ${result.id}`}
-                                                  className="w-full h-full object-contain"
-                                                  onLoad={(e) => handleImageLoad(result.id, e)}
-                                                />
-                                              )}
-                                            </div>
-                                          </DialogContent>
-                                        </Dialog>
-                                      )}
                                     </div>
                                   );
                                 });

@@ -17,6 +17,11 @@ let stopPending = false;
 
 let blockedElements = [];
 
+// Scroll debouncing
+let scrollDebounceTimer = null;
+const SCROLL_DEBOUNCE_MS = 300;
+let lastScrollPosition = window.scrollY;
+
 // Load blocked actions from storage on initialization
 (async () => {
   const result = await chrome.storage.local.get(['blockedActions']);
@@ -112,15 +117,34 @@ function onInputCapture(e) {
 
 function onScrollCapture(e) {
   if (agentModeActive) {
-    safeSendMessage({
-      type: 'SCREENSHOT_TRIGGER',
-      action: 'scroll',
-      eventType: 'navigation',
-      element: null,
-      coordinates: null,
-      url: window.location.href,
-      title: document.title
-    });
+    const currentScroll = window.scrollY;
+    const scrollDistance = Math.abs(currentScroll - lastScrollPosition);
+
+    // Ignore small shifts (< 50px) - filters out layout shifts from debugger notifications, ads, etc.
+    if (scrollDistance < 50) {
+      return;
+    }
+
+    lastScrollPosition = currentScroll;
+
+    // Clear existing debounce timer
+    if (scrollDebounceTimer) {
+      clearTimeout(scrollDebounceTimer);
+    }
+
+    // Set new debounce timer - only send after scrolling stops for 300ms
+    scrollDebounceTimer = setTimeout(() => {
+      safeSendMessage({
+        type: 'SCREENSHOT_TRIGGER',
+        action: 'scroll',
+        eventType: 'navigation',
+        element: null,
+        coordinates: null,
+        url: window.location.href,
+        title: document.title
+      });
+      scrollDebounceTimer = null;
+    }, SCROLL_DEBOUNCE_MS);
   }
 }
 
@@ -132,14 +156,11 @@ function startListening() {
   // Add blocking listeners FIRST (before capture listeners)
   document.addEventListener('click', onBlockedElementClick, true);
   document.addEventListener('input', onBlockedElementInput, true);
-  document.addEventListener('change', onBlockedElementInput, true);
-  // Then add capture listeners
+  // Then add capture listeners (no change/scroll events)
   document.addEventListener('click', onClickCapture, true);
   document.addEventListener('dblclick', onDblClickCapture, true);
   document.addEventListener('contextmenu', onContextMenuCapture, true);
   document.addEventListener('input', onInputCapture, true);
-  document.addEventListener('change', onInputCapture, true);
-  document.addEventListener('scroll', onScrollCapture, true);
 }
 
 function stopListening() {
@@ -148,13 +169,10 @@ function stopListening() {
   }
   agentModeActive = false;
   // Remove in reverse order
-  document.removeEventListener('scroll', onScrollCapture, true);
-  document.removeEventListener('change', onInputCapture, true);
   document.removeEventListener('input', onInputCapture, true);
   document.removeEventListener('contextmenu', onContextMenuCapture, true);
   document.removeEventListener('dblclick', onDblClickCapture, true);
   document.removeEventListener('click', onClickCapture, true);
-  document.removeEventListener('change', onBlockedElementInput, true);
   document.removeEventListener('input', onBlockedElementInput, true);
   document.removeEventListener('click', onBlockedElementClick, true);
 }

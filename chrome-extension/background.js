@@ -28,6 +28,78 @@ const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
 let urlBlockingRules = []; // Loaded from storage, managed via dashboard
 let blockedActions = []; // Loaded from storage, managed via dashboard
 
+// Rate limiting for captureVisibleTab API calls
+const captureTimestamps = [];
+const MAX_CAPTURES_PER_SECOND = 2;
+
+// Storage write queue to prevent race conditions
+const storageWriteQueue = [];
+let isProcessingQueue = false;
+
+// Input debouncing - wait 1 second after last input before capturing
+const inputDebounceTimers = new Map(); // tabId -> { timer, inputs: [] }
+const INPUT_DEBOUNCE_MS = 1000;
+
+// Queued storage write to prevent race conditions
+async function queuedStorageWrite(screenshotData, activation) {
+  return new Promise((resolve) => {
+    storageWriteQueue.push({ screenshotData, activation, resolve });
+    processStorageQueue();
+  });
+}
+
+// Process storage write queue sequentially
+async function processStorageQueue() {
+  if (isProcessingQueue || storageWriteQueue.length === 0) {
+    return;
+  }
+
+  isProcessingQueue = true;
+
+  while (storageWriteQueue.length > 0) {
+    const { screenshotData, activation, resolve } = storageWriteQueue.shift();
+
+    try {
+      // Atomic read-modify-write
+      const result = await chrome.storage.local.get(['screenshots', 'sessions']);
+      const screenshots = result.screenshots || [];
+      const allSessions = result.sessions || [];
+
+      screenshots.push(screenshotData);
+
+      if (screenshots.length > 100) {
+        screenshots.shift();
+      }
+
+      // Update session screenshot count
+      const sessionIndex = allSessions.findIndex(s => s.id === activation.sessionId);
+      if (sessionIndex !== -1) {
+        allSessions[sessionIndex].screenshotCount = (allSessions[sessionIndex].screenshotCount || 0) + 1;
+        // Update in-memory session count as well
+        const groupId = activation.groupId;
+        if (sessions.get(groupId)) {
+          sessions.get(groupId).screenshotCount = allSessions[sessionIndex].screenshotCount;
+        }
+      }
+
+      await chrome.storage.local.set({ screenshots: screenshots, sessions: allSessions });
+
+      console.log('[ContextFort] 💾 Storage write completed:', {
+        screenshotId: screenshotData.id,
+        totalScreenshots: screenshots.length,
+        queueLength: storageWriteQueue.length
+      });
+
+      resolve(screenshotData.id);
+    } catch (error) {
+      console.error('[ContextFort] ❌ Storage write failed:', error);
+      resolve(null);
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
 // Load URL blocking rules, blocked actions, and restore active sessions on startup
 (async () => {
   const result = await chrome.storage.local.get(['urlBlockingRules', 'blockedActions', 'sessions']);
@@ -130,8 +202,9 @@ const groupTitles = new Map(); // Track previous titles: groupId -> title
 chrome.tabGroups.onUpdated.addListener(async (group) => {
   // Check if this group has an active session
   const session = sessions.get(group.id);
+
   if (!session || session.status !== 'active') {
-    groupTitles.set(group.id, group.title); // Update title cache even if no session
+    groupTitles.set(group.id, group.title);
     return;
   }
 
@@ -143,22 +216,47 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
   const hasCheckmark = currentTitle && currentTitle.includes('✅');
 
   if (hadCheckmark && !hasCheckmark) {
-    // Find the active tab in this group and end its session (only if tab is active)
-    for (const [tabId, activation] of activeAgentTabs.entries()) {
-      if (activation.groupId === group.id) {
-        // Check if tab is active before ending session
-        chrome.tabs.get(tabId, (tab) => {
-          if (!chrome.runtime.lastError && tab && tab.active) {
-            console.log('[ContextFort] ✅ Green checkmark removed on active tab - ending session');
-            trackAgentActivation(group.id, tabId, 'stop');
+    // Query tabs in this group directly
+    chrome.tabs.query({ groupId: group.id }, (tabs) => {
+      if (chrome.runtime.lastError || tabs.length === 0) {
+        return;
+      }
+
+      // Check if ANY tab in the group is active
+      const hasActiveTab = tabs.some(tab => tab.active);
+
+      if (hasActiveTab) {
+        // Tab is active, but check if window is also focused
+        const activeTab = tabs.find(tab => tab.active);
+
+        chrome.windows.get(activeTab.windowId, (window) => {
+          if (chrome.runtime.lastError) {
+            return;
+          }
+
+          if (window.focused) {
+            // Tab is active and window is focused - end session
+            trackAgentActivation(group.id, activeTab.id, 'stop');
+          } else {
+            // Tab is active but window not focused - restore checkmark
+            const restoredTitle = currentTitle.includes('✅') ? currentTitle : `✅ ${currentTitle}`;
+            chrome.tabGroups.update(group.id, { title: restoredTitle }).then(() => {
+              groupTitles.set(group.id, restoredTitle);
+            }).catch(() => {});
           }
         });
+      } else {
+        // All tabs inactive - restore the checkmark
+        const restoredTitle = currentTitle.includes('✅') ? currentTitle : `✅ ${currentTitle}`;
+        chrome.tabGroups.update(group.id, { title: restoredTitle }).then(() => {
+          groupTitles.set(group.id, restoredTitle);
+        }).catch(() => {});
       }
-    }
+    });
+  } else {
+    // Update title cache
+    groupTitles.set(group.id, currentTitle);
   }
-
-  // Update title cache
-  groupTitles.set(group.id, currentTitle);
 });
 // ============================================================================
 
@@ -268,19 +366,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Content script triggered screenshot capture
   if (message.type === 'SCREENSHOT_TRIGGER') {
+    console.log('[ContextFort] 🎯 SCREENSHOT_TRIGGER received:', {
+      action: message.action,
+      eventType: message.eventType,
+      tabId: tab.id,
+      tabActive: tab.active,
+      url: message.url || tab.url,
+      title: message.title || tab.title,
+      hasElement: !!message.element,
+      hasCoordinates: !!message.coordinates,
+      hasInputValue: !!message.inputValue,
+      inputValue: message.inputValue,
+      timestamp: new Date().toISOString()
+    });
+
     let activation = activeAgentTabs.get(tab.id);
 
     // If not in activeAgentTabs (service worker restarted), reconstruct from session
     if (!activation && tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+      console.log('[ContextFort] 🔄 No activation found, attempting to reconstruct from session');
       const session = sessions.get(tab.groupId);
       if (session && session.status === 'active') {
         // Reconstruct activeAgentTabs entry
         activation = { sessionId: session.id, groupId: tab.groupId };
         activeAgentTabs.set(tab.id, activation);
+        console.log('[ContextFort] ✅ Activation reconstructed:', { sessionId: session.id, groupId: tab.groupId });
       }
     }
 
     if (!activation) {
+      console.log('[ContextFort] ⚠️ No active agent session for this tab - screenshot not captured');
       return;
     }
 
@@ -295,7 +410,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         title: titleOverride || message.title || tab.title,
         reason: 'agent_event',
         timestamp: new Date().toISOString(),
-        dataUrl: dataUrl,  // null for action, screenshot for result
+        dataUrl: dataUrl,
         eventType: message.eventType || 'unknown',
         eventDetails: isResult ? {
           // Result entries only have actionType and link back to action
@@ -313,54 +428,242 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       };
 
-      const result = await chrome.storage.local.get(['screenshots', 'sessions']);
-      const screenshots = result.screenshots || [];
-      const allSessions = result.sessions || [];
+      console.log(isResult ? '[ContextFort] 📸 Saving RESULT:' : '[ContextFort] 🎬 Saving ACTION:', {
+        screenshotId,
+        sessionId: activation.sessionId,
+        actionType: isResult ? message.action + '_result' : message.action,
+        hasScreenshot: !!dataUrl,
+        url: screenshotData.url,
+        title: screenshotData.title,
+        linkedToActionId: actionId,
+        timestamp: screenshotData.timestamp
+      });
 
-      screenshots.push(screenshotData);
+      // Use queued storage write to prevent race conditions
+      const savedId = await queuedStorageWrite(screenshotData, activation);
 
-      if (screenshots.length > 100) {
-        screenshots.shift();
-      }
+      console.log(isResult ? '[ContextFort] ✅ RESULT saved successfully' : '[ContextFort] ✅ ACTION saved successfully', {
+        screenshotId: savedId
+      });
 
-      const sessionIndex = allSessions.findIndex(s => s.id === activation.sessionId);
-      if (sessionIndex !== -1) {
-        allSessions[sessionIndex].screenshotCount = (allSessions[sessionIndex].screenshotCount || 0) + 1;
-        if (sessions.get(groupId)) {
-          sessions.get(groupId).screenshotCount = allSessions[sessionIndex].screenshotCount;
-        }
-      }
-
-      await chrome.storage.local.set({ screenshots: screenshots, sessions: allSessions });
-
-      return screenshotId;  // Return the ID so result can link back
+      return savedId;
     };
 
-    // Step 1: Immediately save the action with null screenshot
-    saveEventData(null, false).then(actionId => {
-      // If tab is not active, we're done (only action saved, no result)
-      if (!tab.active) {
-        return;
-      }
+    // CLICK ACTIONS: Two screenshots (action + result)
+    if (message.action === 'click') {
+      console.log('[ContextFort] 📷 Click action: getting tab info first...');
 
-
-      // Step 2: Get current tab info first, then capture screenshot
+      // Step 1: Get tab info FIRST
       chrome.tabs.get(tab.id, (currentTab) => {
         if (chrome.runtime.lastError || !currentTab) {
+          console.log('[ContextFort] ❌ Failed to get tab info for click ACTION:', chrome.runtime.lastError?.message);
           return;
         }
 
-        // Now capture screenshot with the URL/title we already have
-        chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
-          if (chrome.runtime.lastError) {
+        console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before screenshot...');
+
+        // Step 2: Wait 300ms for page to settle
+        setTimeout(() => {
+          console.log('[ContextFort] ⏱️ 300ms elapsed, capturing first screenshot for ACTION...');
+
+          // Step 3: Capture screenshot AFTER delay
+          chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl1) => {
+            if (chrome.runtime.lastError) {
+              console.log('[ContextFort] ❌ Screenshot capture failed for click ACTION:', chrome.runtime.lastError.message);
+              return;
+            }
+
+            console.log('[ContextFort] 📸 First screenshot captured, saving click ACTION...');
+
+            // Step 4: Save ACTION with screenshot
+            saveEventData(dataUrl1, false, currentTab.url, currentTab.title, null).then(actionId => {
+              console.log('[ContextFort] ✅ Click ACTION saved, checking if we should capture RESULT...', {
+                actionId,
+                tabActive: currentTab.active
+              });
+
+              // If tab is not active, we're done (only action saved)
+              if (!currentTab.active) {
+                console.log('[ContextFort] ⏭️ Tab not active, skipping click RESULT capture');
+                return;
+              }
+
+              console.log('[ContextFort] 📷 Tab is active, getting tab info for click RESULT...');
+
+              // Step 5: Get tab info for result
+              chrome.tabs.get(tab.id, (resultTab) => {
+                if (chrome.runtime.lastError || !resultTab) {
+                  console.log('[ContextFort] ❌ Failed to get tab info for click RESULT:', chrome.runtime.lastError?.message);
+                  return;
+                }
+
+                console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before second screenshot...');
+
+                // Step 6: Wait 300ms again
+                setTimeout(() => {
+                  console.log('[ContextFort] ⏱️ 300ms elapsed, capturing second screenshot for click RESULT...');
+
+                  // Step 7: Capture screenshot for result
+                  chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl2) => {
+                    if (chrome.runtime.lastError) {
+                      console.log('[ContextFort] ❌ Screenshot capture failed for click RESULT:', chrome.runtime.lastError.message);
+                      return;
+                    }
+
+                    console.log('[ContextFort] 📸 Second screenshot captured, saving click RESULT...');
+
+                    // Step 8: Save RESULT with second screenshot
+                    saveEventData(dataUrl2, true, resultTab.url, resultTab.title, actionId);
+                  });
+                }, 300);
+              });
+            });
+          });
+        }, 300);
+      });
+    }
+    // INPUT ACTIONS: Debounce and collect all inputs
+    else if (message.action === 'input') {
+      console.log('[ContextFort] ⌨️ Input action received, starting/resetting debounce timer...');
+
+      // Get or create debounce state for this tab
+      let debounceState = inputDebounceTimers.get(tab.id);
+
+      if (!debounceState) {
+        debounceState = { timer: null, inputs: [], tabInfo: null };
+        inputDebounceTimers.set(tab.id, debounceState);
+      }
+
+      // Clear existing timer
+      if (debounceState.timer) {
+        clearTimeout(debounceState.timer);
+        console.log('[ContextFort] ⏱️ Cleared previous input timer');
+      }
+
+      // Add this input to collection
+      debounceState.inputs.push({
+        element: message.element,
+        inputValue: message.inputValue,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('[ContextFort] 📝 Input collected:', {
+        tabId: tab.id,
+        inputValue: message.inputValue,
+        totalInputs: debounceState.inputs.length,
+        allInputValues: debounceState.inputs.map(i => i.inputValue)
+      });
+
+      // Set new timer - wait 1 second after last input
+      debounceState.timer = setTimeout(() => {
+        console.log('[ContextFort] ⏱️ Input debounce complete (1s elapsed), capturing screenshot...');
+
+        const collectedInputs = debounceState.inputs;
+        const inputValues = collectedInputs.map(i => i.inputValue);
+
+        console.log('[ContextFort] 📋 All collected inputs:', {
+          tabId: tab.id,
+          count: collectedInputs.length,
+          values: inputValues
+        });
+
+        // Clear debounce state
+        inputDebounceTimers.delete(tab.id);
+
+        // Get tab info first
+        chrome.tabs.get(tab.id, (currentTab) => {
+          if (chrome.runtime.lastError || !currentTab) {
+            console.log('[ContextFort] ❌ Failed to get tab info for input RESULT:', chrome.runtime.lastError?.message);
             return;
           }
 
-          // Screenshot succeeded, save result with URL/title from before capture
-          saveEventData(dataUrl, true, currentTab.url, currentTab.title, actionId);
+          console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before screenshot...');
+
+          // Wait 300ms for page to settle
+          setTimeout(() => {
+            console.log('[ContextFort] ⏱️ 300ms elapsed, capturing screenshot for input RESULT...');
+
+            // Capture screenshot
+            chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
+              if (chrome.runtime.lastError) {
+                console.log('[ContextFort] ❌ Screenshot capture failed for input RESULT:', chrome.runtime.lastError.message);
+                return;
+              }
+
+              console.log('[ContextFort] 📸 Screenshot captured, saving input RESULT with all values...');
+
+              // Save with ALL input values
+              const screenshotId = Date.now() + Math.random();
+              const screenshotData = {
+                id: screenshotId,
+                sessionId: activation.sessionId,
+                tabId: tab.id,
+                url: currentTab.url,
+                title: currentTab.title,
+                reason: 'agent_event',
+                timestamp: new Date().toISOString(),
+                dataUrl: dataUrl,
+                eventType: message.eventType || 'input',
+                eventDetails: {
+                  element: null,
+                  coordinates: null,
+                  inputValue: null,
+                  inputValues: inputValues,  // Array of all input values
+                  actionType: 'input_result'
+                }
+              };
+
+              console.log('[ContextFort] 💾 Saving input RESULT:', {
+                screenshotId,
+                inputCount: inputValues.length,
+                inputValues: inputValues
+              });
+
+              queuedStorageWrite(screenshotData, activation).then(savedId => {
+                console.log('[ContextFort] ✅ Input RESULT saved successfully with all values:', {
+                  screenshotId: savedId,
+                  inputValues: inputValues
+                });
+              });
+            });
+          }, 300);
         });
+      }, INPUT_DEBOUNCE_MS);
+
+      console.log('[ContextFort] ⏱️ Input debounce timer set for 1 second');
+    }
+    // OTHER ACTIONS (dblclick, rightclick): One screenshot (result only)
+    else {
+      console.log('[ContextFort] 📷 Non-click/non-input action: getting tab info first...');
+
+      // Step 1: Get tab info FIRST
+      chrome.tabs.get(tab.id, (currentTab) => {
+        if (chrome.runtime.lastError || !currentTab) {
+          console.log('[ContextFort] ❌ Failed to get tab info for RESULT:', chrome.runtime.lastError?.message);
+          return;
+        }
+
+        console.log('[ContextFort] 📝 Tab info retrieved, waiting 300ms before screenshot...');
+
+        // Step 2: Wait 300ms for page to settle
+        setTimeout(() => {
+          console.log('[ContextFort] ⏱️ 300ms elapsed, capturing screenshot for RESULT...');
+
+          // Step 3: Capture screenshot AFTER delay
+          chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
+            if (chrome.runtime.lastError) {
+              console.log('[ContextFort] ❌ Screenshot capture failed for RESULT:', chrome.runtime.lastError.message);
+              return;
+            }
+
+            console.log('[ContextFort] 📸 Screenshot captured, saving RESULT only (no action)...');
+
+            // Step 4: Save RESULT only (no action saved)
+            saveEventData(dataUrl, true, currentTab.url, currentTab.title, null);
+          });
+        }, 300);
       });
-  });
+    }
   }
 
   // Dashboard requested to reload blocking rules

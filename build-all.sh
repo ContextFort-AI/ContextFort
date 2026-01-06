@@ -25,6 +25,30 @@ else
     exit 1
 fi
 
+# Extract inline scripts for Chrome extension CSP compliance
+echo "🔧 Extracting inline scripts..."
+node extract-inline-scripts.js
+
+# Copy to chrome extension
+echo "📋 Copying dashboard to chrome-extension/dashboard..."
+if [ -d "$SCRIPT_DIR/chrome-extension/dashboard" ]; then
+  mv "$SCRIPT_DIR/chrome-extension/dashboard" "$SCRIPT_DIR/chrome-extension/dashboard.old-$(date +%Y%m%d-%H%M%S)"
+fi
+mkdir -p "$SCRIPT_DIR/chrome-extension/dashboard"
+cp -r out/_next "$SCRIPT_DIR/chrome-extension/dashboard/"
+cp out/*.html "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
+cp out/*.ico "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
+cp out/*.js "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
+cp out/*.json "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
+cp -r out/dashboard/* "$SCRIPT_DIR/chrome-extension/dashboard/"
+
+# Fix asset paths for nested HTML files
+echo "🔧 Fixing asset paths..."
+find "$SCRIPT_DIR/chrome-extension/dashboard" -maxdepth 1 -name "*.html" -exec sed -i '' 's|"\.\./\(_next\)|"./\1|g' {} \;
+find "$SCRIPT_DIR/chrome-extension/dashboard" -maxdepth 1 -name "*.html" -exec sed -i '' 's|href="\.\./\(_next\)|href="./\1|g' {} \;
+
+echo "✅ Dashboard copied to chrome extension"
+
 # Build Chrome Extension
 echo ""
 echo "🔧 Building Chrome Extension..."

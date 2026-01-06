@@ -21,8 +21,8 @@ value: contextfort
   --accent: oklch(0.7 0.2 150); /* Neon Green accent */
   --accent-foreground: oklch(0.05 0 0);
   --destructive: oklch(0.6 0.21 25.33);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.2 0 0);
+  --border: oklch(0.3 0 0);
+  --input: oklch(0.3 0 0);
   --ring: oklch(0.7 0.2 150); /* Neon Green ring */
 
   /* Chart colors - green spectrum */
@@ -39,7 +39,7 @@ value: contextfort
   --sidebar-primary-foreground: oklch(0.05 0 0);
   --sidebar-accent: oklch(0.1 0 0);
   --sidebar-accent-foreground: oklch(0.7 0.2 150);
-  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.7 0.2 150);
 
   /* Main background */
@@ -87,9 +87,9 @@ value: contextfort
   /* Destructive - Red for alerts */
   --destructive: oklch(0.6 0.21 25.33);
 
-  /* Borders - Subtle separation */
-  --border: oklch(0.15 0 0);
-  --input: oklch(0.15 0 0);
+  /* Borders - Visible separation */
+  --border: oklch(0.25 0 0);
+  --input: oklch(0.25 0 0);
   --ring: oklch(0.7 0.2 150); /* Neon Green focus ring */
 
   /* Charts - Green spectrum for data viz */
@@ -106,7 +106,7 @@ value: contextfort
   --sidebar-primary-foreground: oklch(0.05 0 0);
   --sidebar-accent: oklch(0.1 0 0);
   --sidebar-accent-foreground: oklch(0.7 0.2 150);
-  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.7 0.2 150);
 
   /* Minimal shadows for depth in dark mode */

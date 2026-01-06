@@ -84,8 +84,41 @@ export function AuthModal({ onAuthenticated }: AuthModalProps) {
       if (result && result.success) {
         // @ts-ignore - Chrome extension API
         await chrome.storage.local.set({ userEmail: email });
-        setSuccess(result.message || "OTP sent to your email");
-        setStep("otp");
+
+        // Check if OTP is required
+        if (result.requiresOTP === false && result.accessToken) {
+          // User is already verified, save token and skip OTP step
+          // @ts-ignore - Chrome extension API
+          await chrome.storage.local.set({
+            accessToken: result.accessToken,
+            userData: result.user
+          });
+
+          // Call PostHog identify
+          try {
+            // @ts-ignore - Chrome extension API
+            await new Promise((resolve) => {
+              // @ts-ignore - Chrome extension API
+              chrome.runtime.sendMessage({
+                action: "identifyUser",
+                email: email
+              }, (response: any) => {
+                resolve(response);
+              });
+            });
+          } catch (err) {
+            console.error("PostHog identify error:", err);
+          }
+
+          setSuccess("Login successful!");
+          setTimeout(() => {
+            onAuthenticated();
+          }, 1000);
+        } else {
+          // OTP is required
+          setSuccess(result.message || "OTP sent to your email");
+          setStep("otp");
+        }
       } else {
         setError(result?.error || "Failed to send OTP");
       }

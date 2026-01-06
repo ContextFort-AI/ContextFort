@@ -147,7 +147,7 @@ function VisibilityPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-space-grotesk tracking-tighter">Visibility</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Visibility</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleRefetch}>
@@ -192,7 +192,7 @@ export default function VisibilityPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold font-space-grotesk tracking-tighter">Visibility</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Visibility</h1>
             <p className="text-muted-foreground">Monitor agent sessions and captured screenshots</p>
           </div>
         </div>

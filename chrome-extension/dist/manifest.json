@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Claude Agent Detector",
+  "name": "ContextFort",
   "version": "1.0.0",
-  "description": "Detects Claude agent mode, captures screenshots, and tracks sessions",
+  "description": "Visibility & Controls for Browser Agents",
 
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "activeTab",
     "tabs",
     "tabGroups",

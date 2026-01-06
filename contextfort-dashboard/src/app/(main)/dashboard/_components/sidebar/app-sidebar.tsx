@@ -1,9 +1,8 @@
 "use client";
 
-import { CircleHelp, ClipboardList, Database, File, Search, Settings } from "lucide-react";
+import { CircleHelp, ClipboardList, Command, Database, File, Search, Settings } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Logo, LogoText } from "@/components/brand/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -73,8 +72,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton className="h-10 pointer-events-none">
-              <Logo size="md" />
-              <LogoText />
+              <Command className="h-6 w-6" />
+              <span className="font-bold text-xl">{APP_CONFIG.name}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

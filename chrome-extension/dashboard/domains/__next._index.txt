@@ -1,17 +1,17 @@
 1:"$Sreact.fragment"
-4:I[67883,["../_next/static/chunks/806dfd71163a9682.js"],"PreferencesStoreProvider"]
+4:I[67883,["../_next/static/chunks/a3898b162a23e153.js"],"PreferencesStoreProvider"]
 5:I[77011,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"default"]
 6:I[27276,["../_next/static/chunks/9beebae228ae18a0.js","../_next/static/chunks/cf365594797ee4f1.js"],"default"]
-7:I[83518,["../_next/static/chunks/806dfd71163a9682.js","../_next/static/chunks/b36ea3e1c5f70c20.js"],"default"]
-8:I[41238,["../_next/static/chunks/806dfd71163a9682.js"],"Toaster"]
-:HL["../_next/static/chunks/4e20891f2fd03463.css","style"]
-:HL["../_next/static/chunks/1115cab9940b3282.css","style"]
-2:Tc7e,
+7:I[83518,["../_next/static/chunks/a3898b162a23e153.js","../_next/static/chunks/b36ea3e1c5f70c20.js"],"default"]
+8:I[41238,["../_next/static/chunks/a3898b162a23e153.js"],"Toaster"]
+:HL["../_next/static/chunks/a10758048e0e22cb.css","style"]
+:HL["../_next/static/chunks/335251acc3da5bed.css","style"]
+2:Tc81,
     (function () {
       try {
         var root = document.documentElement;
         var PERSISTENCE = {"theme_mode":"client-cookie","theme_preset":"client-cookie","content_layout":"client-cookie","navbar_style":"client-cookie","sidebar_variant":"client-cookie","sidebar_collapsible":"client-cookie"};
-        var DEFAULTS = {"theme_mode":"light","theme_preset":"default","content_layout":"centered","navbar_style":"sticky","sidebar_variant":"inset","sidebar_collapsible":"icon"};
+        var DEFAULTS = {"theme_mode":"dark","theme_preset":"contextfort","content_layout":"centered","navbar_style":"sticky","sidebar_variant":"inset","sidebar_collapsible":"icon"};
 
         function readCookie(name) {
           var match = document.cookie.split("; ").find(function(c) {
@@ -85,5 +85,5 @@
         console.warn("ThemeBootScript error:", e);
       }
     })();
-  0:{"buildId":"5rRKOzmin8Y1owe5Np2yq","rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"../_next/static/chunks/4e20891f2fd03463.css","precedence":"next"}],["$","link","1",{"rel":"stylesheet","href":"../_next/static/chunks/1115cab9940b3282.css","precedence":"next"}],["$","script","script-0",{"src":"../_next/static/chunks/806dfd71163a9682.js","async":true}]],["$","html",null,{"lang":"en","className":"light","data-theme-preset":"default","data-content-layout":"centered","data-navbar-style":"sticky","data-sidebar-variant":"inset","data-sidebar-collapsible":"icon","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]}],"$L3"]}]]}],"loading":null,"isPartial":false}
-3:["$","body",null,{"className":"inter_5972bc34-module__OU16Qa__className min-h-screen antialiased","children":[false,["$","$L4",null,{"themeMode":"light","themePreset":"default","contentLayout":"centered","navbarStyle":"sticky","children":[["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}],"notFound":[["$","$L7",null,{}],[]]}],["$","$L8",null,{}]]}]]}]
+  0:{"buildId":"w30Mm-LXrq1QLgrDycyy7","rsc":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"../_next/static/chunks/a10758048e0e22cb.css","precedence":"next"}],["$","link","1",{"rel":"stylesheet","href":"../_next/static/chunks/335251acc3da5bed.css","precedence":"next"}],["$","script","script-0",{"src":"../_next/static/chunks/a3898b162a23e153.js","async":true}]],["$","html",null,{"lang":"en","className":"dark","data-theme-preset":"contextfort","data-content-layout":"centered","data-navbar-style":"sticky","data-sidebar-variant":"inset","data-sidebar-collapsible":"icon","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]}],"$L3"]}]]}],"loading":null,"isPartial":false}
+3:["$","body",null,{"className":"space_grotesk_34d7c37d-module__2r26gq__variable jetbrains_mono_bfad6200-module__3QebHq__variable min-h-screen antialiased","children":[false,["$","$L4",null,{"themeMode":"dark","themePreset":"contextfort","contentLayout":"centered","navbarStyle":"sticky","children":[["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}],"notFound":[["$","$L7",null,{}],[]]}],["$","$L8",null,{}]]}]]}]

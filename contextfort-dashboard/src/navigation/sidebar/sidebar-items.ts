@@ -72,17 +72,17 @@ export const sidebarItems: NavGroup[] = [
       },
       {
         title: "Governance",
-        url: "/dashboard/governance/rules",
+        url: "/dashboard/rules",
         icon: ScrollText,
         subItems: [
           {
             title: "Rules",
-            url: "/dashboard/governance/rules",
+            url: "/dashboard/rules",
             icon: FileCheck,
           },
           {
             title: "Rules Applied Instances",
-            url: "/dashboard/governance/instances",
+            url: "/dashboard/instances",
             icon: History,
           },
         ],

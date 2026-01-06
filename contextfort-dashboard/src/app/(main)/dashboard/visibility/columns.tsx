@@ -30,6 +30,7 @@ export interface Screenshot {
     element: any | null;
     coordinates: { x: number; y: number } | null;
     inputValue: string | null;
+    inputValues?: string[];  // Array of all input values collected during debounce
     actionType: string;
   } | null;
   clickedElement?: {
@@ -166,25 +167,8 @@ export const columns: ColumnDef<SessionRow>[] = [
         );
       }
 
-      // Get display screenshot - for click actions with no dataUrl, use previous screenshot
-      const getDisplayDataUrl = () => {
-        const actionType = currentScreenshot.eventDetails?.actionType || currentScreenshot.reason;
-
-        // If this is a click action with no screenshot, use previous one
-        if (actionType === 'click' && !currentScreenshot.dataUrl) {
-          const currentIndex = allScreenshots.findIndex(s => s.id === currentScreenshot.id);
-
-          // Look backwards for previous screenshot with dataUrl
-          for (let i = currentIndex - 1; i >= 0; i--) {
-            if (allScreenshots[i].dataUrl) {
-              return allScreenshots[i].dataUrl;
-            }
-          }
-        }
-        return currentScreenshot.dataUrl;
-      };
-
-      const displayDataUrl = getDisplayDataUrl();
+      // All actions now have screenshots, no need for fallback logic
+      const displayDataUrl = currentScreenshot.dataUrl;
 
       if (!displayDataUrl) {
         return (
@@ -221,9 +205,13 @@ export const columns: ColumnDef<SessionRow>[] = [
       const coordinates = currentScreenshot.eventDetails?.coordinates;
       const element = currentScreenshot.eventDetails?.element;
       const inputValue = currentScreenshot.eventDetails?.inputValue;
+      const inputValues = currentScreenshot.eventDetails?.inputValues;
 
       // Generate action description
       const getActionDescription = () => {
+        if (inputValues && inputValues.length > 0) {
+          return `Inputs (${inputValues.length}): ${inputValues.map(v => `"${v}"`).join(', ')}`;
+        }
         if (inputValue) {
           return `Input: "${inputValue}"`;
         }
