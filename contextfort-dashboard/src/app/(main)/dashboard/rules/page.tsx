@@ -6,8 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  ChevronDownIcon,
-  ChevronRightIcon,
   RefreshCwIcon,
   FileCheckIcon,
   LinkIcon,
@@ -41,7 +39,6 @@ const GOVERNANCE_RULES: Omit<GovernanceRule, 'enabled'>[] = [
 export default function GovernanceRulesPage() {
   const [rules, setRules] = useState<GovernanceRule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedRules, setExpandedRules] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = 'Governance Rules - ContextFort';
@@ -114,15 +111,6 @@ export default function GovernanceRulesPage() {
     }
   };
 
-  const toggleExpanded = (ruleId: string) => {
-    const newExpanded = new Set(expandedRules);
-    if (newExpanded.has(ruleId)) {
-      newExpanded.delete(ruleId);
-    } else {
-      newExpanded.add(ruleId);
-    }
-    setExpandedRules(newExpanded);
-  };
 
   const enabledCount = rules.filter(r => r.enabled).length;
 
@@ -189,28 +177,26 @@ export default function GovernanceRulesPage() {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-border">
                 <TableHead className="w-[5%]"></TableHead>
-                <TableHead className="w-[50%]">Rule Name</TableHead>
+                <TableHead className="w-[55%]">Rule Name</TableHead>
                 <TableHead className="w-[20%] text-center">Status</TableHead>
                 <TableHead className="w-[20%] text-center">Enabled</TableHead>
-                <TableHead className="w-[5%]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rules.map((rule) => {
-                const isExpanded = expandedRules.has(rule.id);
                 const Icon = rule.icon;
 
                 return (
                   <Fragment key={rule.id}>
-                    <TableRow
-                      className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => toggleExpanded(rule.id)}
-                    >
+                    <TableRow className="border-b border-border">
                       <TableCell>
                         <Icon className="h-5 w-5 text-muted-foreground" />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{rule.name}</div>
+                        <div className="font-medium mb-2">{rule.name}</div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {rule.description}
+                        </p>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -225,38 +211,14 @@ export default function GovernanceRulesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center">
                           <Switch
                             checked={rule.enabled}
                             onCheckedChange={(checked) => toggleRule(rule.id, checked)}
                           />
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center">
-                          {isExpanded ? (
-                            <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      </TableCell>
                     </TableRow>
-
-                    {isExpanded && (
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={5} className="p-0">
-                          <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto">
-                            <div>
-                              <h4 className="text-sm font-medium mb-2">About this rule</h4>
-                              <p className="text-sm text-muted-foreground leading-relaxed">
-                                {rule.description}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </Fragment>
                 );
               })}
