@@ -167,10 +167,28 @@ export const columns: ColumnDef<SessionRow>[] = [
         );
       }
 
-      // All actions now have screenshots, no need for fallback logic
+      // Check if this is a page_read event without screenshot
+      const actionType = currentScreenshot.eventDetails?.actionType || currentScreenshot.reason;
       const displayDataUrl = currentScreenshot.dataUrl;
 
       if (!displayDataUrl) {
+        // For page_read events, show page title and URL instead of "No preview"
+        if (actionType === 'page_read') {
+          return (
+            <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border flex flex-col items-center justify-center p-4 gap-2">
+              <BookOpenIcon className="h-8 w-8 text-muted-foreground/50" />
+              <div className="text-center w-full">
+                <div className="text-xs font-medium text-foreground truncate" title={currentScreenshot.title}>
+                  {currentScreenshot.title}
+                </div>
+                <div className="text-xs text-muted-foreground truncate mt-1" title={currentScreenshot.url}>
+                  {currentScreenshot.url}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="relative w-[280px] h-[160px] bg-muted rounded overflow-hidden border border-border flex items-center justify-center">
             <span className="text-xs text-muted-foreground">No preview</span>

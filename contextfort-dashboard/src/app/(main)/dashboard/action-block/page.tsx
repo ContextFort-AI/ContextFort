@@ -196,6 +196,13 @@ export default function ActionBlockPage() {
         // @ts-ignore - Chrome extension API
         await chrome.storage.local.set({ blockedActions: updatedBlockedActions });
         setBlockedActions(updatedBlockedActions);
+
+        // Notify background.js to reload the blocked actions
+        // @ts-ignore - Chrome extension API
+        chrome.runtime.sendMessage({
+          type: 'RELOAD_BLOCKED_ACTIONS',
+          actions: updatedBlockedActions
+        });
       }
     } catch (error) {
       console.error('Error toggling block action:', error);

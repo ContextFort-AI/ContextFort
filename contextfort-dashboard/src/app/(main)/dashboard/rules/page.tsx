@@ -101,6 +101,13 @@ export default function GovernanceRulesPage() {
 
         // @ts-ignore - Chrome extension API
         await chrome.storage.local.set({ governanceRules: storedRules });
+
+        // Notify background.js to reload governance rules and update DNR
+        // @ts-ignore - Chrome extension API
+        chrome.runtime.sendMessage({
+          type: 'RELOAD_GOVERNANCE_RULES',
+          rules: storedRules
+        });
       }
     } catch (error) {
       console.error('[Governance Rules] Error saving rule state:', error);
@@ -239,7 +246,7 @@ export default function GovernanceRulesPage() {
                     {isExpanded && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={5} className="p-0">
-                          <div className="p-6 space-y-4">
+                          <div className="p-6 space-y-4 max-h-[300px] overflow-y-auto">
                             <div>
                               <h4 className="text-sm font-medium mb-2">About this rule</h4>
                               <p className="text-sm text-muted-foreground leading-relaxed">

@@ -3,6 +3,7 @@
   "name": "ContextFort",
   "version": "1.0.0",
   "description": "Visibility & Controls for Browser Agents",
+  "minimum_chrome_version": "134",
 
   "permissions": [
     "storage",

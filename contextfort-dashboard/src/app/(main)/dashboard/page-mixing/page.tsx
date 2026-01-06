@@ -264,6 +264,13 @@ export default function PageMixingPage() {
     if (typeof chrome !== 'undefined' && chrome?.storage) {
       // @ts-ignore - Chrome extension API
       await chrome.storage.local.set({ urlBlockingRules: newRules });
+
+      // Notify background.js to reload the rules
+      // @ts-ignore - Chrome extension API
+      chrome.runtime.sendMessage({
+        type: 'RELOAD_BLOCKING_RULES',
+        rules: newRules
+      });
     }
   };
 

@@ -27,6 +27,7 @@ const sessions = new Map(); // groupId -> session object
 const activeAgentTabs = new Map(); // tabId -> { sessionId, groupId }
 let urlBlockingRules = []; // Loaded from storage, managed via dashboard
 let blockedActions = []; // Loaded from storage, managed via dashboard
+let governanceRules = {}; // Loaded from storage, managed via dashboard
 
 // Rate limiting for captureVisibleTab API calls
 const captureTimestamps = [];
@@ -100,9 +101,75 @@ async function processStorageQueue() {
   isProcessingQueue = false;
 }
 
-// Load URL blocking rules, blocked actions, and restore active sessions on startup
+// DNR Rule IDs for governance rules
+const DNR_RULE_IDS = {
+  DISALLOW_CLICKABLE_URLS: 1000,
+  DISALLOW_QUERY_PARAMS: 1001
+};
+
+// Update DNR rules based on governance rules
+async function updateDNRRules() {
+  try {
+    const rulesToAdd = [];
+    const ruleIdsToRemove = [];
+
+    // Rule: Disallow Clickable URLs in Sidechat
+    if (governanceRules.disallow_clickable_urls) {
+      rulesToAdd.push({
+        id: DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS,
+        priority: 1,
+        action: { type: "block" },
+        condition: {
+          initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+          resourceTypes: ["main_frame"],
+          regexFilter: "^https?://"
+        }
+      });
+    } else {
+      ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS);
+    }
+
+    // Rule: Disallow URLs with Query Parameters
+    if (governanceRules.disallow_query_params) {
+      rulesToAdd.push({
+        id: DNR_RULE_IDS.DISALLOW_QUERY_PARAMS,
+        priority: 1,
+        action: {
+          type: 'block'
+        },
+        condition: {
+          initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+          resourceTypes: ['main_frame'],
+          urlFilter: '|http*://*?*' // Match URLs with query parameters
+        }
+      });
+    } else {
+      ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_QUERY_PARAMS);
+    }
+
+    // Update dynamic rules
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: ruleIdsToRemove,
+      addRules: rulesToAdd
+    });
+
+    console.log('[ContextFort] 🛡️ DNR rules updated:', {
+      added: rulesToAdd.map(r => r.id),
+      removed: ruleIdsToRemove,
+      currentGovernanceRules: governanceRules
+    });
+
+    // Verify rules were added
+    const currentRules = await chrome.declarativeNetRequest.getDynamicRules();
+    console.log('[ContextFort] 🔍 Current DNR rules:', currentRules);
+  } catch (error) {
+    console.error('[ContextFort] ❌ Failed to update DNR rules:', error);
+  }
+}
+
+// Load URL blocking rules, blocked actions, governance rules, and restore active sessions on startup
 (async () => {
-  const result = await chrome.storage.local.get(['urlBlockingRules', 'blockedActions', 'sessions']);
+  const result = await chrome.storage.local.get(['urlBlockingRules', 'blockedActions', 'governanceRules', 'sessions']);
 
   // Restore URL blocking rules
   if (result.urlBlockingRules) {
@@ -112,6 +179,13 @@ async function processStorageQueue() {
   // Restore blocked actions
   if (result.blockedActions) {
     blockedActions = result.blockedActions;
+  }
+
+  // Restore governance rules
+  if (result.governanceRules) {
+    governanceRules = result.governanceRules;
+    // Apply DNR rules based on governance rules
+    await updateDNRRules();
   }
 
   // Restore active sessions to in-memory Map
@@ -675,6 +749,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Dashboard requested to reload blocked actions
   if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
+  }
+
+  // Dashboard requested to reload governance rules
+  if (message.type === 'RELOAD_GOVERNANCE_RULES') {
+    governanceRules = message.rules || {};
+    // Update DNR rules based on new governance rules
+    updateDNRRules();
   }
 
   if (message.action === 'login') {
