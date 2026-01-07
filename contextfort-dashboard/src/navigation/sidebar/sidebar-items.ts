@@ -5,10 +5,7 @@ import {
   Eye,
   Sliders,
   BarChart3,
-  Globe,
   ScrollText,
-  FileCheck,
-  History,
   Calendar,
 } from "lucide-react";
 
@@ -57,17 +54,16 @@ export const sidebarItems: NavGroup[] = [
         icon: Sliders,
         subItems: [
           {
-            title: "Page Mixing",
+            title: "Stop Context Mixing",
             url: "/dashboard/page-mixing",
           },
           {
-            title: "Action Block",
+            title: "Block Actions",
             url: "/dashboard/action-block",
           },
           {
-            title: "Domains",
+            title: "Block Domains",
             url: "/dashboard/domains",
-            icon: Globe,
           },
         ],
       },
@@ -79,12 +75,6 @@ export const sidebarItems: NavGroup[] = [
           {
             title: "Rules",
             url: "/dashboard/rules",
-            icon: FileCheck,
-          },
-          {
-            title: "Rules Applied Instances",
-            url: "/dashboard/instances",
-            icon: History,
           },
         ],
       },

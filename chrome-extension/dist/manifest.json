@@ -14,7 +14,8 @@
     "webNavigation",
     "declarativeNetRequest",
     "declarativeNetRequestFeedback",
-    "notifications"
+    "notifications",
+    "scripting"
   ],
 
   "host_permissions": [

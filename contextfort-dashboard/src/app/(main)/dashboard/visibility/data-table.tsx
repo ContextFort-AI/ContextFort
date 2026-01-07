@@ -256,24 +256,40 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                   <DialogTrigger asChild>
                                     <div className="bg-card rounded-lg border border-border overflow-hidden hover:border-muted-foreground transition-colors cursor-pointer flex flex-col h-full">
                                       <div className="relative w-full h-[120px] bg-muted flex-shrink-0">
-                                        <img
-                                          src={displayDataUrl}
-                                          alt={`Screenshot ${screenshot.id}`}
-                                          className="w-full h-full object-cover"
-                                          onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
-                                        />
-                                        {/* Red box overlay for click coordinates - only show for action, not result */}
-                                        {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
-                                          <div
-                                            className="absolute border-2 border-red-500 bg-red-500/20"
-                                            style={{
-                                              left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
-                                              top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
-                                              width: '20px',
-                                              height: '20px',
-                                              transform: 'translate(-50%, -50%)'
-                                            }}
-                                          />
+                                        {!displayDataUrl && actionType === 'page_read' ? (
+                                          <div className="w-full h-full flex flex-col items-center justify-center p-2 gap-1">
+                                            <BookOpenIcon className="h-6 w-6 text-muted-foreground/50" />
+                                            <div className="text-center w-full px-2">
+                                              <div className="text-[10px] font-medium text-foreground truncate" title={screenshot.title}>
+                                                {screenshot.title}
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground truncate mt-0.5" title={screenshot.url}>
+                                                {screenshot.url}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <img
+                                              src={displayDataUrl}
+                                              alt={`Screenshot ${screenshot.id}`}
+                                              className="w-full h-full object-cover"
+                                              onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
+                                            />
+                                            {/* Red box overlay for click coordinates - only show for action, not result */}
+                                            {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
+                                              <div
+                                                className="absolute border-2 border-red-500 bg-red-500/20"
+                                                style={{
+                                                  left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
+                                                  top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
+                                                  width: '20px',
+                                                  height: '20px',
+                                                  transform: 'translate(-50%, -50%)'
+                                                }}
+                                              />
+                                            )}
+                                          </>
                                         )}
                                       </div>
                                       <div className="p-3 space-y-2 flex-1 flex flex-col">
@@ -309,24 +325,40 @@ export function DataTable({ columns, data, onRowClick }: DataTableProps) {
                                   </DialogTrigger>
                                   <DialogContent className="max-w-[90vw] max-h-[90vh] p-4">
                                     <div className="relative">
-                                      <img
-                                        src={displayDataUrl}
-                                        alt={`Screenshot ${screenshot.id}`}
-                                        className="w-full h-full object-contain"
-                                        onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
-                                      />
-                                      {/* Red box overlay for full-size view - only show for action, not result */}
-                                      {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
-                                        <div
-                                          className="absolute border-4 border-red-500 bg-red-500/30"
-                                          style={{
-                                            left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
-                                            top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
-                                            width: '40px',
-                                            height: '40px',
-                                            transform: 'translate(-50%, -50%)'
-                                          }}
-                                        />
+                                      {!displayDataUrl && actionType === 'page_read' ? (
+                                        <div className="flex flex-col items-center justify-center p-12 gap-4 bg-muted rounded">
+                                          <BookOpenIcon className="h-16 w-16 text-muted-foreground/50" />
+                                          <div className="text-center">
+                                            <div className="text-lg font-medium text-foreground mb-2">
+                                              {screenshot.title}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                              {screenshot.url}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <img
+                                            src={displayDataUrl}
+                                            alt={`Screenshot ${screenshot.id}`}
+                                            className="w-full h-full object-contain"
+                                            onLoad={(e) => handleImageLoad(displayScreenshotId, e)}
+                                          />
+                                          {/* Red box overlay for full-size view - only show for action, not result */}
+                                          {coordinates && imageDimensions[displayScreenshotId] && !actionType.includes('_result') && (
+                                            <div
+                                              className="absolute border-4 border-red-500 bg-red-500/30"
+                                              style={{
+                                                left: `${(coordinates.x / imageDimensions[displayScreenshotId].width) * 100}%`,
+                                                top: `${(coordinates.y / imageDimensions[displayScreenshotId].height) * 100}%`,
+                                                width: '40px',
+                                                height: '40px',
+                                                transform: 'translate(-50%, -50%)'
+                                              }}
+                                            />
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                     {/* Action description in dialog */}

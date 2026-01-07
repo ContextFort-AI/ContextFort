@@ -121,7 +121,15 @@ export default function ActionBlockPage() {
         // @ts-ignore - Chrome extension API
         const result = await chrome.storage.local.get(['blockedActions']);
         const blocked = result.blockedActions || [];
-        setBlockedActions(blocked);
+
+        // Sanitize className in case old data has SVGAnimatedString objects
+        const sanitized = blocked.map((action: any) => ({
+          ...action,
+          elementClass: typeof action.elementClass === 'string' ? action.elementClass :
+                        (action.elementClass?.baseVal || null)
+        }));
+
+        setBlockedActions(sanitized);
       }
     } catch (error) {
       console.error('Error loading blocked actions:', error);
@@ -523,8 +531,8 @@ export default function ActionBlockPage() {
                               <span className="text-muted-foreground">Element: </span>
                               {action.elementTag}
                               {action.elementId && ` #${action.elementId}`}
-                              {action.elementClass && ` .${action.elementClass.split(' ')[0]}`}
-                              {action.elementText && ` "${action.elementText.substring(0, 30)}..."`}
+                              {action.elementClass && typeof action.elementClass === 'string' && ` .${action.elementClass.split(' ')[0]}`}
+                              {action.elementText && typeof action.elementText === 'string' && ` "${action.elementText.substring(0, 30)}..."`}
                             </div>
                           )}
                           {action.inputValue && (

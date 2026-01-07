@@ -38,6 +38,7 @@ interface Session {
   screenshotCount: number;
   status: 'active' | 'ended';
   duration?: number;
+  visitedUrls?: string[];
 }
 
 interface TransitionData {
@@ -118,49 +119,39 @@ export default function PageMixingPage() {
     return `${formatDate(timestamp)} ${formatTime(timestamp)}`;
   };
 
-  // Group screenshots by session
-  const sessionScreenshots = new Map<number, Screenshot[]>();
-  screenshots.forEach(screenshot => {
-    const sessionId = screenshot.sessionId;
-    if (!sessionId) return;
-    if (!sessionScreenshots.has(sessionId)) {
-      sessionScreenshots.set(sessionId, []);
-    }
-    sessionScreenshots.get(sessionId)!.push(screenshot);
-  });
-
-  // Create URL transitions
+  // Create URL transitions from session visitedUrls
   const transitionMap = new Map<string, TransitionData>();
 
-  sessionScreenshots.forEach((sessionShots, sessionId) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
+  sessions.forEach(session => {
+    const visitedUrls = session.visitedUrls || [];
+    if (visitedUrls.length < 2) return;
 
-    const sortedShots = sessionShots.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Create transitions from consecutive visitedUrls
+    for (let i = 0; i < visitedUrls.length - 1; i++) {
+      const fromUrl = visitedUrls[i];
+      const toUrl = visitedUrls[i + 1];
 
-    for (let i = 0; i < sortedShots.length - 1; i++) {
-      const fromShot = sortedShots[i];
-      const toShot = sortedShots[i + 1];
+      // Skip if URLs are the same
+      if (fromUrl === toUrl) continue;
 
-      // Skip if URL and title are both the same
-      if (fromShot.url === toShot.url && fromShot.title === toShot.title) continue;
-
-      const transitionKey = `${fromShot.url}|||${toShot.url}`;
+      const transitionKey = `${fromUrl}|||${toUrl}`;
 
       try {
-        const fromHostname = new URL(fromShot.url).hostname;
-        const toHostname = new URL(toShot.url).hostname;
+        const fromHostname = new URL(fromUrl).hostname;
+        const toHostname = new URL(toUrl).hostname;
 
         // Check if destination page has any interaction events (click/input)
-        const toUrlScreenshots = sortedShots.filter(s => s.url === toShot.url);
+        const toUrlScreenshots = screenshots.filter(s =>
+          s.sessionId === session.id && s.url === toUrl
+        );
         const hasInteraction = toUrlScreenshots.some(s =>
           s.eventType === 'click' || s.eventType === 'input'
         );
 
         if (!transitionMap.has(transitionKey)) {
           transitionMap.set(transitionKey, {
-            fromUrl: fromShot.url,
-            toUrl: toShot.url,
+            fromUrl,
+            toUrl,
             fromHostname,
             toHostname,
             transitionCount: 0,
@@ -170,22 +161,21 @@ export default function PageMixingPage() {
         }
         const transitionData = transitionMap.get(transitionKey)!;
 
-        if (!transitionData.sessions.has(sessionId)) {
-          transitionData.sessions.set(sessionId, {
-            sessionId,
+        if (!transitionData.sessions.has(session.id)) {
+          transitionData.sessions.set(session.id, {
+            sessionId: session.id,
             sessionTitle: session.tabTitle || 'Unknown Page',
             sessionStatus: session.status,
             sessionStartTime: session.startTime,
             transitionCount: 0,
-            firstTransition: sortedShots[i].timestamp,
-            lastTransition: sortedShots[i + 1].timestamp
+            firstTransition: session.startTime,
+            lastTransition: session.startTime
           });
         }
-        const sessionData = transitionData.sessions.get(sessionId)!;
+        const sessionData = transitionData.sessions.get(session.id)!;
 
         transitionData.transitionCount++;
         sessionData.transitionCount++;
-        sessionData.lastTransition = sortedShots[i + 1].timestamp;
       } catch (error) {
         console.error('[URL Logs] Error processing transition:', error);
       }

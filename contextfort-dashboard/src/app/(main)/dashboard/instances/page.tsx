@@ -107,11 +107,6 @@ export default function GovernanceInstancesPage() {
     return instances.filter(instance => selectedRules.has(instance.ruleId));
   }, [instances, selectedRules]);
 
-  const getRuleIcon = (ruleId: string) => {
-    const Icon = RULE_METADATA[ruleId]?.icon || HistoryIcon;
-    return Icon;
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -217,22 +212,15 @@ export default function GovernanceInstancesPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-border">
-                <TableHead className="w-[5%]"></TableHead>
                 <TableHead className="w-[20%]">Timestamp</TableHead>
                 <TableHead className="w-[25%]">Rule</TableHead>
-                <TableHead className="w-[40%]">Details</TableHead>
+                <TableHead className="w-[45%]">Details</TableHead>
                 <TableHead className="w-[10%] text-center">Session</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredInstances.map((instance) => {
-                const Icon = getRuleIcon(instance.ruleId);
-
-                return (
+              {filteredInstances.map((instance) => (
                   <TableRow key={instance.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <TableCell>
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </TableCell>
                     <TableCell>
                       <div className="text-sm text-muted-foreground">
                         {formatDateTime(instance.timestamp)}
@@ -268,8 +256,7 @@ export default function GovernanceInstancesPage() {
                       )}
                     </TableCell>
                   </TableRow>
-                );
-              })}
+              ))}
             </TableBody>
           </Table>
         </div>

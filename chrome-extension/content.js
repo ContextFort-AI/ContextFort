@@ -20,14 +20,160 @@ function safeSendMessage(message) {
 
 function captureElement(target) {
   if (!target) return null;
+
+  // Handle className for both HTML and SVG elements
+  let className = null;
+  if (target.className) {
+    if (typeof target.className === 'string') {
+      className = target.className;
+    } else if (target.className.baseVal !== undefined) {
+      // SVG elements have className as SVGAnimatedString with baseVal property
+      className = target.className.baseVal;
+    }
+  }
+
   return {
     tag: target.tagName,
     id: target.id || null,
-    className: target.className || null,
+    className: className,
     text: target.textContent?.substring(0, 50) || null,
     type: target.type || null,
     name: target.name || null
   };
+}
+
+function showInPageNotification(title, message, type = 'error') {
+  // Remove any existing notification
+  const existingNotification = document.getElementById('contextfort-notification');
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+
+  // Create notification container
+  const notification = document.createElement('div');
+  notification.id = 'contextfort-notification';
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 320px;
+    max-width: 400px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 2147483647;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 12px;
+    animation: contextfort-slide-in 0.3s ease-out;
+    border-left: 4px solid ${type === 'error' ? '#DC2626' : '#2563EB'};
+  `;
+
+  // Add animation keyframes
+  if (!document.getElementById('contextfort-notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'contextfort-notification-styles';
+    style.textContent = `
+      @keyframes contextfort-slide-in {
+        from {
+          transform: translateX(420px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes contextfort-slide-out {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(420px);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Icon
+  const icon = document.createElement('div');
+  icon.style.cssText = `
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    line-height: 24px;
+  `;
+  icon.textContent = type === 'error' ? '⛔' : 'ℹ️';
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    flex: 1;
+    min-width: 0;
+  `;
+
+  const titleEl = document.createElement('div');
+  titleEl.style.cssText = `
+    font-weight: 600;
+    font-size: 14px;
+    color: #1F2937;
+    margin-bottom: 4px;
+  `;
+  titleEl.textContent = title;
+
+  const messageEl = document.createElement('div');
+  messageEl.style.cssText = `
+    font-size: 13px;
+    color: #6B7280;
+    line-height: 1.4;
+  `;
+  messageEl.textContent = message;
+
+  content.appendChild(titleEl);
+  content.appendChild(messageEl);
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = `
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: #9CA3AF;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  closeBtn.textContent = '×';
+  closeBtn.onclick = () => {
+    notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
+    setTimeout(() => notification.remove(), 300);
+  };
+
+  notification.appendChild(icon);
+  notification.appendChild(content);
+  notification.appendChild(closeBtn);
+
+  document.body.appendChild(notification);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 5000);
 }
 // ============================================================================
 
@@ -187,7 +333,6 @@ document.addEventListener('visibilitychange', () => {
       if (!document.getElementById('claude-agent-glow-border') && agentModeActive) {
         safeSendMessage({ type: 'AGENT_STOPPED' });
         stopListening();
-      } else {
       }
     }, 500);
   }
@@ -321,4 +466,14 @@ function onBlockedElementInput(e) {
     return false;
   }
 }
+// ============================================================================
+
+
+// MESSAGE LISTENER FOR NOTIFICATIONS
+// ============================================================================
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'SHOW_NOTIFICATION') {
+    showInPageNotification(message.title, message.message, message.notificationType);
+  }
+});
 // ============================================================================

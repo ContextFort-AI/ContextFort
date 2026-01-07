@@ -1,7 +1,29 @@
+// ============================================================================
+const ENABLE_POSTHOG = false;
+const ENABLE_AUTH = false;
+// ============================================================================
+
+import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
+
 // POSTHOG
 // ============================================================================
 import { initPostHog, trackEvent, identifyUser } from './posthog-config.js';
-initPostHog();
+if (ENABLE_POSTHOG) {
+  initPostHog();
+}
+
+// Wrapper functions that respect feature flags
+function safeTrackEvent(eventName, properties) {
+  if (ENABLE_POSTHOG) {
+    trackEvent(eventName, properties);
+  }
+}
+
+function safeIdentifyUser(userId, userProperties) {
+  if (ENABLE_POSTHOG) {
+    identifyUser(userId, userProperties);
+  }
+}
 // ============================================================================
 
 
@@ -9,18 +31,18 @@ initPostHog();
 // ============================================================================
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    trackEvent('extension_installed', {
+    safeTrackEvent('extension_installed', {
       version: chrome.runtime.getManifest().version
     });
   } else if (details.reason === 'update') {
-    trackEvent('extension_updated', {
+    safeTrackEvent('extension_updated', {
       version: chrome.runtime.getManifest().version,
       previousVersion: details.previousVersion
     });
   }
 });
 
-trackEvent('extension_started', {
+safeTrackEvent('extension_started', {
   version: chrome.runtime.getManifest().version
 });
 
@@ -43,35 +65,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const groupId = tab?.groupId;
 
   if (message.type === 'AGENT_DETECTED') {
-    onMessageAgentDetected(message, sender);
+    return onMessageAgentDetected(tab, groupId);
   }
 
   else if (message.type === 'AGENT_STOPPED') {
-    onMessageAgentStopped(message, sender);
+    return onMessageAgentStopped(tab, groupId);
   }
 
   else if (message.type === 'ACTION_BLOCKED') {
-    onMessageAgentBlocked(message);
+    return onMessageAgentBlocked(message, tab);
   }
 
   else if (message.type === 'SCREENSHOT_TRIGGER') {
-    onMessageScreenshotTrigger(message, sender);
+    return onMessageScreenshotTrigger(message, tab);
   }
 
   else if (message.type === 'RELOAD_BLOCKING_RULES') {
     urlBlockingRules = message.rules || [];
+    return;
   }
 
   else if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
+    return;
   }
 
   else if (message.type === 'RELOAD_GOVERNANCE_RULES') {
     governanceRules = message.rules || {};
     updateDNRRules();
+    return;
   }
 
-  handleAuthMessages(message, sendResponse);    
+  else {
+    return handleAuthMessages(message, sendResponse);
+  }
+
 });
 
 
@@ -92,11 +120,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   const allSessions = result.sessions || [];
+  const validSessions = [];
+
   for (const session of allSessions) {
     if (session.status === 'active') {
-      sessions.set(session.groupId, session);
+      try {
+        const tab = await chrome.tabs.get(session.tabId);
+        const group = await chrome.tabGroups.get(session.groupId);
+
+        if (tab && group && tab.groupId === session.groupId) {
+          sessions.set(session.groupId, session);
+          validSessions.push(session);
+        } else {
+          session.status = 'ended';
+          session.endTime = new Date().toISOString();
+          validSessions.push(session);
+        }
+      } catch (error) {
+        session.status = 'ended';
+        session.endTime = new Date().toISOString();
+        validSessions.push(session);
+      }
+    } else {
+      validSessions.push(session);
     }
   }
+  await chrome.storage.local.set({ sessions: validSessions });
 })();
 // ============================================================================
 
@@ -162,48 +211,64 @@ const DNR_RULE_IDS = {
 
 async function updateDNRRules() {
   try {
+    const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+    const existingRuleIds = new Set(existingRules.map(r => r.id));
+
     const rulesToAdd = [];
     const ruleIdsToRemove = [];
 
     if (governanceRules.disallow_clickable_urls) {
-      rulesToAdd.push({
-        id: DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS,
-        priority: 1,
-        action: { type: "block" },
-        condition: {
-          initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
-          resourceTypes: ["main_frame"],
-          regexFilter: "^https?://"
-        }
-      });
+      if (!existingRuleIds.has(DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS)) {
+        rulesToAdd.push({
+          id: DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS,
+          priority: 1,
+          action: { type: "block" },
+          condition: {
+            initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+            resourceTypes: ["main_frame"],
+            regexFilter: "^https?://"
+          }
+        });
+      }
     } else {
-      ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS);
+      if (existingRuleIds.has(DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS)) {
+        ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_CLICKABLE_URLS);
+      }
     }
 
     if (governanceRules.disallow_query_params) {
-      rulesToAdd.push({
-        id: DNR_RULE_IDS.DISALLOW_QUERY_PARAMS,
-        priority: 1,
-        action: {
-          type: 'block'
-        },
-        condition: {
-          initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
-          resourceTypes: ['main_frame'],
-          urlFilter: '|http*://*?*'
-        }
-      });
+      if (!existingRuleIds.has(DNR_RULE_IDS.DISALLOW_QUERY_PARAMS)) {
+        rulesToAdd.push({
+          id: DNR_RULE_IDS.DISALLOW_QUERY_PARAMS,
+          priority: 1,
+          action: {
+            type: 'block'
+          },
+          condition: {
+            initiatorDomains: ["fcoeoabgfenejglbffodgkkbkcdhcgfn"],
+            resourceTypes: ['main_frame'],
+            urlFilter: '|http*://*?*'
+          }
+        });
+      }
     } else {
-      ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_QUERY_PARAMS);
+      if (existingRuleIds.has(DNR_RULE_IDS.DISALLOW_QUERY_PARAMS)) {
+        ruleIdsToRemove.push(DNR_RULE_IDS.DISALLOW_QUERY_PARAMS);
+      }
     }
 
-    await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: ruleIdsToRemove,
-      addRules: rulesToAdd
-    });
+    // Only update if there are changes
+    if (rulesToAdd.length > 0 || ruleIdsToRemove.length > 0) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: ruleIdsToRemove,
+        addRules: rulesToAdd
+      });
+
+    }
   } catch (error) {
+    console.error('[DNR] Failed to update rules:', error);
   }
-}
+};
 // ============================================================================
 
 
@@ -249,9 +314,11 @@ async function getOrCreateSession(groupId, firstTabId, firstTabUrl, firstTabTitl
   return session;
 }
 
-async function endSession(groupId) {
+async function endSession(groupId, reason = 'unknown') {
   const session = sessions.get(groupId);
-  if (!session) return;
+  if (!session) {
+    return;
+  }
 
   session.endTime = new Date().toISOString();
   session.status = 'ended';
@@ -266,14 +333,24 @@ async function endSession(groupId) {
     allSessions[index] = session;
     await chrome.storage.local.set({ sessions: allSessions });
   }
+
+  for (const [tabId, activation] of activeAgentTabs.entries()) {
+    if (activation.groupId === groupId) {
+      activeAgentTabs.delete(tabId);
+    }
+  }
   sessions.delete(groupId);
 }
 
 chrome.tabGroups.onRemoved.addListener(async (groupId) => {
-  await endSession(groupId);
+  await endSession(groupId, 'tab_group_removed');
 });
 
 const groupTitles = new Map();
+
+function hasAgentStateEmoji(str) {
+  return str.includes('⌛') || str.includes('🔔');
+}
 
 chrome.tabGroups.onUpdated.addListener(async (group) => {
   const session = sessions.get(group.id);
@@ -290,6 +367,12 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
   const hasCheckmark = currentTitle && currentTitle.includes('✅');
 
   if (hadCheckmark && !hasCheckmark) {
+    const hasClaudeStateEmoji = hasAgentStateEmoji(currentTitle);
+    if (hasClaudeStateEmoji) {
+      groupTitles.set(group.id, currentTitle);
+      return;
+    }
+
     chrome.tabs.query({ groupId: group.id }, (tabs) => {
       if (chrome.runtime.lastError || tabs.length === 0) {
         return;
@@ -304,7 +387,7 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
           }
 
           if (window.focused) {
-            endSession(group.id);
+            endSession(group.id, 'checkmark_removed_by_user');
           } else {
             const restoredTitle = currentTitle.includes('✅') ? currentTitle : `✅ ${currentTitle}`;
             chrome.tabGroups.update(group.id, { title: restoredTitle }).then(() => {
@@ -350,94 +433,123 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   activeAgentTabs.delete(tabId);
   for (const [groupId, session] of sessions.entries()) {
     if (session.status === 'active' && session.tabId === tabId) {
-      await endSession(groupId);
+      await endSession(groupId, 'session_tab_closed');
       break;
     }
   }
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.groupId !== undefined) {
-    for (const [groupId, session] of sessions.entries()) {
-      if (session.status === 'active' && session.tabId === tabId && changeInfo.groupId !== groupId) {
-        await endSession(groupId);
-        break;
-      }
-    }
 
-    if (changeInfo.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-      const session = sessions.get(changeInfo.groupId);
-      if (session && session.status === 'active') {
-        const tabsInGroup = await chrome.tabs.query({ groupId: changeInfo.groupId });
-
-        // RESTRICTION TODO
-        if (tabsInGroup.length > 1) {
-          const tabsToUngroup = tabsInGroup.filter(t => t.id !== session.tabId);
-          for (const tabToRemove of tabsToUngroup) {
-            try {
-              await chrome.tabs.ungroup(tabToRemove.id);
-            } catch (err) {
-            }
-          }
-        }
-      }
-    }
-  }
-});
-
-
-function showBlockNotification(blockCheck, newUrl) {
+function showBlockNotification(tabId, blockCheck, newUrl) {
   const newHostname = getHostname(newUrl);
   const conflictingHostname = getHostname(blockCheck.conflictingUrl);
-  chrome.notifications.create({
-    type: 'basic',
-    title: '⛔ Agent Mode Denied',
-    message: `Cannot navigate to ${newHostname} because ${conflictingHostname} was already visited in this session.`,
-    priority: 2
-  });
+  showInPageNotification(
+    tabId,
+    '⛔ Agent Mode Denied',
+    `Cannot navigate to ${newHostname} because ${conflictingHostname} was already visited in this session.`,
+    'error'
+  );
 }
 
-function onMessageAgentDetected() {
-  trackEvent('AGENT_DETECTED', {agentMode: 'started'});
+function onMessageAgentDetected(tab, groupId) {
+  safeTrackEvent('AGENT_DETECTED', {agentMode: 'started'});
   if (groupId && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-    getOrCreateSession(groupId, tab.id, tab.url, tab.title).then(session => {
+    getOrCreateSession(groupId, tab.id, tab.url, tab.title).then(async session => {
       const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
       if (blockCheck.blocked) {
         sendStopAgentMessage(tab.id);
-        showBlockNotification(blockCheck, tab.url);
+        showBlockNotification(tab.id, blockCheck, tab.url);
+        showBadgeNotification('⛔', '#FF0000');
         return;
       }
       trackAgentActivation(groupId, tab.id, 'start');
-      addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
+      await addPageReadAndVisitedUrl(session, tab.id, tab.url, tab.title);
     });
   }
 }
 
-function onMessageAgentStopped() {
-  trackEvent('AGENT_STOPPED', {agentMode: 'stopped'});
+function onMessageAgentStopped(tab, groupId) {
+  safeTrackEvent('AGENT_STOPPED', {agentMode: 'stopped'});
   if (groupId) {
     trackAgentActivation(groupId, tab.id, 'stop');
   }
 }
 
-function onMessageAgentBlocked(message) {
-  trackEvent('ACTION_BLOCKED', {actionType: message.actionType});
+function onMessageAgentBlocked(message, tab) {
+  safeTrackEvent('ACTION_BLOCKED', {actionType: message.actionType});
   sendStopAgentMessage(tab.id);
-  chrome.notifications.create({
-    type: 'basic',
-    title: '⛔ Action Blocked',
-    message: `Agent attempted to ${message.actionType} on a restricted element at ${getHostname(message.url)}`,
-    priority: 2
-  });
+  stopAgentTracking(tab.id, tab.groupId);
+  showBadgeNotification('⛔', '#FF0000');
+  showInPageNotification(
+    tab.id,
+    '⛔ Action Blocked',
+    `Agent attempted to ${message.actionType} on a restricted element at ${getHostname(message.url)}`,
+    'error'
+  );
 }
 
 function sendStopAgentMessage(tabId) {
   try {
-    chrome.runtime.sendMessage({
-      type: 'STOP_AGENT',
-      targetTabId: tabId
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: () => {
+        const clickStopButton = () => {
+          const stopButton = document.getElementById('claude-agent-stop-button');
+          if (stopButton) {
+            const mouseDownEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window });
+            const mouseUpEvent = new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window });
+            const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+
+            stopButton.dispatchEvent(mouseDownEvent);
+            stopButton.dispatchEvent(mouseUpEvent);
+            stopButton.dispatchEvent(clickEvent);
+            stopButton.click();
+            return true;
+          }
+          return false;
+        };
+
+        // Try clicking immediately
+        if (clickStopButton()) {
+          return;
+        }
+
+        let retries = 0;
+        const maxRetries = 3;
+        const retryInterval = setInterval(() => {
+          retries++;
+          if (clickStopButton()) {
+            clearInterval(retryInterval);
+          } else if (retries >= maxRetries) {
+            clearInterval(retryInterval);
+            console.error('[ContextFort] Stop button not found after', maxRetries, 'retries');
+          }
+        }, 200);
+      }
     });
   } catch (e) {
+    console.error('[ContextFort] Failed to stop agent:', e);
+  }
+}
+
+function showBadgeNotification(text, color) {
+  chrome.action.setBadgeText({ text: text });
+  chrome.action.setBadgeBackgroundColor({ color: color });
+  setTimeout(() => {
+    chrome.action.setBadgeText({ text: '' });
+  }, 3000);
+}
+
+function showInPageNotification(tabId, title, message, type = 'error') {
+  try {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'SHOW_NOTIFICATION',
+      title: title,
+      message: message,
+      notificationType: type
+    });
+  } catch (e) {
+    console.error('[ContextFort] Failed to show in-page notification:', e);
   }
 }
 
@@ -452,9 +564,16 @@ function stopAgentTracking(tabId, groupId) {
 
 // AUTH PAGE
 // ============================================================================
-import { loginWithEmail, verifyOTP, resendOTP, getCurrentUser, isLoggedIn, logout} from './auth.js';
-
 function handleAuthMessages(message, sendResponse) {
+  if (!ENABLE_AUTH) {
+    // Auth is disabled, return error for all auth actions
+    if (['login', 'verifyOTP', 'resendOTP', 'isLoggedIn', 'logout', 'identifyUser'].includes(message.action)) {
+      sendResponse({ success: false, error: 'Authentication is disabled' });
+      return true;
+    }
+    return false;
+  }
+
   if (message.action === 'login') {
     loginWithEmail(message.email)
         .then(result => sendResponse(result))
@@ -492,8 +611,8 @@ function handleAuthMessages(message, sendResponse) {
 
   if (message.action === 'identifyUser') {
     try {
-        identifyUser(message.email, { email: message.email });
-        trackEvent('user_authenticated', { email: message.email });
+        safeIdentifyUser(message.email, { email: message.email });
+        safeTrackEvent('user_authenticated', { email: message.email });
         sendResponse({ success: true });
     } catch (error) {
         sendResponse({ success: false, error: error.message });
@@ -509,7 +628,7 @@ function handleAuthMessages(message, sendResponse) {
 const inputDebounceTimers = new Map();
 const INPUT_DEBOUNCE_MS = 1000;
 
-function onMessageScreenshotTrigger(message, sender) {
+function onMessageScreenshotTrigger(message, tab) {
   let activation = activeAgentTabs.get(tab.id);
 
   if (!activation && tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
@@ -682,7 +801,7 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
     if (domain1 === "" && matchesHostname(newHostname, domain2)) {
       return {
         blocked: true,
-        reason: `Navigation to ${newHostname} is blocked due to existing context of ${domain2}. Please start new chat.`,
+        reason: `Use of Agent mode is not allowed in ${newHostname}.`,
         conflictingUrl: null
       };
     }
@@ -725,7 +844,6 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   const newUrl = details.url;
   const activation = activeAgentTabs.get(tabId);
   if (!activation) return;
-
   const session = sessions.get(activation.groupId);
   if (!session) return;
 
@@ -734,12 +852,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (blockCheck.blocked) {
     sendStopAgentMessage(tabId);
     stopAgentTracking(tabId, activation.groupId);
-    chrome.notifications.create({
-      type: 'basic',
-      title: '⛔ Agent Mode Denied',
-      message: blockCheck.reason,
-      priority: 2
-    });
+    showBadgeNotification('⛔', '#FF0000');
+    showInPageNotification(tabId, '⛔ Agent Mode Denied', blockCheck.reason, 'error');
     return;
   }
 
@@ -751,29 +865,57 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url) {
     const newUrl = changeInfo.url;
+
     const activation = activeAgentTabs.get(tabId);
-    if (!activation) return;
+    if (!activation) {
+      return;
+    }
+
     const session = sessions.get(activation.groupId);
-    if (!session) return;
+    if (!session) {
+      return;
+    }
+
     const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
     if (blockCheck.blocked) {
       sendStopAgentMessage(tabId);
       stopAgentTracking(tabId, activation.groupId);
-        chrome.notifications.create({
-        type: 'basic',
-        title: '⛔ Agent Mode Denied',
-        message: blockCheck.reason,
-        priority: 2
-      });
+      showBadgeNotification('⛔', '#FF0000');
+      showInPageNotification(tabId, '⛔ Agent Mode Denied', blockCheck.reason, 'error');
       return;
     }
     await addVisitedUrl(session, newUrl);
   }
 
   if (changeInfo.groupId) {
+    for (const [groupId, session] of sessions.entries()) {
+      if (session.status === 'active' && session.tabId === tabId && changeInfo.groupId !== groupId) {
+        await endSession(groupId, 'tab_moved_to_different_group');
+        break;
+      }
+    }
+
+
+
     const newGroupId = changeInfo.groupId;
     if (newGroupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return;
     const session = sessions.get(newGroupId);
+
+
+    // RESTRICTION TODO
+    if (session && session.status === 'active') {
+      const tabsInGroup = await chrome.tabs.query({ groupId: newGroupId });
+      if (tabsInGroup.length > 1) {
+        const tabsToUngroup = tabsInGroup.filter(t => t.id !== session.tabId);
+        for (const tabToRemove of tabsToUngroup) {
+          try {
+            await chrome.tabs.ungroup(tabToRemove.id);
+          } catch (err) {
+          }
+        }
+      }
+    }
+
     if (!session || !tab.url) return;
     let agentActive = false;
     let activeTabInGroup = null;
@@ -791,13 +933,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (activeTabInGroup) {
         sendStopAgentMessage(activeTabInGroup);
         stopAgentTracking(activeTabInGroup, newGroupId);
+        showInPageNotification(activeTabInGroup, '⛔ Agent Mode Denied', blockCheck.reason, 'error');
       }
-      chrome.notifications.create({
-        type: 'basic',
-        title: '⛔ Agent Mode Denied',
-        message: blockCheck.reason,
-        priority: 2
-      });
+      showBadgeNotification('⛔', '#FF0000');
       return;
     }
     await addVisitedUrl(session, tab.url);
@@ -824,8 +962,7 @@ async function addVisitedUrl(session, newUrl) {
 
 async function addPageReadAndVisitedUrl(session, tabId, url, title) {
   await addVisitedUrl(session, url);
-  const result = await chrome.storage.local.get(['screenshots']);
-  const screenshots = result.screenshots || [];
+
   const pageReadData = {
     id: Date.now() + Math.random(),
     sessionId: session.id,
@@ -843,10 +980,12 @@ async function addPageReadAndVisitedUrl(session, tabId, url, title) {
       actionType: 'page_read'
     }
   };
-  screenshots.push(pageReadData);
-  if (screenshots.length > 100) {
-    screenshots.shift();
-  }
-  await chrome.storage.local.set({ screenshots: screenshots });
+
+  const activation = {
+    sessionId: session.id,
+    groupId: session.groupId
+  };
+
+  await queuedStorageWrite(pageReadData, activation);
 }
 // ============================================================================

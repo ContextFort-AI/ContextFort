@@ -6,10 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  RefreshCwIcon,
-  FileCheckIcon,
-  LinkIcon,
-  MessageSquareIcon,
+  RefreshCwIcon
 } from 'lucide-react';
 import { useState, useEffect, Fragment } from 'react';
 
@@ -18,7 +15,6 @@ interface GovernanceRule {
   name: string;
   description: string;
   enabled: boolean;
-  icon: React.ComponentType<{ className?: string }>;
 }
 
 const GOVERNANCE_RULES: Omit<GovernanceRule, 'enabled'>[] = [
@@ -26,13 +22,11 @@ const GOVERNANCE_RULES: Omit<GovernanceRule, 'enabled'>[] = [
     id: 'disallow_query_params',
     name: 'Disallow URLs with Query Parameters',
     description: 'Prevents the agent from opening any URLs that contain query parameters (e.g., ?param=value). This protects against potential data leakage through URL parameters and ensures agents only visit clean, parameterless URLs.',
-    icon: LinkIcon,
   },
   {
     id: 'disallow_clickable_urls',
     name: 'Disallow Printing Clickable URLs in Sidechat',
     description: 'Prevents the agent from printing any clickable URLs in the Claude sidechat interface. This ensures that sensitive or internal URLs cannot be accidentally exposed or shared through the chat interface.',
-    icon: MessageSquareIcon,
   },
 ];
 
@@ -136,7 +130,6 @@ export default function GovernanceRulesPage() {
         <CardContent className="py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <FileCheckIcon className="h-8 w-8 text-muted-foreground" />
               <div>
                 <div className="text-2xl font-bold">{enabledCount} / {rules.length}</div>
                 <div className="text-sm text-muted-foreground">Rules Enabled</div>
@@ -163,7 +156,6 @@ export default function GovernanceRulesPage() {
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center">
-              <FileCheckIcon className="mb-4 h-12 w-12 text-muted-foreground/50" />
               <h3 className="mb-2 text-lg font-medium">No rules configured</h3>
               <p className="text-sm text-muted-foreground">
                 Governance rules will appear here
@@ -176,27 +168,22 @@ export default function GovernanceRulesPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-border">
-                <TableHead className="w-[5%]"></TableHead>
-                <TableHead className="w-[55%]">Rule Name</TableHead>
-                <TableHead className="w-[20%] text-center">Status</TableHead>
-                <TableHead className="w-[20%] text-center">Enabled</TableHead>
+                <TableHead>Rule Name</TableHead>
+                <TableHead className="w-32 text-center">Status</TableHead>
+                <TableHead className="w-32 text-center">Enabled</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rules.map((rule) => {
-                const Icon = rule.icon;
-
-                return (
+              {rules.map((rule) => (
                   <Fragment key={rule.id}>
                     <TableRow className="border-b border-border">
                       <TableCell>
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium mb-2">{rule.name}</div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {rule.description}
-                        </p>
+                        <div className="flex flex-col gap-2 max-w-full">
+                          <div className="font-medium">{rule.name}</div>
+                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-normal break-words">
+                            {rule.description}
+                          </p>
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -220,8 +207,7 @@ export default function GovernanceRulesPage() {
                       </TableCell>
                     </TableRow>
                   </Fragment>
-                );
-              })}
+              ))}
             </TableBody>
           </Table>
         </div>

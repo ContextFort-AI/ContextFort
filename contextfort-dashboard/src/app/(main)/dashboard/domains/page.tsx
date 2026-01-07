@@ -13,12 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  GlobeIcon,
   RefreshCwIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  ExternalLinkIcon
+  ChevronRightIcon
 } from 'lucide-react';
 import { useState, useEffect, Fragment } from 'react';
 
@@ -44,6 +41,7 @@ interface Session {
   screenshotCount: number;
   status: 'active' | 'ended';
   duration?: number;
+  visitedUrls?: string[];
 }
 
 interface DomainData {
@@ -247,7 +245,6 @@ export default function DomainsPage() {
         <Card>
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center">
-              <GlobeIcon className="mb-4 h-12 w-12 text-muted-foreground/50" />
               <h3 className="mb-2 text-lg font-medium">No domains visited yet</h3>
               <p className="text-sm text-muted-foreground">
                 Domains will appear when agent sessions are recorded
@@ -283,10 +280,7 @@ export default function DomainsPage() {
                       onClick={() => toggleDomain(domainData.domain)}
                     >
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <GlobeIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{domainData.domain}</span>
-                        </div>
+                        <span className="font-medium">{domainData.domain}</span>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className="bg-muted text-foreground border-border">
@@ -294,9 +288,8 @@ export default function DomainsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <ClockIcon className="h-3 w-3" />
-                          <span>{formatDateTime(domainData.lastSession.startTime)}</span>
+                        <div className="text-sm text-muted-foreground">
+                          {formatDateTime(domainData.lastSession.startTime)}
                         </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -426,7 +419,6 @@ export default function DomainsPage() {
                                           window.location.href = `/dashboard/visibility?session=${session.id}`;
                                         }}
                                       >
-                                        <ExternalLinkIcon className="mr-1 h-3 w-3" />
                                         View Session
                                       </Button>
                                     </div>
