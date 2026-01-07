@@ -15,6 +15,7 @@ mkdir -p "$SCRIPT_DIR/chrome-extension/dashboard"
 cp -r out/_next "$SCRIPT_DIR/chrome-extension/dashboard/"
 cp out/*.html "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
 cp out/*.ico "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
+cp out/*.svg "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
 cp out/*.js "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
 cp out/*.json "$SCRIPT_DIR/chrome-extension/dashboard/" 2>/dev/null || true
 cp -r out/dashboard/* "$SCRIPT_DIR/chrome-extension/dashboard/"
