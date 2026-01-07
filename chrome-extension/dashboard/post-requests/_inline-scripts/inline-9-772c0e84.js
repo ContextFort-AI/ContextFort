@@ -1,0 +1,1 @@
+self.__next_f.push([1,"18:null\n1c:[[\"$\",\"title\",\"0\",{\"children\":\"ContextFort\"}],[\"$\",\"meta\",\"1\",{\"name\":\"description\",\"content\":\"ContextFort provides real-time monitoring of POST requests and click detection to protect against data exfiltration and automated threats. Built with Next.js, Tailwind CSS, and shadcn/ui.\"}]]\n"])

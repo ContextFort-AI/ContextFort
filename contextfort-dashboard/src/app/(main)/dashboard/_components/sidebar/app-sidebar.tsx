@@ -72,7 +72,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton className="h-10 pointer-events-none">
-              <img src="/logo.svg" alt="ContextFort" className="h-8 w-auto" />
+              <img src="../logo.svg" alt="ContextFort" className="h-8 w-auto" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

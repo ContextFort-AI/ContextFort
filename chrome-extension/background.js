@@ -1,5 +1,5 @@
 // ============================================================================
-const ENABLE_POSTHOG = false;
+const ENABLE_POSTHOG = true;
 const ENABLE_AUTH = false;
 // ============================================================================
 
@@ -82,16 +82,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   else if (message.type === 'RELOAD_BLOCKING_RULES') {
     urlBlockingRules = message.rules || [];
+    safeTrackEvent('domain_blocking_rules_updated', {
+      ruleCount: urlBlockingRules.length
+    });
     return;
   }
 
   else if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
+    safeTrackEvent('action_blocking_rules_updated', {
+      blockedActionCount: blockedActions.length
+    });
     return;
   }
 
   else if (message.type === 'RELOAD_GOVERNANCE_RULES') {
     governanceRules = message.rules || {};
+    safeTrackEvent('governance_rules_updated', {
+      disallowClickableUrls: governanceRules.disallow_clickable_urls || false,
+      disallowQueryParams: governanceRules.disallow_query_params || false
+    });
     updateDNRRules();
     return;
   }
@@ -457,6 +467,9 @@ function onMessageAgentDetected(tab, groupId) {
     getOrCreateSession(groupId, tab.id, tab.url, tab.title).then(async session => {
       const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
       if (blockCheck.blocked) {
+        safeTrackEvent('navigation_blocked', {
+          reason: blockCheck.reason.includes('not allowed') ? 'domain_blocked' : 'context_mixing'
+        });
         sendStopAgentMessage(tab.id);
         showBlockNotification(tab.id, blockCheck, tab.url);
         showBadgeNotification('⛔', '#FF0000');
@@ -566,8 +579,13 @@ function stopAgentTracking(tabId, groupId) {
 // ============================================================================
 function handleAuthMessages(message, sendResponse) {
   if (!ENABLE_AUTH) {
-    // Auth is disabled, return error for all auth actions
-    if (['login', 'verifyOTP', 'resendOTP', 'isLoggedIn', 'logout', 'identifyUser'].includes(message.action)) {
+    // Auth is disabled - bypass auth check for isLoggedIn
+    if (message.action === 'isLoggedIn') {
+      sendResponse({ isLoggedIn: true }); // Bypass auth when disabled
+      return true;
+    }
+    // Return error for other auth actions
+    if (['login', 'verifyOTP', 'resendOTP', 'logout', 'identifyUser'].includes(message.action)) {
       sendResponse({ success: false, error: 'Authentication is disabled' });
       return true;
     }
@@ -850,6 +868,9 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
 
   if (blockCheck.blocked) {
+    safeTrackEvent('navigation_blocked', {
+      reason: blockCheck.reason.includes('not allowed') ? 'domain_blocked' : 'context_mixing'
+    });
     sendStopAgentMessage(tabId);
     stopAgentTracking(tabId, activation.groupId);
     showBadgeNotification('⛔', '#FF0000');
@@ -878,6 +899,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
     const blockCheck = shouldBlockNavigation(newUrl, session.visitedUrls);
     if (blockCheck.blocked) {
+      safeTrackEvent('navigation_blocked', {
+        reason: blockCheck.reason.includes('not allowed') ? 'domain_blocked' : 'context_mixing'
+      });
       sendStopAgentMessage(tabId);
       stopAgentTracking(tabId, activation.groupId);
       showBadgeNotification('⛔', '#FF0000');
@@ -930,6 +954,9 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const blockCheck = shouldBlockNavigation(tab.url, session.visitedUrls);
 
     if (blockCheck.blocked) {
+      safeTrackEvent('navigation_blocked', {
+        reason: blockCheck.reason.includes('not allowed') ? 'domain_blocked' : 'context_mixing'
+      });
       if (activeTabInGroup) {
         sendStopAgentMessage(activeTabInGroup);
         stopAgentTracking(activeTabInGroup, newGroupId);
