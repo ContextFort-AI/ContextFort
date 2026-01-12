@@ -67,10 +67,10 @@ export default function PageMixingPage() {
   const [domainFilter, setDomainFilter] = useState<'cross-domain' | 'same-domain'>('cross-domain');
   const [interactionFilter, setInteractionFilter] = useState<'all' | 'with-interaction' | 'page-read-only'>('all');
   const [imageDimensions, setImageDimensions] = useState<Record<number, { width: number; height: number }>>({});
-  const [urlBlockingRules, setUrlBlockingRules] = useState<string[][]>([]);
+  const [urlPairBlockingRules, setUrlPairBlockingRules] = useState<string[][]>([]);
 
   useEffect(() => {
-    document.title = 'Page Mixing - ContextFort';
+    document.title = 'Context Mixing - ContextFort';
   }, []);
 
   const loadData = async (showLoading = false) => {
@@ -79,10 +79,10 @@ export default function PageMixingPage() {
       // @ts-ignore - Chrome extension API
       if (typeof chrome !== 'undefined' && chrome?.storage) {
         // @ts-ignore - Chrome extension API
-        const result = await chrome.storage.local.get(['screenshots', 'sessions', 'urlBlockingRules']);
+        const result = await chrome.storage.local.get(['screenshots', 'sessions', 'urlPairBlockingRules']);
         const screenshotsList = result.screenshots || [];
         const sessionsList = result.sessions || [];
-        const rules = result.urlBlockingRules || [];
+        const rules = result.urlPairBlockingRules || [];
 
         const uniqueSessions = sessionsList.reduce((acc: Session[], session: Session) => {
           if (!acc.find(s => s.id === session.id)) {
@@ -93,7 +93,7 @@ export default function PageMixingPage() {
 
         setScreenshots(screenshotsList);
         setSessions(uniqueSessions);
-        setUrlBlockingRules(rules);
+        setUrlPairBlockingRules(rules);
       }
     } catch (error) {
       console.error('[Controls Page] Error loading data:', error);
@@ -222,43 +222,43 @@ export default function PageMixingPage() {
     setExpandedTransitions(newExpanded);
   };
 
-  // Check if a transition is blocked
-  const isTransitionBlocked = (fromHostname: string, toHostname: string): boolean => {
-    return urlBlockingRules.some(([domain1, domain2]) => {
-      const match1 = fromHostname === domain1 && toHostname === domain2;
-      const match2 = fromHostname === domain2 && toHostname === domain1;
+  // Check if a transition is blocked (by full URL)
+  const isTransitionBlocked = (fromUrl: string, toUrl: string): boolean => {
+    return urlPairBlockingRules.some(([url1, url2]) => {
+      const match1 = fromUrl === url1 && toUrl === url2;
+      const match2 = fromUrl === url2 && toUrl === url1;
       return match1 || match2;
     });
   };
 
-  // Toggle blocking for a transition
-  const handleToggleBlock = async (fromHostname: string, toHostname: string) => {
-    const isBlocked = isTransitionBlocked(fromHostname, toHostname);
+  // Toggle blocking for a transition (by full URL)
+  const handleToggleBlock = async (fromUrl: string, toUrl: string) => {
+    const isBlocked = isTransitionBlocked(fromUrl, toUrl);
     let newRules: string[][];
 
     if (isBlocked) {
       // Remove the rule
-      newRules = urlBlockingRules.filter(([domain1, domain2]) => {
-        const match1 = fromHostname === domain1 && toHostname === domain2;
-        const match2 = fromHostname === domain2 && toHostname === domain1;
+      newRules = urlPairBlockingRules.filter(([url1, url2]) => {
+        const match1 = fromUrl === url1 && toUrl === url2;
+        const match2 = fromUrl === url2 && toUrl === url1;
         return !(match1 || match2);
       });
     } else {
       // Add the rule
-      newRules = [...urlBlockingRules, [fromHostname, toHostname]];
+      newRules = [...urlPairBlockingRules, [fromUrl, toUrl]];
     }
 
-    setUrlBlockingRules(newRules);
+    setUrlPairBlockingRules(newRules);
 
     // @ts-ignore - Chrome extension API
     if (typeof chrome !== 'undefined' && chrome?.storage) {
       // @ts-ignore - Chrome extension API
-      await chrome.storage.local.set({ urlBlockingRules: newRules });
+      await chrome.storage.local.set({ urlPairBlockingRules: newRules });
 
       // Notify background.js to reload the rules
       // @ts-ignore - Chrome extension API
       chrome.runtime.sendMessage({
-        type: 'RELOAD_BLOCKING_RULES',
+        type: 'RELOAD_URL_PAIR_RULES',
         rules: newRules
       });
     }
@@ -268,7 +268,7 @@ export default function PageMixingPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Page Mixing</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Context Mixing</h1>
           <p className="text-muted-foreground">
             Track URL navigation patterns and transitions across sessions
           </p>
@@ -417,17 +417,17 @@ export default function PageMixingPage() {
                       <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-col items-center gap-2">
                           <Switch
-                            checked={isTransitionBlocked(transition.fromHostname, transition.toHostname)}
-                            onCheckedChange={() => handleToggleBlock(transition.fromHostname, transition.toHostname)}
+                            checked={isTransitionBlocked(transition.fromUrl, transition.toUrl)}
+                            onCheckedChange={() => handleToggleBlock(transition.fromUrl, transition.toUrl)}
                           />
                           <Badge
                             variant="outline"
-                            className={isTransitionBlocked(transition.fromHostname, transition.toHostname)
+                            className={isTransitionBlocked(transition.fromUrl, transition.toUrl)
                               ? 'bg-red-500/10 text-red-500 border-red-500/20 text-xs'
                               : 'bg-green-500/10 text-green-500 border-green-500/20 text-xs'
                             }
                           >
-                            {isTransitionBlocked(transition.fromHostname, transition.toHostname) ? 'BLOCKED' : 'ACTIVE'}
+                            {isTransitionBlocked(transition.fromUrl, transition.toUrl) ? 'BLOCKED' : 'ACTIVE'}
                           </Badge>
                         </div>
                       </TableCell>

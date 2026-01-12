@@ -57,6 +57,7 @@ chrome.action.onClicked.addListener(() => {
 const sessions = new Map();
 const activeAgentTabs = new Map();
 let urlBlockingRules = [];
+let urlPairBlockingRules = [];
 let blockedActions = [];
 let governanceRules = {};
 
@@ -88,6 +89,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
+  else if (message.type === 'RELOAD_URL_PAIR_RULES') {
+    urlPairBlockingRules = message.rules || [];
+    safeTrackEvent('url_pair_blocking_rules_updated', {
+      ruleCount: urlPairBlockingRules.length
+    });
+    return;
+  }
+
   else if (message.type === 'RELOAD_BLOCKED_ACTIONS') {
     blockedActions = message.actions || [];
     safeTrackEvent('action_blocking_rules_updated', {
@@ -114,10 +123,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 (async () => {
-  const result = await chrome.storage.local.get(['urlBlockingRules', 'blockedActions', 'governanceRules', 'sessions']);
+  const result = await chrome.storage.local.get(['urlBlockingRules', 'urlPairBlockingRules', 'blockedActions', 'governanceRules', 'sessions']);
 
   if (result.urlBlockingRules) {
     urlBlockingRules = result.urlBlockingRules;
+  }
+
+  if (result.urlPairBlockingRules) {
+    urlPairBlockingRules = result.urlPairBlockingRules;
   }
 
   if (result.blockedActions) {
@@ -359,7 +372,7 @@ chrome.tabGroups.onRemoved.addListener(async (groupId) => {
 const groupTitles = new Map();
 
 function hasAgentStateEmoji(str) {
-  return str.includes('⌛') || str.includes('🔔');
+  return str.includes('✅') || str.includes('⌛') || str.includes('🔔');
 }
 
 chrome.tabGroups.onUpdated.addListener(async (group) => {
@@ -373,16 +386,10 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
   const previousTitle = groupTitles.get(group.id);
   const currentTitle = group.title;
 
-  const hadCheckmark = previousTitle && previousTitle.includes('✅');
-  const hasCheckmark = currentTitle && currentTitle.includes('✅');
+  const hadAgentEmoji = previousTitle && hasAgentStateEmoji(previousTitle);
+  const hasAgentEmoji = currentTitle && hasAgentStateEmoji(currentTitle);
 
-  if (hadCheckmark && !hasCheckmark) {
-    const hasClaudeStateEmoji = hasAgentStateEmoji(currentTitle);
-    if (hasClaudeStateEmoji) {
-      groupTitles.set(group.id, currentTitle);
-      return;
-    }
-
+  if (hadAgentEmoji && !hasAgentEmoji) {
     chrome.tabs.query({ groupId: group.id }, (tabs) => {
       if (chrome.runtime.lastError || tabs.length === 0) {
         return;
@@ -399,14 +406,20 @@ chrome.tabGroups.onUpdated.addListener(async (group) => {
           if (window.focused) {
             endSession(group.id, 'checkmark_removed_by_user');
           } else {
-            const restoredTitle = currentTitle.includes('✅') ? currentTitle : `✅ ${currentTitle}`;
+            let emojiToRestore = '✅';
+            if (previousTitle.includes('⌛')) emojiToRestore = '⌛';
+            else if (previousTitle.includes('🔔')) emojiToRestore = '🔔';
+            const restoredTitle = hasAgentStateEmoji(currentTitle) ? currentTitle : `${emojiToRestore} ${currentTitle}`;
             chrome.tabGroups.update(group.id, { title: restoredTitle }).then(() => {
               groupTitles.set(group.id, restoredTitle);
             }).catch(() => {});
           }
         });
       } else {
-        const restoredTitle = currentTitle.includes('✅') ? currentTitle : `✅ ${currentTitle}`;
+        let emojiToRestore = '✅';
+        if (previousTitle.includes('⌛')) emojiToRestore = '⌛';
+        else if (previousTitle.includes('🔔')) emojiToRestore = '🔔';
+        const restoredTitle = hasAgentStateEmoji(currentTitle) ? currentTitle : `${emojiToRestore} ${currentTitle}`;
         chrome.tabGroups.update(group.id, { title: restoredTitle }).then(() => {
           groupTitles.set(group.id, restoredTitle);
         }).catch(() => {});
@@ -471,6 +484,7 @@ function onMessageAgentDetected(tab, groupId) {
           reason: blockCheck.reason.includes('not allowed') ? 'domain_blocked' : 'context_mixing'
         });
         sendStopAgentMessage(tab.id);
+        stopAgentTracking(tab.id, groupId);
         showBlockNotification(tab.id, blockCheck, tab.url);
         showBadgeNotification('⛔', '#FF0000');
         return;
@@ -713,7 +727,7 @@ function onMessageScreenshotTrigger(message, tab) {
                 saveEventData(dataUrl2, true, resultTab.url, resultTab.title, actionId);
               });
             });
-          }, 300);
+          }, 1000);
         });
       });
     });
@@ -816,7 +830,7 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
   const newHostname = getHostname(newUrl);
   if (!newHostname) return { blocked: false };
   for (const [domain1, domain2] of urlBlockingRules) {
-    if (domain1 === "" && matchesHostname(newHostname, domain2)) {
+    if (domain1 === "" && matchesHostname(newHostname, domain2) && visitedUrls.some(url => !matchesHostname(getHostname(url), domain2))) {
       return {
         blocked: true,
         reason: `Use of Agent mode is not allowed in ${newHostname}.`,
@@ -852,6 +866,25 @@ function shouldBlockNavigation(newUrl, visitedUrls) {
       }
     }
   }
+
+  // Check URL pair blocking rules (for Context Mixing page)
+  for (const visitedUrl of visitedUrls) {
+    for (const [url1, url2] of urlPairBlockingRules) {
+      // Compare full URLs
+      const match1 = newUrl === url2 && visitedUrl === url1;
+      const match2 = newUrl === url1 && visitedUrl === url2;
+      if (match1 || match2) {
+        const visitedHostname = getHostname(visitedUrl);
+        const newHostname = getHostname(newUrl);
+        return {
+          blocked: true,
+          reason: `Navigation to ${newHostname} is blocked because context from ${visitedHostname} persists. Please start a new chat.`,
+          conflictingUrl: visitedUrl
+        };
+      }
+    }
+  }
+
   return { blocked: false };
 }
 
