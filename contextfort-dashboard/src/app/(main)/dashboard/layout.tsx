@@ -51,28 +51,19 @@ export default function Layout({ children }: Readonly<{ children: ReactNode }>) 
       try {
         // @ts-ignore - Chrome extension API
         if (typeof chrome !== 'undefined' && chrome?.storage && chrome?.runtime) {
+          // Always check with background.js (handles auth bypass when disabled)
           // @ts-ignore - Chrome extension API
-          const result = await chrome.storage.local.get(['accessToken', 'userData']);
-
-          if (result.accessToken) {
-            // Token exists, verify it with API
+          const verifyResult: any = await new Promise((resolve) => {
             // @ts-ignore - Chrome extension API
-            const verifyResult: any = await new Promise((resolve) => {
-              // @ts-ignore - Chrome extension API
-              chrome.runtime.sendMessage({
-                action: 'isLoggedIn'
-              }, (response: any) => {
-                resolve(response);
-              });
+            chrome.runtime.sendMessage({
+              action: 'isLoggedIn'
+            }, (response: any) => {
+              resolve(response);
             });
+          });
 
-            clearTimeout(timeoutId);
-            setIsAuthenticated(verifyResult?.isLoggedIn === true);
-          } else {
-            // No token found
-            clearTimeout(timeoutId);
-            setIsAuthenticated(false);
-          }
+          clearTimeout(timeoutId);
+          setIsAuthenticated(verifyResult?.isLoggedIn === true);
         } else {
           // Not in extension context, skip auth
           clearTimeout(timeoutId);
