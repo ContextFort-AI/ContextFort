@@ -1,0 +1,91 @@
+ContextFort Source-Available License v1.0
+
+Copyright (c) 2025 ContextFort
+
+================================================================================
+
+GRANT OF RIGHTS
+
+This software and associated documentation files (the "Software") are made
+available under the following terms:
+
+1. PERSONAL AND NON-COMMERCIAL USE
+
+   You may use, copy, and modify the Software for personal, educational, or
+   non-commercial purposes. You may share the Software with others for
+   non-commercial purposes.
+
+2. COMMERCIAL USE RESTRICTIONS
+
+   You may NOT use the Software to provide a competing product or service.
+
+   "Competing product or service" means any software, service, or product that:
+   - Provides governance, visibility, or control features for AI agents or
+     browser automation
+   - Monitors or restricts AI agent behavior in web browsers
+   - Provides similar functionality to ContextFort for commercial purposes
+
+3. PERMITTED COMMERCIAL USE
+
+   You MAY use the Software internally within your organization for your own
+   operations.
+
+   You MAY integrate the Software into your own products IF:
+   - Your product is not primarily focused on AI agent governance/control
+   - You retain all copyright and attribution notices
+   - You notify the copyright holder of the integration via email or GitHub issue
+
+4. DISTRIBUTION
+
+   You may distribute unmodified copies of the Software.
+
+   If you distribute modified copies, you must:
+   - Clearly mark them as modified
+   - Include this license
+   - Make your modifications available under this same license
+
+5. ATTRIBUTION
+
+   You must retain all copyright notices, attributions, and license text in all
+   copies or substantial portions of the Software.
+
+   Any public distribution must credit ContextFort and link to the original
+   repository.
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+7. TERMINATION
+
+   This license terminates automatically if you violate any of its terms.
+
+   Upon termination, you must cease all use of the Software and destroy all
+   copies in your possession or control.
+
+8. FUTURE LICENSING
+
+   Two (2) years after the release date of each version of the Software, that
+   version becomes available under the MIT License.
+
+   The current version remains under this ContextFort Source-Available License
+   until its 2-year period expires.
+
+================================================================================
+
+SUMMARY
+
+You can use ContextFort freely for personal and internal business use, but you
+cannot build a competing commercial product with it. After 2 years, each
+version becomes MIT licensed.
+
+For commercial licensing inquiries or questions about this license, please
+contact: [your-email@example.com]
+
+================================================================================

@@ -727,7 +727,7 @@ function onMessageScreenshotTrigger(message, tab) {
                 saveEventData(dataUrl2, true, resultTab.url, resultTab.title, actionId);
               });
             });
-          }, 1000);
+          }, 300);
         });
       });
     });
