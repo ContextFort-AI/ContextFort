@@ -1,0 +1,111 @@
+1:"$Sreact.fragment"
+9:I[16697,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"default"]
+:HL["../_next/static/chunks/a10758048e0e22cb.css","style"]
+:HL["../_next/static/chunks/cc02468e68d8ec09.css","style"]
+:HL["../_next/static/media/051742360c26797e-s.p.102b7f24.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["../_next/static/media/0c89a48fa5027cee-s.p.4564287c.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+2:Tc81,
+    (function () {
+      try {
+        var root = document.documentElement;
+        var PERSISTENCE = {"theme_mode":"client-cookie","theme_preset":"client-cookie","content_layout":"client-cookie","navbar_style":"client-cookie","sidebar_variant":"client-cookie","sidebar_collapsible":"client-cookie"};
+        var DEFAULTS = {"theme_mode":"dark","theme_preset":"contextfort","content_layout":"centered","navbar_style":"sticky","sidebar_variant":"inset","sidebar_collapsible":"icon"};
+
+        function readCookie(name) {
+          var match = document.cookie.split("; ").find(function(c) {
+            return c.indexOf(name + "=") === 0;
+          });
+          return match ? match.split("=")[1] : null;
+        }
+
+        function readLocal(name) {
+          try {
+            return window.localStorage.getItem(name);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function readPreference(key, fallback) {
+          var mode = PERSISTENCE[key];
+          var value = null;
+
+          if (mode === "localStorage") {
+            value = readLocal(key);
+          }
+
+          if (!value && (mode === "client-cookie" || mode === "server-cookie")) {
+            value = readCookie(key);
+          }
+
+          if (!value || typeof value !== "string") {
+            return fallback;
+          }
+
+          return value;
+        }
+
+        var rawMode = readPreference("theme_mode", DEFAULTS.theme_mode);
+        var rawPreset = readPreference("theme_preset", DEFAULTS.theme_preset);
+        var rawContentLayout = readPreference("content_layout", DEFAULTS.content_layout);
+        var rawNavbarStyle = readPreference("navbar_style", DEFAULTS.navbar_style);
+        var rawSidebarVariant = readPreference("sidebar_variant", DEFAULTS.sidebar_variant);
+        var rawSidebarCollapsible = readPreference("sidebar_collapsible", DEFAULTS.sidebar_collapsible);
+
+        var mode = (rawMode === "dark" || rawMode === "light") ? rawMode : "light";
+        var preset = rawPreset || DEFAULTS.theme_preset;
+        var contentLayout = rawContentLayout || DEFAULTS.content_layout;
+        var navbarStyle = rawNavbarStyle || DEFAULTS.navbar_style;
+        var sidebarVariant = rawSidebarVariant || DEFAULTS.sidebar_variant;
+        var sidebarCollapsible = rawSidebarCollapsible || DEFAULTS.sidebar_collapsible;
+
+        root.classList.remove("light", "dark");
+        root.classList.add(mode);
+        root.setAttribute("data-theme-preset", preset);
+        root.setAttribute("data-content-layout", contentLayout);
+        root.setAttribute("data-navbar-style", navbarStyle);
+        root.setAttribute("data-sidebar-variant", sidebarVariant);
+        root.setAttribute("data-sidebar-collapsible", sidebarCollapsible);
+
+        root.style.colorScheme = mode === "dark" ? "dark" : "light";
+
+        var prefs = {
+          themeMode: mode,
+          themePreset: preset,
+          contentLayout: contentLayout,
+          navbarStyle: navbarStyle,
+          sidebarVariant: sidebarVariant,
+          sidebarCollapsible: sidebarCollapsible,
+        };
+
+        window.__PREFERENCES__ = prefs;
+      } catch (e) {
+        console.warn("ThemeBootScript error:", e);
+      }
+    })();
+  0:{"P":null,"b":"ne8Q_V9-wG_baOMs8P1_k","c":["","dashboard","domains",""],"q":"","i":false,"f":[[["",{"children":["(main)",{"children":["dashboard",{"children":["domains",{"children":["__PAGE__",{}]}]}]}]},"$undefined","$undefined",true],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"../_next/static/chunks/a10758048e0e22cb.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","link","1",{"rel":"stylesheet","href":"../_next/static/chunks/cc02468e68d8ec09.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"../_next/static/chunks/81256564906bedd6.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","className":"dark","data-theme-preset":"contextfort","data-content-layout":"centered","data-navbar-style":"sticky","data-sidebar-variant":"inset","data-sidebar-collapsible":"icon","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]}],"$L3"]}]]}],{"children":["$L4",{"children":["$L5",{"children":["$L6",{"children":["$L7",{},null,false,false]},null,false,false]},null,false,false]},null,false,false]},null,false,false],"$L8",false]],"m":"$undefined","G":["$9",[]],"S":true}
+a:I[66421,["../_next/static/chunks/81256564906bedd6.js"],"PreferencesStoreProvider"]
+b:I[73021,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"default"]
+c:I[62268,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"default"]
+d:I[64684,["../_next/static/chunks/81256564906bedd6.js","../_next/static/chunks/cb2bc9fb6e974c67.js"],"default"]
+e:I[50806,["../_next/static/chunks/81256564906bedd6.js"],"Toaster"]
+f:I[32316,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"ClientSegmentRoot"]
+10:I[18160,["../_next/static/chunks/81256564906bedd6.js","../_next/static/chunks/2efda68362fb6874.js","../_next/static/chunks/e2c41b7fd4bacbca.js","../_next/static/chunks/9c6f26b312fd8249.js","../_next/static/chunks/c621dd0665847ede.js","../_next/static/chunks/2b731a6d9665454b.js"],"default"]
+12:I[27154,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"ClientPageRoot"]
+13:I[20497,["../_next/static/chunks/81256564906bedd6.js","../_next/static/chunks/2efda68362fb6874.js","../_next/static/chunks/e2c41b7fd4bacbca.js","../_next/static/chunks/9c6f26b312fd8249.js","../_next/static/chunks/c621dd0665847ede.js","../_next/static/chunks/2b731a6d9665454b.js","../_next/static/chunks/9ceab24fdabda839.js"],"default"]
+16:I[11754,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"OutletBoundary"]
+17:"$Sreact.suspense"
+19:I[11754,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"ViewportBoundary"]
+1b:I[11754,["../_next/static/chunks/575d55e325b0d393.js","../_next/static/chunks/d92bf033cbf693ef.js"],"MetadataBoundary"]
+3:["$","body",null,{"className":"space_grotesk_34d7c37d-module__2r26gq__variable jetbrains_mono_bfad6200-module__3QebHq__variable min-h-screen antialiased","children":[false,["$","$La",null,{"themeMode":"dark","themePreset":"contextfort","contentLayout":"centered","navbarStyle":"sticky","children":[["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}],["$","$Le",null,{}]]}]]}]
+4:["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+5:["$","$1","c",{"children":[[["$","script","script-0",{"src":"../_next/static/chunks/2efda68362fb6874.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"../_next/static/chunks/e2c41b7fd4bacbca.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"../_next/static/chunks/9c6f26b312fd8249.js","async":true,"nonce":"$undefined"}],["$","script","script-3",{"src":"../_next/static/chunks/c621dd0665847ede.js","async":true,"nonce":"$undefined"}],["$","script","script-4",{"src":"../_next/static/chunks/2b731a6d9665454b.js","async":true,"nonce":"$undefined"}]],["$","$Lf",null,{"Component":"$10","slots":{"children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]},"serverProvidedParams":{"params":{},"promises":["$@11"]}}]]}]
+6:["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+7:["$","$1","c",{"children":[["$","$L12",null,{"Component":"$13","serverProvidedParams":{"searchParams":{},"params":"$5:props:children:1:props:serverProvidedParams:params","promises":["$@14","$@15"]}}],[["$","script","script-0",{"src":"../_next/static/chunks/9ceab24fdabda839.js","async":true,"nonce":"$undefined"}]],["$","$L16",null,{"children":["$","$17",null,{"name":"Next.MetadataOutlet","children":"$@18"}]}]]}]
+8:["$","$1","h",{"children":[null,["$","$L19",null,{"children":"$L1a"}],["$","div",null,{"hidden":true,"children":["$","$L1b",null,{"children":["$","$17",null,{"name":"Next.Metadata","children":"$L1c"}]}]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}]
+11:"$5:props:children:1:props:serverProvidedParams:params"
+14:{}
+15:"$5:props:children:1:props:serverProvidedParams:params"
+1a:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+18:null
+1c:[["$","title","0",{"children":"ContextFort for Comet"}],["$","meta","1",{"name":"description","content":"ContextFort for Comet provides visibility and controls for Perplexity Comet browser agent. Session monitoring, action blocking, and governance."}]]

@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "BlockedDomains": {
+      "title": "Blocked Domains",
+      "description": "List of domains blocked by the organization. The agent will not be able to access or scrape content from these domains.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

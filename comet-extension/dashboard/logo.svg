@@ -1,0 +1,9 @@
+<svg width="240" height="48" viewBox="0 0 240 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="240" height="48" fill="transparent"/>
+  <!-- Shield Icon -->
+  <g transform="translate(12, 12)">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" fill="#4ADE80" stroke="#4ADE80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- Text -->
+  <text x="48" y="32" fill="white" style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.05em; text-transform: uppercase;">CONTEXTFORT</text>
+</svg>
