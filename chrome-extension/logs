@@ -1,0 +1,1831 @@
+[SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 1 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 1, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 1 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 1 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 1 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 1/1 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] Domain: ashwinramachandrang.atlassian.net, Root: atlassian.net
+background.js:2 [SessionIsolation] Current profile for atlassian.net: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.net
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.net
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.net
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.net
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 1, sessionStorage keys: 0
+background.js:2 [SessionIsolation] captureFullSession: Complete - 2 cookies, 1 localStorage, 0 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.net
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 2, localStorage: 1, sessionStorage: 0
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.net
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Found 2 cookies for .atlassian.net
+background.js:2 [SessionIsolation] captureCookies: Total 2 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.xsrf.token, atl-sticky-version
+background.js:2 [SessionIsolation] clearCookies: Removing 2 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 2/2 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.net
+background.js:2 [SessionIsolation] getRootDomain: ashwinramachandrang.atlassian.net -> atlassian.net
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://ashwinramachandrang.atlassian.net/jira/software/projects/OTP/boards/34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: No matching flow for tab 788521757, domain id.atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: No matching flow for tab 788521757, domain id.atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: No matching flow for tab 788521757, domain id.atlassian.com
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/join/user-access?resource=ari%3Acloud%3Ajira%3A%3Asite%2F045badc2-0f23-4b4f-84fd-1e174073076a&continue=https%3A%2F%2Fashwinramachandrang.atlassian.net%2Fjira%2Fsoftware%2Fprojects%2FOTP%2Fboards%2F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 12 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 12 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 12 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: _otPreferencesSynced, OptanonConsent, atlassian.account.ffs.id, atlassian.account.xsrf.token, g_state, atlassian.account.code.verifier, __aid_user_id, ajs_anonymous_id, __cuid, __cuid, cloud.session.token, GCLB
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 9, sessionStorage keys: 6
+background.js:2 [SessionIsolation] captureFullSession: Complete - 12 cookies, 9 localStorage, 6 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 12, localStorage: 9, sessionStorage: 6
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 12 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 12 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 12 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: _otPreferencesSynced, OptanonConsent, atlassian.account.ffs.id, atlassian.account.xsrf.token, g_state, atlassian.account.code.verifier, __aid_user_id, ajs_anonymous_id, __cuid, __cuid, cloud.session.token, GCLB
+background.js:2 [SessionIsolation] clearCookies: Removing 12 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 12/12 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/join/user-access?resource=ari%3Acloud%3Ajira%3A%3Asite%2F045badc2-0f23-4b4f-84fd-1e174073076a&continue=https%3A%2F%2Fashwinramachandrang.atlassian.net%2Fjira%2Fsoftware%2Fprojects%2FOTP%2Fboards%2F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Not a login page (maybe already logged out and on home?)
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 8 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 8 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 8 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: icf.redirect.count, ajs_anonymous_id, GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 6, sessionStorage keys: 5
+background.js:2 [SessionIsolation] captureFullSession: Complete - 8 cookies, 6 localStorage, 5 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 8, localStorage: 6, sessionStorage: 5
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 8 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 8 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 8 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: icf.redirect.count, ajs_anonymous_id, GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 8 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 8/8 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: Object
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: Object
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 4, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 4 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 4, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 7 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 7 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 7 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 7 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 7, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 7 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 7 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 7 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 7 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 7/7 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 4
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 4 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 4
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid, g_state
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 3 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 3, sessionStorage keys: 3
+background.js:2 [SessionIsolation] captureFullSession: Complete - 3 cookies, 3 localStorage, 3 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 3, localStorage: 3, sessionStorage: 3
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 5 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 5 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid
+background.js:2 [SessionIsolation] clearCookies: Removing 5 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 5/5 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 4 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 4 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 4 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 4, sessionStorage keys: 3
+background.js:2 [SessionIsolation] captureFullSession: Complete - 4 cookies, 4 localStorage, 3 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 4, localStorage: 4, sessionStorage: 3
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 4 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 4 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 5, sessionStorage keys: 3
+background.js:2 [SessionIsolation] captureFullSession: Complete - 6 cookies, 5 localStorage, 3 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 6, localStorage: 5, sessionStorage: 3
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 6 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 6 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: GCLB, atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid
+background.js:2 [SessionIsolation] clearCookies: Removing 6 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 6/6 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 complete - Page reload triggered
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Now waiting for login page detection in onLoginFlowTabUpdated
+background.js:2 [SessionIsolation] swapToAgentSession result: {success: true, reason: 'login_flow_started'}
+background.js:2 [SessionIsolation] Login flow started for atlassian.com
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT STOPPED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Not in agent mode, skipping restore
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Processing
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: tab=788521757, url=https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Current state=waiting_for_login_page
+background.js:2 [SessionIsolation] ----------------------------------------
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Checking if on login page
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: DETECT_LOGIN_PAGE response: {isLoginPage: true}
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: Login page DETECTED
+background.js:2 [SessionIsolation] onLoginFlowTabUpdated: State changed to WAITING_FOR_LOGIN_SUCCESS
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] AGENT DETECTED - ENTRY POINT
+background.js:2 [SessionIsolation] Tab: 788521757, URL: https://id.atlassian.com/login?continue=https%3A%2F%2Fid.atlassian.com%2Fjoin%2Fuser-access%3Fresource%3Dari%253Acloud%253Ajira%253A%253Asite%252F045badc2-0f23-4b4f-84fd-1e174073076a%26continue%3Dhttps%253A%252F%252Fashwinramachandrang.atlassian.net%252Fjira%252Fsoftware%252Fprojects%252FOTP%252Fboards%252F34
+background.js:2 [SessionIsolation] ████████████████████████████████████████
+background.js:2 [SessionIsolation] getRootDomain: id.atlassian.com -> atlassian.com
+background.js:2 [SessionIsolation] Domain: id.atlassian.com, Root: atlassian.com
+background.js:2 [SessionIsolation] Current profile for atlassian.com: none
+background.js:2 [SessionIsolation] Initiating session swap to agent
+background.js:2 [SessionIsolation] swapToAgentSession: Called for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: Checking for domain atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: Loading agent session for atlassian.com
+background.js:2 [SessionIsolation] loadSessionProfile: No agent session found for atlassian.com
+background.js:2 [SessionIsolation] hasAgentSession: NO for atlassian.com
+background.js:2 [SessionIsolation] swapToAgentSession: No agent session, triggering login flow
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: START
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: tab=788521757, domain=atlassian.com
+background.js:2 [SessionIsolation] ========================================
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Flow created, state=saving_human_session
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 - Saving human session
+background.js:2 [SessionIsolation] captureFullSession: Starting for tab 788521757, domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 3 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id
+background.js:2 [SessionIsolation] captureFullSession: Sending CAPTURE_STORAGE message to tab 788521757
+background.js:2 [SessionIsolation] captureFullSession: Received storage data - localStorage keys: 4, sessionStorage keys: 3
+background.js:2 [SessionIsolation] captureFullSession: Complete - 3 cookies, 4 localStorage, 3 sessionStorage
+background.js:2 [SessionIsolation] saveSessionProfile: Saving human session for atlassian.com
+background.js:2 [SessionIsolation] saveSessionProfile: Data size - cookies: 3, localStorage: 4, sessionStorage: 3
+background.js:2 [SessionIsolation] saveSessionProfile: Successfully saved human session for atlassian.com
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 1 complete - Human session saved
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 - Clearing session
+background.js:2 [SessionIsolation] clearCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Starting for domain atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 3 cookies for atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Found 5 cookies for .atlassian.com
+background.js:2 [SessionIsolation] captureCookies: Total 5 unique cookies captured
+background.js:2 [SessionIsolation] captureCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id, __cuid, __cuid
+background.js:2 [SessionIsolation] clearCookies: Removing 5 cookies
+background.js:2 [SessionIsolation] clearCookies: Successfully removed 5/5 cookies
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 2 complete - Session cleared
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Step 3 - Reloading page (should redirect to login)
+background.js:2 [SessionIsolation] ========================================
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+a @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ma @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ga @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+Promise.then
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2Understand this error
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: FAILED
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+a @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ma @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ga @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+Promise.then
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2Understand this error
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Error: Error: No tab with id: 788521757.
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+a @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ma @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ga @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+Promise.then
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2Understand this error
+background.js:2 [SessionIsolation] ========================================
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+a @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ma @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+Promise.then
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+ga @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+jo @ background.js:2
+o @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2
+Promise.then
+(anonymous) @ background.js:2
+(anonymous) @ background.js:2Understand this error
+background.js:2 [SessionIsolation] triggerAgentLoginFlow: Restoring human session after failure
+background.js:2 [SessionIsolation] restoreCookies: Restoring 3 cookies
+background.js:2 [SessionIsolation] restoreCookies: Cookie names: atlassian.account.ffs.id, atlassian.account.xsrf.token, ajs_anonymous_id
+background.js:2 [SessionIsolation] restoreCookies: Successfully restored 3/3 cookies
+background.js:2 [SessionIsolation] Error during agent session swap: Error: Could not establish connection. Receiving end does not exist.

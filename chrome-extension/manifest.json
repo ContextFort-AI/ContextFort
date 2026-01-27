@@ -12,7 +12,10 @@
     "tabGroups",
     "webNavigation",
     "declarativeNetRequest",
-    "scripting"
+    "scripting",
+    "cookies",
+    "contextMenus",
+    "notifications"
   ],
 
   "host_permissions": [
@@ -46,6 +49,15 @@
   ],
   "icons": {
     "128": "icon128.png"
+  },
+  "commands": {
+    "snapshot-session": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Snapshot current session for agent protection"
+    }
   },
   "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.posthog.com"

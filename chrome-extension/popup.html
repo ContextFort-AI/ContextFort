@@ -64,6 +64,35 @@
     .btn:active {
       transform: translateY(0);
     }
+
+    .btn-restore {
+      margin-bottom: 12px;
+      background: #F59E0B;
+      color: #0D0D0D;
+    }
+
+    .btn-restore:hover {
+      background: #D97706;
+    }
+
+    .agent-status {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #1A1A1A;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #9CA3AF;
+      line-height: 1.5;
+    }
+
+    .agent-active {
+      color: #4ADE80;
+      font-weight: 600;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +105,15 @@
     </svg>
     <span class="brand">ContextFort</span>
   </div>
+
+  <div id="agent-status" class="agent-status hidden">
+    <span class="agent-active">🤖 Agent Active</span><br>
+    <span id="swapped-domains"></span>
+  </div>
+
+  <button id="restore-session-btn" class="btn btn-restore hidden">
+    👤 Restore Human Session
+  </button>
 
   <button id="open-dashboard-btn" class="btn">
     Open Dashboard

@@ -4,4 +4,4 @@ env/
 __pycache__/
 *.sqlite3
 node_modules/
-archive/
+archive/chrome-extension/cookies_before.json
