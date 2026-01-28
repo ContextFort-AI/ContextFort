@@ -176,19 +176,25 @@ function showInPageNotification(title, message, type = 'error') {
   }, 5000);
 }
 
-function showLoginRequiredNotification(domain) {
+function showLoginRequiredNotification(domain, phase = 1) {
   // Remove any existing notification
   const existingNotification = document.getElementById('contextfort-login-notification');
   if (existingNotification) {
     existingNotification.remove();
   }
+  const existingMinimized = document.getElementById('contextfort-login-minimized');
+  if (existingMinimized) {
+    existingMinimized.remove();
+  }
+
+  let isMinimized = false;
 
   // Create notification container
   const notification = document.createElement('div');
   notification.id = 'contextfort-login-notification';
   notification.style.cssText = `
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     min-width: 360px;
     max-width: 420px;
@@ -200,7 +206,36 @@ function showLoginRequiredNotification(domain) {
     padding: 20px;
     animation: contextfort-slide-in 0.3s ease-out;
     border: 1px solid #333;
+    transition: transform 0.3s ease;
   `;
+
+  // Create minimized tab
+  const minimizedTab = document.createElement('div');
+  minimizedTab.id = 'contextfort-login-minimized';
+  minimizedTab.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 0;
+    background: #1a1a1a;
+    border-radius: 8px 0 0 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+    z-index: 2147483647;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #333;
+    border-right: none;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+  `;
+  minimizedTab.innerHTML = `<span style="font-size: 18px;">🔐</span><span style="color: #fff; font-size: 12px; font-weight: 600;">Login</span>`;
+  minimizedTab.onclick = () => {
+    minimizedTab.style.display = 'none';
+    notification.style.display = 'block';
+    notification.style.animation = 'contextfort-slide-in 0.3s ease-out';
+    isMinimized = false;
+  };
 
   // Add animation keyframes if not already added
   if (!document.getElementById('contextfort-notification-styles')) {
@@ -219,18 +254,48 @@ function showLoginRequiredNotification(domain) {
     document.head.appendChild(style);
   }
 
-  // Header with icon
+  // Header with icon and minimize button
   const header = document.createElement('div');
   header.style.cssText = `
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
     margin-bottom: 12px;
   `;
-  header.innerHTML = `
+
+  const headerLeft = document.createElement('div');
+  headerLeft.style.cssText = `display: flex; align-items: center; gap: 10px;`;
+  headerLeft.innerHTML = `
     <span style="font-size: 24px;">🔐</span>
     <span style="font-size: 16px; font-weight: 600; color: #fff;">Manual Login Required</span>
   `;
+
+  const minimizeBtn = document.createElement('button');
+  minimizeBtn.innerHTML = '−';
+  minimizeBtn.style.cssText = `
+    background: #333;
+    border: none;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  minimizeBtn.onclick = () => {
+    notification.style.display = 'none';
+    minimizedTab.style.display = 'flex';
+    isMinimized = true;
+  };
+
+  header.appendChild(headerLeft);
+  header.appendChild(minimizeBtn);
+
+  document.body.appendChild(minimizedTab);
 
   // Message
   const message = document.createElement('div');
@@ -240,11 +305,6 @@ function showLoginRequiredNotification(domain) {
     line-height: 1.5;
     margin-bottom: 16px;
   `;
-  message.innerHTML = `
-    No saved agent session for <strong style="color: #fff;">${domain}</strong><br><br>
-    Your session has been cleared. Please login, then click "I've Logged In".<br><br>
-    Or click "Restore My Session" to get your cookies back.
-  `;
 
   // Buttons container
   const buttons = document.createElement('div');
@@ -253,56 +313,99 @@ function showLoginRequiredNotification(domain) {
     gap: 10px;
   `;
 
-  // "I've Logged In" button
-  const loginBtn = document.createElement('button');
-  loginBtn.textContent = "I've Logged In";
-  loginBtn.style.cssText = `
-    flex: 1;
-    padding: 12px 16px;
-    background: #4ADE80;
-    color: #000;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-  `;
-  loginBtn.onmouseover = () => loginBtn.style.background = '#3bc56f';
-  loginBtn.onmouseout = () => loginBtn.style.background = '#4ADE80';
-  loginBtn.onclick = () => {
-    console.log('[SessionIsolation] User clicked "I\'ve Logged In"');
-    safeSendMessage({ type: 'LOGIN_BUTTON_CLICKED', domain: domain });
-    notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
-    setTimeout(() => notification.remove(), 300);
-  };
+  if (phase === 1) {
+    // Phase 1: Show initial message and "Ok, I'll log in" button
+    message.innerHTML = `
+      No saved agent session for <strong style="color: #fff;">${domain}</strong><br><br>
+      Your session has been cleared. You need to login manually for the agent to use this site.
+    `;
 
-  // "Restore My Session" button
-  const restoreBtn = document.createElement('button');
-  restoreBtn.textContent = "Restore My Session";
-  restoreBtn.style.cssText = `
-    flex: 1;
-    padding: 12px 16px;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-  `;
-  restoreBtn.onmouseover = () => restoreBtn.style.background = '#444';
-  restoreBtn.onmouseout = () => restoreBtn.style.background = '#333';
-  restoreBtn.onclick = () => {
-    console.log('[SessionIsolation] User clicked "Restore My Session"');
-    safeSendMessage({ type: 'RESTORE_BUTTON_CLICKED', domain: domain });
-    notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
-    setTimeout(() => notification.remove(), 300);
-  };
+    const okBtn = document.createElement('button');
+    okBtn.textContent = "Ok, I'll log in";
+    okBtn.style.cssText = `
+      flex: 1;
+      padding: 12px 16px;
+      background: #4ADE80;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    okBtn.onmouseover = () => okBtn.style.background = '#3bc56f';
+    okBtn.onmouseout = () => okBtn.style.background = '#4ADE80';
+    okBtn.onclick = () => {
+      safeSendMessage({ type: 'OK_LOGIN_CLICKED', domain: domain });
+      // Transition to phase 2
+      showLoginRequiredNotification(domain, 2);
+    };
 
-  buttons.appendChild(loginBtn);
-  buttons.appendChild(restoreBtn);
+    buttons.appendChild(okBtn);
+  } else {
+    // Phase 2: Show the two main buttons
+    message.innerHTML = `
+      No saved agent session for <strong style="color: #fff;">${domain}</strong><br><br>
+      Please login, then click "I've Logged In".<br><br>
+      Or click "Restore My Session" to get your cookies back.
+    `;
+
+    // "I've Logged In" button
+    const loginBtn = document.createElement('button');
+    loginBtn.textContent = "I've Logged In";
+    loginBtn.style.cssText = `
+      flex: 1;
+      padding: 12px 16px;
+      background: #4ADE80;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    loginBtn.onmouseover = () => loginBtn.style.background = '#3bc56f';
+    loginBtn.onmouseout = () => loginBtn.style.background = '#4ADE80';
+    loginBtn.onclick = () => {
+      safeSendMessage({ type: 'LOGIN_BUTTON_CLICKED', domain: domain });
+      notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
+      setTimeout(() => {
+        notification.remove();
+        minimizedTab.remove();
+      }, 300);
+    };
+
+    // "Restore My Session" button
+    const restoreBtn = document.createElement('button');
+    restoreBtn.textContent = "Restore My Session";
+    restoreBtn.style.cssText = `
+      flex: 1;
+      padding: 12px 16px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    `;
+    restoreBtn.onmouseover = () => restoreBtn.style.background = '#444';
+    restoreBtn.onmouseout = () => restoreBtn.style.background = '#333';
+    restoreBtn.onclick = () => {
+      safeSendMessage({ type: 'RESTORE_BUTTON_CLICKED', domain: domain });
+      notification.style.animation = 'contextfort-slide-out 0.3s ease-out';
+      setTimeout(() => {
+        notification.remove();
+        minimizedTab.remove();
+      }, 300);
+    };
+
+    buttons.appendChild(loginBtn);
+    buttons.appendChild(restoreBtn);
+  }
 
   notification.appendChild(header);
   notification.appendChild(message);
@@ -407,15 +510,6 @@ function stopListening() {
   document.removeEventListener('input', onBlockedElementInput, true);
   document.removeEventListener('click', onBlockedElementClick, true);
 }
-
-
-// VISIBILITY: AGENT MODE TRACKING
-// ============================================================================
-// Agent mode is now controlled by background.js based on tab group title changes
-// Background sends START_AGENT_LISTENING when ⌛ appears, STOP_AGENT_LISTENING when ⌛ → ✅
-// ============================================================================
-
-
 
 // CONTROLS: ACTION BLOCKS
 // ============================================================================
@@ -552,111 +646,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     showInPageNotification(message.title, message.message, message.notificationType);
   }
 
-  // SESSION ISOLATION: Show login required notification with buttons
   else if (message.type === 'SHOW_LOGIN_NOTIFICATION') {
-    console.log('[SessionIsolation] SHOW_LOGIN_NOTIFICATION received for domain:', message.domain);
-    showLoginRequiredNotification(message.domain);
+    showLoginRequiredNotification(message.domain, message.phase || 1);
     sendResponse({ success: true });
     return true;
   }
 
-  // AGENT MODE: Start listening (triggered by background when ⌛ appears in tab group title)
   else if (message.type === 'START_AGENT_LISTENING') {
-    console.log('[AgentMode] START_AGENT_LISTENING received');
     startListening();
     sendResponse({ success: true });
     return true;
   }
 
-  // AGENT MODE: Stop listening (triggered by background when ⌛ → ✅ in tab group title)
   else if (message.type === 'STOP_AGENT_LISTENING') {
-    console.log('[AgentMode] STOP_AGENT_LISTENING received');
     stopListening();
     sendResponse({ success: true });
-    return true;
-  }
-
-  // SESSION ISOLATION: Capture storage
-  else if (message.type === 'CAPTURE_STORAGE') {
-    console.log(`[SessionIsolation] CAPTURE_STORAGE: Received request`);
-    try {
-      const data = {
-        localStorage: { ...localStorage },
-        sessionStorage: { ...sessionStorage }
-      };
-      console.log(`[SessionIsolation] CAPTURE_STORAGE: Captured ${Object.keys(data.localStorage).length} localStorage keys, ${Object.keys(data.sessionStorage).length} sessionStorage keys`);
-      console.log(`[SessionIsolation] CAPTURE_STORAGE: localStorage keys: ${Object.keys(data.localStorage).join(', ') || 'none'}`);
-      console.log(`[SessionIsolation] CAPTURE_STORAGE: sessionStorage keys: ${Object.keys(data.sessionStorage).join(', ') || 'none'}`);
-      sendResponse(data);
-    } catch (e) {
-      console.error('[SessionIsolation] CAPTURE_STORAGE: Failed:', e);
-      sendResponse({ localStorage: {}, sessionStorage: {} });
-    }
-    return true;
-  }
-
-  // SESSION ISOLATION: Clear storage
-  else if (message.type === 'CLEAR_STORAGE') {
-    console.log(`[SessionIsolation] CLEAR_STORAGE: Received request`);
-    console.log(`[SessionIsolation] CLEAR_STORAGE: Before clear - localStorage: ${localStorage.length} items, sessionStorage: ${sessionStorage.length} items`);
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-      console.log(`[SessionIsolation] CLEAR_STORAGE: Successfully cleared both storages`);
-      sendResponse({ success: true });
-    } catch (e) {
-      console.error('[SessionIsolation] CLEAR_STORAGE: Failed:', e);
-      sendResponse({ success: false, error: e.message });
-    }
-    return true;
-  }
-
-  // SESSION ISOLATION: Restore storage
-  else if (message.type === 'RESTORE_STORAGE') {
-    console.log(`[SessionIsolation] RESTORE_STORAGE: Received request`);
-    const lsKeys = message.data?.localStorage ? Object.keys(message.data.localStorage).length : 0;
-    const ssKeys = message.data?.sessionStorage ? Object.keys(message.data.sessionStorage).length : 0;
-    console.log(`[SessionIsolation] RESTORE_STORAGE: Will restore ${lsKeys} localStorage keys, ${ssKeys} sessionStorage keys`);
-    try {
-      // Clear first
-      localStorage.clear();
-      sessionStorage.clear();
-      console.log(`[SessionIsolation] RESTORE_STORAGE: Cleared existing storage`);
-
-      // Restore localStorage
-      let lsRestored = 0;
-      if (message.data && message.data.localStorage) {
-        for (const [key, value] of Object.entries(message.data.localStorage)) {
-          try {
-            localStorage.setItem(key, value);
-            lsRestored++;
-          } catch (e) {
-            console.error('[SessionIsolation] RESTORE_STORAGE: Failed to restore localStorage key:', key, e);
-          }
-        }
-      }
-      console.log(`[SessionIsolation] RESTORE_STORAGE: Restored ${lsRestored} localStorage keys`);
-
-      // Restore sessionStorage
-      let ssRestored = 0;
-      if (message.data && message.data.sessionStorage) {
-        for (const [key, value] of Object.entries(message.data.sessionStorage)) {
-          try {
-            sessionStorage.setItem(key, value);
-            ssRestored++;
-          } catch (e) {
-            console.error('[SessionIsolation] RESTORE_STORAGE: Failed to restore sessionStorage key:', key, e);
-          }
-        }
-      }
-      console.log(`[SessionIsolation] RESTORE_STORAGE: Restored ${ssRestored} sessionStorage keys`);
-      console.log(`[SessionIsolation] RESTORE_STORAGE: Complete`);
-
-      sendResponse({ success: true });
-    } catch (e) {
-      console.error('[SessionIsolation] RESTORE_STORAGE: Failed:', e);
-      sendResponse({ success: false, error: e.message });
-    }
     return true;
   }
 });

@@ -6,7 +6,8 @@
     "watch": "webpack --watch --config webpack.config.js"
   },
   "dependencies": {
-    "posthog-js": "^1.313.0"
+    "posthog-js": "^1.313.0",
+    "psl": "^1.15.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
